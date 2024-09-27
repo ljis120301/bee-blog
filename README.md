@@ -5,6 +5,23 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 First, run the development server:
 
 ```bash
+# pre-requisities install node js 
+
+# installs nvm (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+# download and install Node.js (you may need to restart the terminal)
+nvm install 20
+# verifies the right Node.js version is in the environment
+node -v # should print `v20.17.0`
+# verifies the right npm version is in the environment
+npm -v # should print `10.8.2`
+
+mkdir blog-website 
+
+cd blog-website 
+git clone https://github.com/ljis120301/json-webapp.git
+npn install
+
 npm run dev
 # or
 yarn dev
@@ -16,21 +33,14 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+## cute blog website with next js and tailwind
 
-To learn more about Next.js, take a look at the following resources:
+hi 
+## cute blog website 
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+information about our cool blog website 
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+we made it using AI to give initial mockup with HTML CSS and JavaScript. 
+Transitioned to a next js 
