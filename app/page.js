@@ -35,11 +35,14 @@ export default function Home() {
           <BlogPost
             title="why AI is amazing (totally not written by an AI) 🤖"
             description="Artificial intelligence (AI) is rapidly changing the world as we know it. From self-driving cars to facial recognition software, AI is already having a major impact on our lives. And it's only going to become more prevalent in the years to come."
+            id="blogposts/3"
           />
           <BlogPost
             title="how this website was made: ✨"
             description="learn how this website was made...."
+            id="blogposts/4"
           />
+          
         </section>
         <AboutSection />
       </main>

@@ -264,11 +264,13 @@ export default function Blog() {
       </Head>
       <Header />
       <main>
-        <div className="mt-10 text-center">
-          <h1 className="text-light-purple text-3xl font-bold">
+        <div className="flex flex-wrap justify-center gap-4 p-5 mx-auto">
+          <h1 className="text-light-purple text-3xl font-bold text-pretty">
             💡 creating a colorful smart home experience with python and
             tinytuya 🐍🖥️
           </h1>
+          <div className="">
+
           <p>
             Explore how to control your RGB lights using Python and TinyTuya
             with a fun GUI!
@@ -373,25 +375,25 @@ export default function Blog() {
           <h4>Key Components of the Script</h4>
           <ol>
             <li>
-              <p className="font-bold">Initialization</p>: The application sets
+              <p className="font-bold">Initialization</p> The application sets
               up the window, styles, and light configurations.
             </li>
             <li>
-              <p className="font-bold">Light Control</p>: You can toggle lights
+              <p className="font-bold">Light Control</p> You can toggle lights
               on/off, set specific colors, and adjust brightness and
               temperature.
             </li>
             <li>
-              <p className="font-bold">Color Buttons</p>: Buttons for selecting
+              <p className="font-bold">Color Buttons</p> Buttons for selecting
               various colors dynamically change the light’s state when clicked.
             </li>
             <li>
-              <p className="font-bold">Rave Mode</p>: A fun feature where the
+              <p className="font-bold">Rave Mode</p> A fun feature where the
               lights cycle through various colors at a BPM (beats per minute)
               that you set using a slider.
             </li>
             <li>
-              <p className="font-bold">Responsive UI</p>: The application uses{" "}
+              <p className="font-bold">Responsive UI</p> The application uses{" "}
               <code>tkinter</code> for a clean, responsive interface, including
               hover effects for buttons.
             </li>
@@ -412,6 +414,7 @@ export default function Blog() {
             controlling your lights with flair. Feel free to customize the
             interface, add more features, or integrate additional devices!
           </p>
+          </div>
         </div>
       </main>
       <Footer />
