@@ -57,6 +57,10 @@ module.exports = {
         "light-yellow": "#FEFD97",
         "light-peach": "#FEC9A7",
         "light-pink": "#F197C0",
+        "greenish": "#e2F0CB",
+        "pastel-yellow": "#F2E8CE",
+        "tan": "F1DCC5",
+
       },
       borderRadius: {
         lg: "var(--radius)",
