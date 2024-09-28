@@ -31,14 +31,21 @@ export default function Blog() {
             That is why I implimented a cool way of displaying code on my
             website!
           </p>
-
+          <article className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 text-left">
+          <div className="text-light-purple text-left text-3xl font-bold">
+            here's a cute code snippet:
+          </div>
+          <p>This is for me to talk about the code I wrote</p>
           <CodeSnippet
-            title={"Here's a cute code snippet:"}
+            title={""}
             code={`def cute_function():
                print("Hello, cute world!") 
                return "🌈🦄✨"`}
           ></CodeSnippet>
+          </article>
+
         </div>
+        
       </main>
       <Footer />
     </>

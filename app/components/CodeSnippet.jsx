@@ -13,7 +13,7 @@ const CodeSnippet = ({ title, code }) => {
     <div className="p-5">
       <h1 className="text-2xl font-bold">{title}</h1>
       <pre className="bg-light-blue rounded-lg p-6">
-        <code className="language-python border border-light-blue outline outline-4 outline-light-blue p-4 rounded-lg block">
+        <code className="language-python rounded-lg block p-4 bg-gray-500">
           {code}
         </code>
       </pre>

@@ -252,172 +252,130 @@ const rainbowCode = `           import tkinter as tk
                 app = RainbowPastelLightControlApp(root)
                 root.mainloop()`;
 
-export default function Blog() {
-  return (
-    <>
-      <Head>
-        <title>Cute Website</title>
-        <meta
-          name="description"
-          content="A cute website built with Next.js and TailwindCSS"
-        />
-      </Head>
-      <Header />
-      <main>
-        <div className="flex flex-wrap justify-center gap-4 p-5 mx-auto">
-          <h1 className="text-light-purple text-3xl font-bold text-pretty">
-            💡 creating a colorful smart home experience with python and
-            tinytuya 🐍🖥️
-          </h1>
-          <div className="">
-
-          <p>
-            Explore how to control your RGB lights using Python and TinyTuya
-            with a fun GUI!
-          </p>
-          <p>
-            As the world of smart home technology expands, so does the
-            excitement of creating personalized automation solutions. Recently,
-            I dove into the TinyTuya library, which allows for seamless control
-            of Tuya-based smart devices using Python. In this post, I’ll guide
-            you through setting up TinyTuya and showcase a script I created to
-            control RGB lights using a graphical user interface.
-          </p>
-
-          <h3>Setting Up TinyTuya</h3>
-
-          <h4>Step 1: Install TinyTuya</h4>
-          <p>
-            To get started, you need to install TinyTuya. You can easily do this
-            with pip.
-          </p>
-          <CodeSnippet
-            title="Open your terminal and run:"
-            code="pip install tinytuya"
-          ></CodeSnippet>
-
-          <h4>Step 2: Install Dependencies</h4>
-          <p>If you plan to use a GUI, you’ll also need to</p>
-          <CodeSnippet
-            title="install tkinter for the interface and Pillow for image handling:"
-            code="sudo apt-get install python3-tk  # For tkinter
-        pip install Pillow
-        # For image handling"
-          ></CodeSnippet>
-
-          <h4>Step 3: Create a Tuya Developer Account</h4>
-          <ol>
-            <li>
-              Sign up at the{" "}
-              <a href="https://developer.tuya.com/en/" target="_blank">
-                Tuya Developer
-              </a>{" "}
-              site.
-            </li>
-            <li>
-              Create a project and link your Tuya account to the IoT platform.
-            </li>
-            <li>
-              Retrieve the necessary credentials: <code>API Region</code>,{" "}
-              <code>API Key</code>, <code>API Secret</code>, and{" "}
-              <code>Device ID</code>.
-            </li>
-            <li>
-              For detailed introductions I followed the guide{" "}
-              <a href="https://github.com/jasonacox/tinytuya" target="_blank">
-                Here
-              </a>
-            </li>
-          </ol>
-
-          <h4>Step 4: Gather Device Information</h4>
-          <p>
-            Make sure you have the following information for each Tuya device
-            you want to control:
-          </p>
-          <ul>
-            <li>
-              <p className="font-bold">Device ID</p>: Unique identifier for the
-              device.
-            </li>
-            <li>
-              <p className="font-bold">Local Key</p>: Used for encrypted
-              communication.
-            </li>
-            <li>
-              <p className="font-bold">IP Address</p>: The local network address
-              of the device.
-            </li>
-          </ul>
-
-          <h4>Step 5: Verify Your Setup</h4>
-          <CodeSnippet
-            title="You can use TinyTuya’s command-line interface to scan for devices on your local network:"
-            code="tinytuya scan"
-          ></CodeSnippet>
-          <p>
-            This will help ensure that your devices are discoverable and ready
-            for control.
-          </p>
-
-          <h3>My Python Script: Rainbow and Pastel Light Control</h3>
-
-          <p>
-            Now that TinyTuya is set up, let’s dive into the script I wrote for
-            controlling RGB lights using a friendly GUI. The application lets
-            you set colors, brightness, and even initiate a “rave mode” for a
-            fun lighting experience.
-          </p>
-          <CodeSnippet
-            title="Overview of the Code"
-            code={rainbowCode}
-          ></CodeSnippet>
-          <h4>Key Components of the Script</h4>
-          <ol>
-            <li>
-              <p className="font-bold">Initialization</p> The application sets
-              up the window, styles, and light configurations.
-            </li>
-            <li>
-              <p className="font-bold">Light Control</p> You can toggle lights
-              on/off, set specific colors, and adjust brightness and
-              temperature.
-            </li>
-            <li>
-              <p className="font-bold">Color Buttons</p> Buttons for selecting
-              various colors dynamically change the light’s state when clicked.
-            </li>
-            <li>
-              <p className="font-bold">Rave Mode</p> A fun feature where the
-              lights cycle through various colors at a BPM (beats per minute)
-              that you set using a slider.
-            </li>
-            <li>
-              <p className="font-bold">Responsive UI</p> The application uses{" "}
-              <code>tkinter</code> for a clean, responsive interface, including
-              hover effects for buttons.
-            </li>
-          </ol>
-
-          <h3 className="font-bold">Running the Application</h3>
-          <p>
-            Once you've configured your device information in the{" "}
-            <code>setup_lights</code> method, save your script and run it. The
-            GUI will allow you to interact with your lights easily, changing
-            colors, brightness, and more!
-          </p>
-
-          <h3 className="font-bold">Conclusion</h3>
-          <p>
-            With TinyTuya and Python, the possibilities for smart home
-            automation are endless. This script serves as a solid foundation for
-            controlling your lights with flair. Feel free to customize the
-            interface, add more features, or integrate additional devices!
-          </p>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
-}
+                export default function Blog() {
+                  return (
+                    <>
+                      <Head>
+                        <title>Cute Website</title>
+                        <meta
+                          name="description"
+                          content="A cute website built with Next.js and TailwindCSS"
+                        />
+                      </Head>
+                      <Header />
+                      <main className="bg-purple-50 min-h-screen">
+                        <article className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+                          <h1 className="text-3xl sm:text-4xl font-bold text-light-purple-400 mb-6 text-center">
+                            💡 Creating a Colorful Smart Home Experience with Python and TinyTuya 🐍🖥️
+                          </h1>
+                          
+                          <div className="prose prose-purple max-w-none">
+                            <p className="text-lg mb-6">
+                              Explore how to control your RGB lights using Python and TinyTuya
+                              with a fun GUI!
+                            </p>
+                            
+                            <p className="mb-4">
+                              As the world of smart home technology expands, so does the
+                              excitement of creating personalized automation solutions. Recently,
+                              I dove into the TinyTuya library, which allows for seamless control
+                              of Tuya-based smart devices using Python. In this post, I'll guide
+                              you through setting up TinyTuya and showcase a script I created to
+                              control RGB lights using a graphical user interface.
+                            </p>
+                
+                            <h2 className="text-2xl font-semibold text-purple-400 mt-8 mb-4">Setting Up TinyTuya</h2>
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Step 1: Install TinyTuya</h3>
+                            <p className="mb-4">
+                              To get started, you need to install TinyTuya. You can easily do this
+                              with pip.
+                            </p>
+                            <CodeSnippet
+                              title="Open your terminal and run:"
+                              code="pip install tinytuya"
+                            />
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Step 2: Install Dependencies</h3>
+                            <p className="mb-4">If you plan to use a GUI, you'll also need to install tkinter for the interface and Pillow for image handling:</p>
+                            <CodeSnippet
+                              title="Install tkinter and Pillow:"
+                              code={`sudo apt-get install python3-tk  # For tkinter
+                pip install Pillow  # For image handling`}
+                            />
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Step 3: Create a Tuya Developer Account</h3>
+                            <ol className="list-decimal pl-6 mb-4">
+                              <li className="mb-2">Sign up at the <a href="https://developer.tuya.com/en/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-400">Tuya Developer</a> site.</li>
+                              <li className="mb-2">Create a project and link your Tuya account to the IoT platform.</li>
+                              <li className="mb-2">Retrieve the necessary credentials: <code className="bg-gray-100 px-1 rounded">API Region</code>, <code className="bg-gray-100 px-1 rounded">API Key</code>, <code className="bg-gray-100 px-1 rounded">API Secret</code>, and <code className="bg-gray-100 px-1 rounded">Device ID</code>.</li>
+                              <li className="mb-2">For detailed introductions, follow the guide <a href="https://github.com/jasonacox/tinytuya" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-600">here</a>.</li>
+                            </ol>
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Step 4: Gather Device Information</h3>
+                            <p className="mb-4">
+                              Make sure you have the following information for each Tuya device
+                              you want to control:
+                            </p>
+                            <ul className="list-disc pl-6 mb-4">
+                              <li className="mb-2"><span className="font-semibold">Device ID</span>: Unique identifier for the device.</li>
+                              <li className="mb-2"><span className="font-semibold">Local Key</span>: Used for encrypted communication.</li>
+                              <li className="mb-2"><span className="font-semibold">IP Address</span>: The local network address of the device.</li>
+                            </ul>
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Step 5: Verify Your Setup</h3>
+                            <p className="mb-4">You can use TinyTuya's command-line interface to scan for devices on your local network:</p>
+                            <CodeSnippet
+                              title="Scan for devices:"
+                              code="tinytuya scan"
+                            />
+                            <p className="mb-4">
+                              This will help ensure that your devices are discoverable and ready
+                              for control.
+                            </p>
+                
+                            <h2 className="text-2xl font-semibold text-purple-400 mt-8 mb-4">My Python Script: Rainbow and Pastel Light Control</h2>
+                
+                            <p className="mb-4">
+                              Now that TinyTuya is set up, let's dive into the script I wrote for
+                              controlling RGB lights using a friendly GUI. The application lets
+                              you set colors, brightness, and even initiate a "rave mode" for a
+                              fun lighting experience.
+                            </p>
+                            
+                            <CodeSnippet
+                              title="Overview of the Code"
+                              code={rainbowCode}
+                            />
+                
+                            <h3 className="text-xl font-semibold text-purple-400 mt-6 mb-3">Key Components of the Script</h3>
+                            <ol className="list-decimal pl-6 mb-4">
+                              <li className="mb-2"><span className="font-semibold">Initialization:</span> The application sets up the window, styles, and light configurations.</li>
+                              <li className="mb-2"><span className="font-semibold">Light Control:</span> You can toggle lights on/off, set specific colors, and adjust brightness and temperature.</li>
+                              <li className="mb-2"><span className="font-semibold">Color Buttons:</span> Buttons for selecting various colors dynamically change the light's state when clicked.</li>
+                              <li className="mb-2"><span className="font-semibold">Rave Mode:</span> A fun feature where the lights cycle through various colors at a BPM (beats per minute) that you set using a slider.</li>
+                              <li className="mb-2"><span className="font-semibold">Responsive UI:</span> The application uses <code className="bg-gray-100 px-1 rounded">tkinter</code> for a clean, responsive interface, including hover effects for buttons.</li>
+                            </ol>
+                
+                            <h2 className="text-2xl font-semibold text-purple-400 mt-8 mb-4">Running the Application</h2>
+                            <p className="mb-4">
+                              Once you've configured your device information in the
+                              <code className="bg-gray-100 px-1 rounded">setup_lights</code> method, save your script and run it. The
+                              GUI will allow you to interact with your lights easily, changing
+                              colors, brightness, and more!
+                            </p>
+                
+                            <h2 className="text-2xl font-semibold text-purple-400 mt-8 mb-4">Conclusion</h2>
+                            <p className="mb-4">
+                              With TinyTuya and Python, the possibilities for smart home
+                              automation are endless. This script serves as a solid foundation for
+                              controlling your lights with flair. Feel free to customize the
+                              interface, add more features, or integrate additional devices!
+                            </p>
+                          </div>
+                        </article>
+                      </main>
+                      <Footer />
+                    </>
+                  );
+                }
