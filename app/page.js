@@ -9,11 +9,7 @@ export default function Home() {
     <>
       <Head>
         <title>Cute Website</title>
-        <meta
-          name="description"
-          content="A cute website built with Next.js and TailwindCSS"
-          
-        />
+        <meta name="description" content="A cute website built with Next.js and TailwindCSS" />
         <link rel="icon" href="/bee-icon.ico" />
       </Head>
       <Header />
@@ -23,14 +19,15 @@ export default function Home() {
         </h2>
       </div>
       <main>
-        <section className=" justify-center p-5 mx-auto max-w-7xl grid gmd:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] md:grid-cols-4 gap-4 space-x-4">
+        {/* Main grid for BlogPost cards */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 max-w-7xl mx-auto p-5">
           <BlogPost
-            className="bg-white  rounded shadow"
+            className="bg-white rounded shadow"
             title="an introduction: 🌈"
             description="a short intro of what you'll expect to find here"
             id="/blogposts"
           />
-          <BlogPost 
+          <BlogPost
             className="bg-white rounded shadow"
             title="💡 creating a colorful smart home experience with python and tinytuya 🐍🖥️"
             description="Explore how to control your RGB lights using Python and TinyTuya with a fun GUI!"
@@ -49,7 +46,7 @@ export default function Home() {
             id="blogposts/4"
           />
           <BlogPost
-            className="bg-white  rounded shadow"
+            className="bg-white rounded shadow"
             title="this is a sample blog post 📝"
             description="this is a sample decription of text"
             id="blogposts/5"
@@ -58,28 +55,21 @@ export default function Home() {
             className="bg-white rounded shadow"
             title="this is a sample blog post 📝"
             description="this is a sample decription of text"
-            id="blogposts/5"
+            id="blogposts/6"
           />
-           <BlogPost
+          <BlogPost
             className="bg-white rounded shadow"
             title="this is a sample blog post 📝"
             description="this is a sample decription of text"
-            id="blogposts/5"
+            id="blogposts/7"
           />
-           <BlogPost
-            className="bg-white  rounded shadow"
+          <BlogPost
+            className="bg-white rounded shadow"
             title="this is a sample blog post 📝"
             description="this is a sample decription of text"
-            id="blogposts/5"
+            id="blogposts/8"
           />
-           <BlogPost
-            className="bg-white  rounded shadow"
-            title="this is a sample blog post 📝"
-            description="this is a sample decription of text"
-            id="blogposts/5"
-          />
-          
-
+          {/* Add more BlogPost components as needed */}
         </section>
         <AboutSection />
       </main>

@@ -575,6 +575,9 @@ video {
 .resize {
   resize: both;
 }
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
 .flex-col {
   flex-direction: column;
 }
@@ -589,6 +592,9 @@ video {
 }
 .gap-4 {
   gap: 1rem;
+}
+.gap-6 {
+  gap: 1.5rem;
 }
 .space-x-4 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-x-reverse: 0;
@@ -774,62 +780,83 @@ video {
 .\[i\:i\+2\] {
   i: i+2;
 }
+
 .after\:absolute::after {
   content: var(--tw-content);
   position: absolute;
 }
+
 .after\:bottom-\[-10px\]::after {
   content: var(--tw-content);
   bottom: -10px;
 }
+
 .after\:left-1\/2::after {
   content: var(--tw-content);
   left: 50%;
 }
+
 .after\:h-\[4px\]::after {
   content: var(--tw-content);
   height: 4px;
 }
+
 .after\:w-1\/2::after {
   content: var(--tw-content);
   width: 50%;
 }
+
 .after\:-translate-x-1\/2::after {
   content: var(--tw-content);
   --tw-translate-x: -50%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+
 .after\:rounded-\[2px\]::after {
   content: var(--tw-content);
   border-radius: 2px;
 }
+
 .after\:bg-gradient-to-r::after {
   content: var(--tw-content);
   background-image: linear-gradient(to right, var(--tw-gradient-stops));
 }
+
 .after\:from-light-pink::after {
   content: var(--tw-content);
   --tw-gradient-from: #F197C0 var(--tw-gradient-from-position);
   --tw-gradient-to: rgb(241 151 192 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
+
 .after\:to-light-blue::after {
   content: var(--tw-content);
   --tw-gradient-to: #C5EBFE var(--tw-gradient-to-position);
 }
+
 .after\:content-\[\'\'\]::after {
   --tw-content: '';
   content: var(--tw-content);
 }
+
 .hover\:scale-110:hover {
   --tw-scale-x: 1.1;
   --tw-scale-y: 1.1;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+
 .hover\:bg-light-peach:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(254 201 167 / var(--tw-bg-opacity));
 }
+
+@media (min-width: 640px) {
+
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 768px) {
 
   .md\:grid-cols-4 {
