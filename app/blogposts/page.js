@@ -15,8 +15,8 @@ export default function Blog() {
       </Head>
       <Header />
       <main>
-        <div className="mt-10 text-center">
-          <h1 className="text-light-purple text-3xl font-bold">
+        <div className="mt-10 text-center border-4 border-light-green rounded-lg p-6 m-4 bg-pink-50 shadow-lg">
+          <h1 className="text-light-purple text-3xl font-bold text-pretty">
             an introduction: 🌈
           </h1>
           <p>

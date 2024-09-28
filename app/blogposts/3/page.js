@@ -16,7 +16,7 @@ export default function Blog() {
         </Head>
         <Header />
         <main>
-          <div className="flex flex-wrap justify-center gap-4 p-5 mx-auto ">
+          <div className="mt-10 text-center border-4 border-light-green rounded-lg p-6 m-4 bg-pink-50 shadow-lg">
             <h1 className="text-light-purple text-3xl font-bold text-pretty"> why AI is amazing (totally not written by an AI) 🤖</h1>
             <div className="break-words space-2-4">
                     <p>Artificial intelligence (AI) is rapidly changing the world as we know it. From self-driving cars to facial recognition software, AI is already having a major impact on our lives. And it's only going to become more prevalent in the years to come.
