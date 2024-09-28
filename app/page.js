@@ -40,7 +40,7 @@ export default function Home() {
           <BlogPost
             title="how this website was made: ✨"
             description="learn how this website was made...."
-            id="blogposts/4"
+            id="blogposts/5"
           />
           
         </section>
