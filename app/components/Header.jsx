@@ -17,11 +17,13 @@ const Header = ({id}) => {
         </div>
         <div className="flex space-x-4">
           <button className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-full transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-110 shadow-md">
-            Sign In
+            <a href="/blogposts/register">
+          📝 register 📝 
+          </a>
           </button>
           <button className="bg-green-400 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-full transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-110 shadow-md">
-            <a href={id} className="">
-            Log In
+            <a href="/blogposts/sign-in" className="">
+            ✨ sign in ✨
             </a>
           </button>
         </div>

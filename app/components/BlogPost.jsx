@@ -14,11 +14,7 @@ const BlogPost = ({ title, description, id }) => {
     >
       <h2 className="text-light-purple text-xl font-bold">{title}</h2>
       <p className="mt-2 p-2 flex-grow">{description}</p>
-      <button className="
-        px-8 py-2 border border-black bg-transparent text-black  dark:border-white relative group transition duration-200 rounded
-      ">
-      <div className="absolute -bottom-2 -right-2 bg-yellow-300 h-full w-full -z-10 group-hover:bottom-0 group-hover:right-0 transition-all duration-200 rounded" />
-      <span className="relative">
+      <button className="px-5 py-2 bg-gradient-to-r from-amber-100 to-yellow-200 text-amber-800 rounded-full font-bold hover:from-amber-200 hover:to-yellow-300 transition-all duration-300 shadow-md hover:shadow-lg border-2 border-amber-300">        <span className="relative">
         <a href={id} className="p-4">
           Read More
         </a>

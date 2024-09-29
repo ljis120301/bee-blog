@@ -11,11 +11,26 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/blogposts/file-upload/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogposts/file-upload/page.js"
+    ],
     "/blogposts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/blogposts/page.css",
       "static/chunks/app/blogposts/page.js"
+    ],
+    "/blogposts/sign-in/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogposts/sign-in/page.js"
+    ],
+    "/blogposts/register/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogposts/register/page.js"
     ],
     "/blogposts/2/page": [
       "static/chunks/webpack.js",
@@ -23,22 +38,11 @@
       "static/css/app/blogposts/2/page.css",
       "static/chunks/app/blogposts/2/page.js"
     ],
-    "/blogposts/3/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/blogposts/3/page.css",
-      "static/chunks/app/blogposts/3/page.js"
-    ],
     "/blogposts/4/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/blogposts/4/page.css",
       "static/chunks/app/blogposts/4/page.js"
-    ],
-    "/blogposts/file-upload/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/blogposts/file-upload/page.js"
     ]
   }
 }
