@@ -53,13 +53,26 @@ module.exports = {
         },
         "light-purple": "#B49FDC",
         "light-blue": "#C5EBFE",
+        
         "light-green": "#A5F8CE",
-        "light-yellow": "#FEFD97",
+        "greenish": "#e2F0CB",
+        "muted-green": "#DDD8D4",
+
         "light-peach": "#FEC9A7",
         "light-pink": "#F197C0",
-        "greenish": "#e2F0CB",
-        "pastel-yellow": "#F2E8CE",
+        
         "tan": "F1DCC5",
+        "blurple": "#A09AFF",
+
+        "yellow-1": "#f9f9c1",
+        "yellow-2": "#f9ee99",
+        "light-yellow": "#FEFD97",
+        "pastel-yellow": "#F2E8CE",
+        "yellow-3": "#ecd97c",
+
+        "warm-beige": "#f5f5dc",
+
+
 
       },
       borderRadius: {
