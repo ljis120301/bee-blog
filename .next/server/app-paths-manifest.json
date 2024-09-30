@@ -1,6 +1,6 @@
 {
   "/page": "app/page.js",
-  "/blogposts/file-upload/page": "app/blogposts/file-upload/page.js",
   "/blogposts/sign-in/page": "app/blogposts/sign-in/page.js",
-  "/blogposts/register/page": "app/blogposts/register/page.js"
+  "/blogposts/register/page": "app/blogposts/register/page.js",
+  "/blogposts/page": "app/blogposts/page.js"
 }

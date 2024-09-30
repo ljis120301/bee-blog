@@ -61,9 +61,9 @@ export default function Home() {
           />
           <BlogPost
             className="bg-white rounded shadow p-4 overflow-hidden break-words"
-            title="this is a sample blog post 📝"
+            title="this is a cool secret blog post 📝"
             description="this is a sample decription of text"
-            id="blogposts/7"
+            id="blogposts/"
           />
           <BlogPost
             className="bg-white rounded shadow p-4 overflow-hidden break-words"
