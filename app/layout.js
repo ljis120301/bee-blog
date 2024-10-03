@@ -8,7 +8,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`antialiased bg-warm-beige`}>{children}</body>
+      <body className={`antialiased bg-[#292c3c]`}>{children}</body>
       <link rel="icon" href="/bee-icon.ico" />
     </html>
   );

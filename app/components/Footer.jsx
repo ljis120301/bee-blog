@@ -1,8 +1,8 @@
 const Footer = () => {
   return (
-    <footer className="bg-gradient-to-r from-light-peach to-light-pink text-white text-center py-5 mt-10">
-      <p className="p-4 text-slate-500">give me money?</p>
-      <p className=" text-slate-500">
+    <footer className="bg-gradient-to-r from-[#414559] to-[#51576d] text-[#e5c890] text-center py-5 mt-10">
+      <p className="p-4">support the hive? 🐝</p>
+      <p className="text-[#c6d0f5]">
         XMR:
         48xWV6Ej4qRPZdKVEX7xQgLyWvxrSmCVXZS5pLXGpuPbMH6GhtiBjXBcHqHLxMMmEW474dkWTdLEsR6nARhhgKGRBou6nSk
       </p>

@@ -1,6 +1,7 @@
 {
   "/page": "app/page.js",
+  "/blogposts/2/page": "app/blogposts/2/page.js",
   "/blogposts/sign-in/page": "app/blogposts/sign-in/page.js",
-  "/blogposts/register/page": "app/blogposts/register/page.js",
-  "/blogposts/page": "app/blogposts/page.js"
+  "/blogposts/page": "app/blogposts/page.js",
+  "/blogposts/register/page": "app/blogposts/register/page.js"
 }
