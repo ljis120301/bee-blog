@@ -7,7 +7,7 @@ import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   return (
-    <nav className="bg-[#414559] dark:bg-[#292c3c] text-[#e5c890] p-4 shadow-md">
+    <nav className="bg-cat-frappe-rosewater dark:bg-[#292c3c] text-[#e5c890] p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="flex items-center">
           <Image
