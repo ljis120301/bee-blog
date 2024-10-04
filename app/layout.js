@@ -1,15 +1,22 @@
-import "./styles/globals.css";
+import { ThemeProvider } from 'next-themes';
+import './styles/globals.css';
 
 export const metadata = {
   title: "bee blog",
-  description: "Nextjs Refactor",
+  description: "bee blog",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`antialiased bg-[#292c3c]`}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className='bg-cat-frappe-subtext0 dark:bg-cat-frappe-surface1'>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
+      </body>
       <link rel="icon" href="/bee-icon.ico" />
     </html>
   );
 }
+
+

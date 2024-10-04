@@ -1,10 +1,13 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   return (
-    <nav className="bg-[#414559] text-[#e5c890] p-4 shadow-md">
+    <nav className="bg-[#414559] dark:bg-[#292c3c] text-[#e5c890] p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="flex items-center">
           <Image
@@ -19,7 +22,8 @@ const Navbar = () => {
             <span className="text-[#e5c890]">blog</span>
           </span>
         </Link>
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 items-center">
+          <ThemeToggle />
           <Link href="/blogposts/register">
             <button className="px-5 py-2 bg-gradient-to-r from-[#51576d] to-[#626880] text-[#e5c890] rounded-full font-bold hover:from-[#737994] hover:to-[#838ba7] transition-all duration-300 shadow-md hover:shadow-lg border-2 border-[#e5c890]">
               <span className="relative">

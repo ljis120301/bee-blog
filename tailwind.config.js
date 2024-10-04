@@ -1,4 +1,3 @@
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -54,25 +53,19 @@ module.exports = {
         },
         "light-purple": "#B49FDC",
         "light-blue": "#C5EBFE",
-        
         "light-green": "#A5F8CE",
         "greenish": "#e2F0CB",
         "muted-green": "#DDD8D4",
-
         "light-peach": "#FEC9A7",
         "light-pink": "#F197C0",
-        
         "tan": "F1DCC5",
         "blurple": "#A09AFF",
-
         "yellow-1": "#f9f9c1",
         "yellow-2": "#f9ee99",
         "light-yellow": "#FEFD97",
         "pastel-yellow": "#F2E8CE",
         "yellow-3": "#ecd97c",
-
         "warm-beige": "#f5f5dc",
-
         'cat-frappe-rosewater': '#f2d5cf',
         'cat-frappe-flamingo': '#eebebe',
         'cat-frappe-pink': '#f4b8e4',
@@ -99,7 +92,6 @@ module.exports = {
         'cat-frappe-base': '#303446',
         'cat-frappe-mantle': '#292c3c',
         'cat-frappe-crust': '#232634',
-        
         ctp: {
           base: '#303446',
           surface0: '#414559',
@@ -114,9 +106,19 @@ module.exports = {
           green: '#a6d189',
           teal: '#81c8be',
         },
-
-
-
+        // New custom background colors
+        "bg-custom": {
+          light: "hsl(var(--bg-custom-light))",
+          dark: "hsl(var(--bg-custom-dark))",
+        },
+        "bg-custom-secondary": {
+          light: "hsl(var(--bg-custom-secondary-light))",
+          dark: "hsl(var(--bg-custom-secondary-dark))",
+        },
+        "bg-custom-accent": {
+          light: "hsl(var(--bg-custom-accent-light))",
+          dark: "hsl(var(--bg-custom-accent-dark))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -137,11 +139,7 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
-
-
     },
   },
   plugins: [require("tailwindcss-animate")],
- 
 };
-
