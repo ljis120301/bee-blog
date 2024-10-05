@@ -57,19 +57,19 @@ export default function Home() {
             className="bg-white rounded shadow p-4 overflow-hidden break-words"
             title="this is a sample blog post 📝"
             description="this is a sample decription of text"
-            id="blogposts/file-upload"
+            id="blogposts/5"
           />
           <BlogPost
             className="bg-white rounded shadow p-4 overflow-hidden break-words"
-            title="this is a cool secret blog post 📝"
-            description="this is a sample decription of text"
-            id="blogposts/"
+            title="this is a cool secret blog post for testing File Uploads 📝"
+            description="this is a for the FIle Upload Page"
+            id="blogposts/5"
           />
           <BlogPost
             className="bg-white rounded shadow p-4 overflow-hidden break-words"
-            title="this is a sample blog post 📝"
-            description="this is a sample decription of text"
-            id="blogposts/8"
+            title="Template Blog Post 📝"
+            description="this is your template to base other pages off of"
+            id="blogposts/template-post"
           />
           {/* Add more BlogPost components as needed */}
           

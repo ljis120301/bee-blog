@@ -1,9 +1,21 @@
+"use client";
 import Head from "next/head";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import CodeSnippet from "../components/CodeSnippet";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
+import CodeSnippet from "../../components/CodeSnippet";
+
+import React, { useState } from "react";
+import { FileUpload } from "@/components/ui/file-upload";
+
+
 
 export default function Blog() {
+    const [files, setFiles] = useState([]);
+    const handleFileUpload = (files) => {
+      setFiles(files);
+      console.log(files);
+    }
+
   return (
     <>
       <Head>
@@ -17,19 +29,10 @@ export default function Blog() {
       <main>
         <div className="mt-10 text-center border-4 border-light-green dark:border-cat-frappe-lavender rounded-lg p-6 m-4 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
           <h1 className="text-light-purple dark:text-cat-frappe-lavender text-3xl font-bold text-pretty">
-            an introduction: 🌈
+            file uploads: 🌈
           </h1>
           <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4">
-            Hello! Welcome to my blog website! I will be using this site to keep
-            the world updated on what projects I am working on.
-          </p>
-          <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2">
-            I intend to use this site to also inform the world of any changes I
-            made in software to get it working or other tips and tricks
-          </p>
-          <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2">
-            That is why I implemented a cool way of displaying code on my
-            website!
+            first sentence
           </p>
           <article className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 text-left">
             <div className="text-light-purple dark:text-cat-frappe-lavender text-left text-3xl font-bold">
@@ -42,6 +45,10 @@ export default function Blog() {
                  print("Hello, cute world!") 
                  return "🌈🦄✨"`}
             />
+            <div
+            className="w-full max-w-4xl mx-auto min-h-96 border border-dashed bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 rounded-lg">
+            <FileUpload onChange={handleFileUpload} />
+            </div>
           </article>
         </div>
       </main>
@@ -49,3 +56,4 @@ export default function Blog() {
     </>
   );
 }
+

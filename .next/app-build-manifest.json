@@ -49,6 +49,24 @@
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
+    ],
+    "/blogposts/file-upload-page/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/blogposts/file-upload-page/page.css",
+      "static/chunks/app/blogposts/file-upload-page/page.js"
+    ],
+    "/blogposts/template-post/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/blogposts/template-post/page.css",
+      "static/chunks/app/blogposts/template-post/page.js"
+    ],
+    "/blogposts/5/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/blogposts/5/page.css",
+      "static/chunks/app/blogposts/5/page.js"
     ]
   }
 }

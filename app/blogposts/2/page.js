@@ -1,3 +1,4 @@
+import React from 'react';
 import Head from "next/head";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -256,38 +257,38 @@ const rainbowCode = `           import tkinter as tk
                   return (
                     <>
                       <Head>
-                        <title>Cute Website</title>
+                        <title>Smart Home Lighting Blog</title>
                         <meta
                           name="description"
-                          content="A cute website built with Next.js and TailwindCSS"
+                          content="A blog post about creating a colorful smart home experience with Python and TinyTuya"
                         />
                       </Head>
                       <Header />
-                      <main className="bg-purple-50 min-h-screen">
-                        <article className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 border-4 border-light-green rounded-lg p-6 m-4 bg-pink-50 shadow-lg">
-                          <h1 className="text-3xl sm:text-4xl font-bold text-light-purple-400 mb-6 text-center">
-                            💡 Creating a Colorful Smart Home Experience with Python and TinyTuya 🐍🖥️
-                          </h1>
-                          
-                          <div className="prose prose-purple max-w-none">
-                            <p className="text-lg mb-6">
-                              Explore how to control your RGB lights using Python and TinyTuya
-                              with a fun GUI!
-                            </p>
-                            
-                            <p className="mb-4">
-                              As the world of smart home technology expands, so does the
-                              excitement of creating personalized automation solutions. Recently,
-                              I dove into the TinyTuya library, which allows for seamless control
-                              of Tuya-based smart devices using Python. In this post, I'll guide
-                              you through setting up TinyTuya and showcase a script I created to
-                              control RGB lights using a graphical user interface.
-                            </p>
+                      <main>
+                      <div className="mt-10 text-center border-4 border-light-green dark:border-cat-frappe-lavender rounded-lg p-6 m-4 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
+                      <article className="max-w-4xl mx-auto px-4 py-8 sm:px-8 lg:px-10 text-left">
+                              <h1 className="text-3xl sm:text-4xl font-bold text-light-purple dark:text-cat-frappe-lavender mb-6 text-center">
+                                💡 Creating a Colorful Smart Home Experience with Python and TinyTuya 🐍🖥️
+                              </h1>
+                              <div className="prose prose-light dark:prose-invert max-w-none">
+                                <p className="text-lg mb-6 text-[#4c4f69] dark:text-cat-frappe-subtext0">
+                                  Explore how to control your RGB lights using Python and TinyTuya
+                                  with a fun GUI!
+                                </p>
+                                
+                                <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
+                                  As the world of smart home technology expands, so does the
+                                  excitement of creating personalized automation solutions. Recently,
+                                  I dove into the TinyTuya library, which allows for seamless control
+                                  of Tuya-based smart devices using Python. In this post, I'll guide
+                                  you through setting up TinyTuya and showcase a script I created to
+                                  control RGB lights using a graphical user interface.
+                                </p>
                 
-                            <h2 className="text-2xl font-semibold text-light-purple mt-8 mb-4">Setting Up TinyTuya</h2>
+                            <h2 className="text-2xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-8 mb-4">Setting Up TinyTuya</h2>
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Step 1: Install TinyTuya</h3>
-                            <p className="mb-4">
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Step 1: Install TinyTuya</h3>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               To get started, you need to install TinyTuya. You can easily do this
                               with pip.
                             </p>
@@ -296,47 +297,47 @@ const rainbowCode = `           import tkinter as tk
                               code="pip install tinytuya"
                             />
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Step 2: Install Dependencies</h3>
-                            <p className="mb-4">If you plan to use a GUI, you'll also need to install tkinter for the interface and Pillow for image handling:</p>
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Step 2: Install Dependencies</h3>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">If you plan to use a GUI, you'll also need to install tkinter for the interface and Pillow for image handling:</p>
                             <CodeSnippet
                               title="Install tkinter and Pillow:"
                               code={`sudo apt-get install python3-tk  # For tkinter
                 pip install Pillow  # For image handling`}
                             />
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Step 3: Create a Tuya Developer Account</h3>
-                            <ol className="list-decimal pl-6 mb-4">
-                              <li className="mb-2">Sign up at the <a href="https://developer.tuya.com/en/" target="_blank" rel="noopener noreferrer" className="text-light-purple hover:text-light-purple">Tuya Developer</a> site.</li>
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Step 3: Create a Tuya Developer Account</h3>
+                            <ol className="list-decimal pl-6 mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
+                              <li className="mb-2">Sign up at the <a href="https://developer.tuya.com/en/" target="_blank" rel="noopener noreferrer" className="text-light-purple dark:text-cat-frappe-lavender hover:text-light-blue dark:hover:text-cat-frappe-blue">Tuya Developer</a> site.</li>
                               <li className="mb-2">Create a project and link your Tuya account to the IoT platform.</li>
-                              <li className="mb-2">Retrieve the necessary credentials: <code className="bg-gray-100 px-1 rounded">API Region</code>, <code className="bg-gray-100 px-1 rounded">API Key</code>, <code className="bg-gray-100 px-1 rounded">API Secret</code>, and <code className="bg-gray-100 px-1 rounded">Device ID</code>.</li>
-                              <li className="mb-2">For detailed introductions, follow the guide <a href="https://github.com/jasonacox/tinytuya" target="_blank" rel="noopener noreferrer" className="text-light-purple hover:text-purple-600">here</a>.</li>
+                              <li className="mb-2">Retrieve the necessary credentials: <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">API Region</code>, <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">API Key</code>, <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">API Secret</code>, and <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">Device ID</code>.</li>
+                              <li className="mb-2">For detailed introductions, follow the guide <a href="https://github.com/jasonacox/tinytuya" target="_blank" rel="noopener noreferrer" className="text-light-purple dark:text-cat-frappe-lavender hover:text-light-blue dark:hover:text-cat-frappe-blue">here</a>.</li>
                             </ol>
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Step 4: Gather Device Information</h3>
-                            <p className="mb-4">
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Step 4: Gather Device Information</h3>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               Make sure you have the following information for each Tuya device
                               you want to control:
                             </p>
-                            <ul className="list-disc pl-6 mb-4">
+                            <ul className="list-disc pl-6 mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               <li className="mb-2"><span className="font-semibold">Device ID</span>: Unique identifier for the device.</li>
                               <li className="mb-2"><span className="font-semibold">Local Key</span>: Used for encrypted communication.</li>
                               <li className="mb-2"><span className="font-semibold">IP Address</span>: The local network address of the device.</li>
                             </ul>
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Step 5: Verify Your Setup</h3>
-                            <p className="mb-4">You can use TinyTuya's command-line interface to scan for devices on your local network:</p>
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Step 5: Verify Your Setup</h3>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">You can use TinyTuya's command-line interface to scan for devices on your local network:</p>
                             <CodeSnippet
                               title="Scan for devices:"
                               code="tinytuya scan"
                             />
-                            <p className="mb-4">
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               This will help ensure that your devices are discoverable and ready
                               for control.
                             </p>
                 
-                            <h2 className="text-2xl font-semibold text-light-purple mt-8 mb-4">My Python Script: Rainbow and Pastel Light Control</h2>
+                            <h2 className="text-2xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-8 mb-4">My Python Script: Rainbow and Pastel Light Control</h2>
                 
-                            <p className="mb-4">
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               Now that TinyTuya is set up, let's dive into the script I wrote for
                               controlling RGB lights using a friendly GUI. The application lets
                               you set colors, brightness, and even initiate a "rave mode" for a
@@ -348,25 +349,25 @@ const rainbowCode = `           import tkinter as tk
                               code={rainbowCode}
                             />
                 
-                            <h3 className="text-xl font-semibold text-light-purple mt-6 mb-3">Key Components of the Script</h3>
-                            <ol className="list-decimal pl-6 mb-4">
+                            <h3 className="text-xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-6 mb-3">Key Components of the Script</h3>
+                            <ol className="list-decimal pl-6 mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               <li className="mb-2"><span className="font-semibold">Initialization:</span> The application sets up the window, styles, and light configurations.</li>
                               <li className="mb-2"><span className="font-semibold">Light Control:</span> You can toggle lights on/off, set specific colors, and adjust brightness and temperature.</li>
                               <li className="mb-2"><span className="font-semibold">Color Buttons:</span> Buttons for selecting various colors dynamically change the light's state when clicked.</li>
                               <li className="mb-2"><span className="font-semibold">Rave Mode:</span> A fun feature where the lights cycle through various colors at a BPM (beats per minute) that you set using a slider.</li>
-                              <li className="mb-2"><span className="font-semibold">Responsive UI:</span> The application uses <code className="bg-gray-100 px-1 rounded">tkinter</code> for a clean, responsive interface, including hover effects for buttons.</li>
+                              <li className="mb-2"><span className="font-semibold">Responsive UI:</span> The application uses <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">tkinter</code> for a clean, responsive interface, including hover effects for buttons.</li>
                             </ol>
                 
-                            <h2 className="text-2xl font-semibold text-light-purple mt-8 mb-4">Running the Application</h2>
-                            <p className="mb-4">
+                            <h2 className="text-2xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-8 mb-4">Running the Application</h2>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               Once you've configured your device information in the
-                              <code className="bg-gray-100 px-1 rounded">setup_lights</code> method, save your script and run it. The
+                              <code className="bg-[#acb0be] dark:bg-cat-frappe-surface0 px-1 rounded">setup_lights</code> method, save your script and run it. The
                               GUI will allow you to interact with your lights easily, changing
                               colors, brightness, and more!
                             </p>
                 
-                            <h2 className="text-2xl font-semibold text-light-purple mt-8 mb-4">Conclusion</h2>
-                            <p className="mb-4">
+                            <h2 className="text-2xl font-semibold text-light-purple dark:text-cat-frappe-lavender mt-8 mb-4">Conclusion</h2>
+                            <p className="mb-4 text-[#4c4f69] dark:text-cat-frappe-subtext0">
                               With TinyTuya and Python, the possibilities for smart home
                               automation are endless. This script serves as a solid foundation for
                               controlling your lights with flair. Feel free to customize the
@@ -374,6 +375,7 @@ const rainbowCode = `           import tkinter as tk
                             </p>
                           </div>
                         </article>
+                        </div>
                       </main>
                       <Footer />
                     </>
