@@ -1,10 +1,14 @@
 import React from 'react';
 import Navbar from './Navbar';
+import ScrollProgressBar from './ScrollProgressBar';
 
 const Header = () => {
   return (
-    <header className="bg-gradient-to-b from-[#f2f2f7] to-[#d9d9e1] dark:from-[#414559] dark:to-[#292c3c]">
+    <header className="fixed top-0 left-0 right-0 z-50">
       <Navbar />
+      <div className="absolute bottom-0 left-0 right-0 transform translate-y-full">
+        <ScrollProgressBar />
+      </div>
     </header>
   );
 };

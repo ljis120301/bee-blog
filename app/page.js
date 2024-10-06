@@ -202,9 +202,9 @@ const blogPosts = [
     header: <HoneycombGrid />
   },
   {
-    title: "Honey: Nature's Sweet Wonder 🍯",
-    description: "Explore the benefits and uses of honey in everyday life.",
-    id: "blogposts/honey-wonders",
+    title: "Template Post 🍯",
+    description: "Template Post",
+    id: "blogposts/template-post",
     icon: <IconFileBroken className="h-4 w-4 text-neutral-500" />,
     header: <BeeSwarm />,
   },

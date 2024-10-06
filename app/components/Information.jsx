@@ -3,8 +3,8 @@ import React from 'react';
 const InformationComponent = () => {
   return (
     <div className="bg-yellow-1 dark:bg-gradient-to-br dark:from-cat-frappe-base dark:to-cat-frappe-crust p-6 rounded-xl shadow-lg">
-      <h2 className="text-2xl font-bold mb-4 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-1/2 after:-translate-x-1/2 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">Welcome to My Blog! 🐝</h2>
-      <p className="mb-3 text-cat-frappe-surface1 dark:text-cat-frappe-text">Here you'll find a collection of my thoughts, projects, and adventures in the world of coding and technology.</p>
+      <h2 className="text-2xl font-bold mb-4 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-1/2 after:-translate-x-1/2 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">Welcome to beeblog! ✨</h2>
+      <p className="mb-3 text-cat-frappe-surface1 dark:text-cat-frappe-text">Here you'll find a collection of my thoughts, projects, and adventures in the world of coding and technology. ✨</p>
       <ul className="list-disc list-inside text-cat-frappe-surface1 dark:text-cat-frappe-text">
         <li>Explore my latest projects</li>
         <li>Learn about new technologies</li>
