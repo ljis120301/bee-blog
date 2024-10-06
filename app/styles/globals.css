@@ -77,3 +77,129 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add these styles to your global CSS file */
+
+/* Light mode styles */
+.syntax-highlighter {
+  color: #333;
+}
+
+.syntax-highlighter .token.comment,
+.syntax-highlighter .token.prolog,
+.syntax-highlighter .token.doctype,
+.syntax-highlighter .token.cdata {
+  color: #998;
+}
+
+.syntax-highlighter .token.punctuation {
+  color: #333;
+}
+
+.syntax-highlighter .token.property,
+.syntax-highlighter .token.tag,
+.syntax-highlighter .token.boolean,
+.syntax-highlighter .token.number,
+.syntax-highlighter .token.constant,
+.syntax-highlighter .token.symbol,
+.syntax-highlighter .token.deleted {
+  color: #905;
+}
+
+.syntax-highlighter .token.selector,
+.syntax-highlighter .token.attr-name,
+.syntax-highlighter .token.string,
+.syntax-highlighter .token.char,
+.syntax-highlighter .token.builtin,
+.syntax-highlighter .token.inserted {
+  color: #690;
+}
+
+.syntax-highlighter .token.operator,
+.syntax-highlighter .token.entity,
+.syntax-highlighter .token.url,
+.syntax-highlighter .language-css .token.string,
+.syntax-highlighter .style .token.string {
+  color: #9a6e3a;
+}
+
+.syntax-highlighter .token.atrule,
+.syntax-highlighter .token.attr-value,
+.syntax-highlighter .token.keyword {
+  color: #07a;
+}
+
+.syntax-highlighter .token.function,
+.syntax-highlighter .token.class-name {
+  color: #DD4A68;
+}
+
+.syntax-highlighter .token.regex,
+.syntax-highlighter .token.important,
+.syntax-highlighter .token.variable {
+  color: #e90;
+}
+
+/* Dark mode styles */
+.dark .syntax-highlighter {
+  color: var(--cat-frappe-text);
+}
+
+.dark .syntax-highlighter .token.comment,
+.dark .syntax-highlighter .token.prolog,
+.dark .syntax-highlighter .token.doctype,
+.dark .syntax-highlighter .token.cdata {
+  color: var(--cat-frappe-overlay0);
+}
+
+.dark .syntax-highlighter .token.punctuation {
+  color: var(--cat-frappe-overlay2);
+}
+
+.dark .syntax-highlighter .token.property,
+.dark .syntax-highlighter .token.tag,
+.dark .syntax-highlighter .token.boolean,
+.dark .syntax-highlighter .token.number,
+.dark .syntax-highlighter .token.constant,
+.dark .syntax-highlighter .token.symbol,
+.dark .syntax-highlighter .token.deleted {
+  color: var(--cat-frappe-red);
+}
+
+.dark .syntax-highlighter .token.selector,
+.dark .syntax-highlighter .token.attr-name,
+.dark .syntax-highlighter .token.string,
+.dark .syntax-highlighter .token.char,
+.dark .syntax-highlighter .token.builtin,
+.dark .syntax-highlighter .token.inserted {
+  color: var(--cat-frappe-green);
+}
+
+.dark .syntax-highlighter .token.operator,
+.dark .syntax-highlighter .token.entity,
+.dark .syntax-highlighter .token.url,
+.dark .syntax-highlighter .language-css .token.string,
+.dark .syntax-highlighter .style .token.string {
+  color: var(--cat-frappe-teal);
+}
+
+.dark .syntax-highlighter .token.atrule,
+.dark .syntax-highlighter .token.attr-value,
+.dark .syntax-highlighter .token.keyword {
+  color: var(--cat-frappe-blue);
+}
+
+.dark .syntax-highlighter .token.function,
+.dark .syntax-highlighter .token.class-name {
+  color: var(--cat-frappe-yellow);
+}
+
+.dark .syntax-highlighter .token.regex,
+.dark .syntax-highlighter .token.important,
+.dark .syntax-highlighter .token.variable {
+  color: var(--cat-frappe-pink);
+}
+
+/* Add this at the end of your globals.css file */
+
+/* Light mode styles */

@@ -295,10 +295,11 @@ const rainbowCode = `           import tkinter as tk
                                   <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">
                                     To get started, you need to install TinyTuya. You can easily do this with pip.
                                   </p>
-                                  <CodeSnippet
-                                    title="Open your terminal and run:"
-                                    code="pip install tinytuya"
-                                  />
+                                  <div className="syntax-highlighter">
+                                    <CodeSnippet
+                                      code="pip install tinytuya"
+                                    />
+                                  </div>
 
                                   {/* ... Continue with the rest of your content, following this structure ... */}
 
@@ -308,10 +309,11 @@ const rainbowCode = `           import tkinter as tk
                                   <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">
                                     Now that TinyTuya is set up, let's dive into the script I wrote for controlling RGB lights using a friendly GUI. The application lets you set colors, brightness, and even initiate a "rave mode" for a fun lighting experience.
                                   </p>
-                                  <CodeSnippet
-                                    title="Overview of the Code"
-                                    code={rainbowCode}
-                                  />
+                                  <div className="syntax-highlighter">
+                                    <CodeSnippet
+                                      code={rainbowCode}
+                                    />
+                                  </div>
 
                                   {/* ... Continue with the rest of your content ... */}
 

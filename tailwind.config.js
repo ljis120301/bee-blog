@@ -1,3 +1,5 @@
+const plugin = require('tailwindcss/plugin')
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -119,6 +121,17 @@ module.exports = {
           light: "hsl(var(--bg-custom-accent-light))",
           dark: "hsl(var(--bg-custom-accent-dark))",
         },
+        'python': {
+          'keyword': 'hsl(var(--cat-frappe-mauve))',
+          'builtin': 'hsl(var(--cat-frappe-peach))',
+          'string': 'hsl(var(--cat-frappe-green))',
+          'function': 'hsl(var(--cat-frappe-blue))',
+          'comment': 'hsl(var(--cat-frappe-overlay0))',
+          'decorator': 'hsl(var(--cat-frappe-yellow))',
+          'number': 'hsl(var(--cat-frappe-peach))',
+          'operator': 'hsl(var(--cat-frappe-sky))',
+          'class': 'hsl(var(--cat-frappe-yellow))',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -134,17 +147,97 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(-5%) translateX(50%)' },
-          '50%': { transform: 'translateY(5%) translateX(50%)' },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        'float': 'float 3s ease-in-out infinite',
       },
+      typography: (theme) => ({
+        DEFAULT: {
+          css: {
+            pre: {
+              color: theme('colors.cat-frappe-text'),
+              backgroundColor: theme('colors.cat-frappe-surface0'),
+            },
+            code: {
+              color: theme('colors.cat-frappe-text'),
+              backgroundColor: 'transparent',
+              fontWeight: '400',
+              '&::before': {
+                content: 'none !important',
+              },
+              '&::after': {
+                content: 'none !important',
+              },
+            },
+          },
+        },
+      }),
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    plugin(function({ addUtilities, theme }) {
+      const newUtilities = {
+        '.token.comment,.token.prolog,.token.doctype,.token.cdata': {
+          color: theme('colors.cat-frappe-overlay0')
+        },
+        '.token.punctuation': {
+          color: theme('colors.cat-frappe-overlay2')
+        },
+        '.token.namespace': {
+          opacity: '0.7'
+        },
+        '.token.property,.token.tag,.token.constant,.token.symbol,.token.deleted': {
+          color: theme('colors.cat-frappe-red')
+        },
+        '.token.boolean,.token.number': {
+          color: theme('colors.cat-frappe-peach')
+        },
+        '.token.selector,.token.attr-name,.token.string,.token.char,.token.builtin,.token.inserted': {
+          color: theme('colors.cat-frappe-green')
+        },
+        '.token.operator,.token.entity,.token.url,.language-css .token.string,.style .token.string': {
+          color: theme('colors.cat-frappe-teal')
+        },
+        '.token.atrule,.token.attr-value,.token.keyword': {
+          color: theme('colors.cat-frappe-blue')
+        },
+        '.token.function,.token.class-name': {
+          color: theme('colors.cat-frappe-yellow')
+        },
+        '.token.regex,.token.important,.token.variable': {
+          color: theme('colors.cat-frappe-pink')
+        },
+        '.token.keyword': {
+          color: theme('colors.python.keyword')
+        },
+        '.token.builtin': {
+          color: theme('colors.python.builtin')
+        },
+        '.token.string': {
+          color: theme('colors.python.string')
+        },
+        '.token.function': {
+          color: theme('colors.python.function')
+        },
+        '.token.comment': {
+          color: theme('colors.python.comment')
+        },
+        '.token.decorator': {
+          color: theme('colors.python.decorator')
+        },
+        '.token.number': {
+          color: theme('colors.python.number')
+        },
+        '.token.operator': {
+          color: theme('colors.python.operator')
+        },
+        '.token.class-name': {
+          color: theme('colors.python.class')
+        },
+      }
+      addUtilities(newUtilities, ['dark', 'responsive'])
+    })
+  ],
 };

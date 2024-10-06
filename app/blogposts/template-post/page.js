@@ -39,16 +39,30 @@ export default function Blog() {
                   third sentence
                 </p>
                 <article className="mt-8 text-left">
-                  <div className="text-cat-frappe-base dark:text-cat-frappe-yellow text-3xl font-bold">
+                  <div className="text-cat-frappe-base dark:text-cat-frappe-yellow text-3xl font-bold mb-4">
                     here's a cute code snippet:
                   </div>
-                  <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">This is is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. for me to talk about the code I wrote</p>
-                  <CodeSnippet
-                    title={""}
-                    code={`def cute_function():
-                       print("Hello, cute world!") 
-                       return "🌈🦄✨"`}
-                  />
+                  <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mb-4 text-xl">
+                    This is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+                  </p>
+                  <div className="syntax-highlighter">
+                    <CodeSnippet
+                      code={`def cute_function():
+    print("Hello, cute world!")
+    return "🌈🦄✨"
+
+# This is a comment
+for i in range(5):
+    print(f"Cuteness level: {i+1}")
+
+class CuteClass:
+    def __init__(self, name):
+        self.name = name
+
+    def be_cute(self):
+        return f"{self.name} is being cute!"`}
+                    />
+                  </div>
                 </article>
               </div>
             </div>
