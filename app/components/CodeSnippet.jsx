@@ -1,10 +1,17 @@
 "use client";
-import React from "react";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import React, { useEffect, useState } from "react";
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import "prismjs/components/prism-python";
+import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
 
 const CodeSnippet = ({ title, code }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    SyntaxHighlighter.registerLanguage('python', python);
+    setMounted(true);
+  }, []);
+
   const customStyle = {
     ...tomorrow,
     'pre[class*="language-"]': {
@@ -18,6 +25,8 @@ const CodeSnippet = ({ title, code }) => {
       fontFamily: 'Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace',
     },
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="p-5">

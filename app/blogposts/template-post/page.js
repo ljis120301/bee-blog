@@ -1,10 +1,12 @@
+import dynamic from 'next/dynamic';
 import Head from "next/head";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import CodeSnippet from "../../components/CodeSnippet";
 import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
+
+const CodeSnippet = dynamic(() => import('../../components/CodeSnippet'), { ssr: false });
 
 export default function Blog() {
   return (
