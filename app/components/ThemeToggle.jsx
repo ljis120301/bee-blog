@@ -1,24 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { useTheme } from 'next-themes';
-import { Moon, Sun } from 'lucide-react';
+"use client";
+
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+import { Sun, Moon } from "lucide-react";
 
 const ThemeToggle = () => {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <button
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 transition-colors duration-200"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="p-2 rounded-full bg-yellow-2 dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-yellow
+                 transition-all duration-300 ease-in-out
+                 hover:bg-gradient-to-br hover:from-cat-frappe-peach hover:to-cat-frappe-yellow
+                 hover:text-cat-frappe-base dark:hover:text-cat-frappe-crust
+                 hover:scale-110 hover:rotate-12
+                 active:scale-95 active:rotate-0
+                 shadow-md hover:shadow-lg"
+      aria-label="Toggle theme"
     >
-      {theme === 'dark' ? (
-        <Sun className="w-5 h-5 text-yellow-500" />
+      {theme === "dark" ? (
+        <Sun className="w-6 h-6" />
       ) : (
-        <Moon className="w-5 h-5 text-gray-900" />
+        <Moon className="w-6 h-6" />
       )}
     </button>
   );

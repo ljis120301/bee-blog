@@ -209,9 +209,9 @@ const blogPosts = [
     header: <BeeSwarm />,
   },
   {
-    title: "BloomingGarden 101 🐝🧑‍🌾",
+    title: "Author Portal 🐝🧑‍🌾",
     description: "A beginner's guide to starting your own beehive.",
-    id: "blogposts/beekeeping-basics",
+    id: "blogposts/aurthor-portal",
     icon: <IconSignature className="h-4 w-4 text-neutral-500" />,
     header: <BloomingGarden />,
   },
