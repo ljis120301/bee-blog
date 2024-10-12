@@ -3,7 +3,7 @@ import { Github, Twitter, Mail } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-gradient-to-r from-[#f5e3db] to-[#f4d7c5] text-[#4b3c44] py-8 mt-10 dark:bg-gradient-to-r dark:from-[#414559] dark:to-[#51576d] dark:text-[#e5c890]">
+    <footer className="bg-gradient-to-r from-[#f5e3db] to-[#f4d7c5] text-[#4b3c44] py-8 mt-10 dark:bg-gradient-to-r dark:from-cat-frappe-mantle dark:to-cat-frappe-crust dark:text-[#e5c890]">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="text-center md:text-left">
@@ -24,10 +24,10 @@ const Footer = () => {
                 <Mail className="w-8 h-8" />
               </a>
             </div>
-            <div className="bg-[#f8e8e0] dark:bg-[#3a3e4e] p-4 rounded-lg shadow-md">
+            <div className="bg-[#f8e8e0] dark:bg-cat-frappe-surface0 p-4 rounded-lg shadow-md">
               <h5 className="text-xl font-bold mb-2">support the hive? 🐝</h5>
               <p className="text-sm mb-2">Your support helps us keep buzzing! Donate XMR:</p>
-              <p className="text-xs font-mono bg-[#fff] dark:bg-[#2b2e3b] p-2 rounded break-all">
+              <p className="text-xs font-mono bg-[#fff] dark:bg-cat-frappe-surface1 p-2 rounded break-all">
                 48xWV6Ej4qRPZdKVEX7xQgLyWvxrSmCVXZS5pLXGpuPbMH6GhtiBjXBcHqHLxMMmEW474dkWTdLEsR6nARhhgKGRBou6nSk
               </p>
             </div>

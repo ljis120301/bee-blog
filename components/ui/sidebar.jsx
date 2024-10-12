@@ -39,7 +39,7 @@ export const Sidebar = ({ children, className, ...props }) => {
   return (
     <motion.div
       className={cn(
-        "fixed top-0 left-0 z-40 h-screen bg-cat-frappe-yellow dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text transition-all duration-100 ease-in-out overflow-hidden",
+        "fixed top-24 left-0 z-40 h-[calc(100vh-6rem)] bg-cat-frappe-yellow dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text transition-all duration-100 ease-in-out overflow-hidden",
         open ? "w-64" : "w-20",
         className
       )}

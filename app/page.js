@@ -101,7 +101,7 @@ export default function Home() {
         <link rel="icon" href="/bee-icon.ico" />
       </Head>
       <SidebarProvider>
-        <div className="flex flex-col min-h-screen bg-pastel-yellow dark:bg-cat-frappe-base">
+        <div className="flex flex-col min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-base">
           <Header />
           <div className="flex flex-1 relative">
             <Sidebar>
@@ -133,10 +133,15 @@ export default function Home() {
             <div className="flex flex-col flex-1 transition-all duration-150 ease-in-out" style={{ marginLeft: open ? "16rem" : "5rem" }}>
               <main className="flex-1 overflow-y-auto">
                 <div className="max-w-[2000px] mx-auto px-4 py-8 md:py-16">
-                  <div className="flex justify-center items-center p-4 mt-8 md:mt-12">
-                    <h2 className="text-3xl sm:text-4xl text-center mb-5 relative inline-block text-[#e5c890] after:content-[''] after:absolute after:bottom-[-10px] after:left-1/2 after:-translate-x-1/2 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-[#ef9f76] after:to-[#e5c890] after:rounded-[2px] font-bold">
-                      posts:
-                    </h2>
+                  <div className="flex justify-center items-center p-8 mt-8 md:mt-12">
+                    <div className="relative group">
+                      <h2 className="text-5xl sm:text-6xl font-bold text-cat-frappe-peach relative z-10 transition-colors duration-300">
+                        posts 📝
+                      </h2>
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-cat-frappe-yellow dark:bg-[#e5c890] transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out"></div>
+                      <div className="absolute -top-3 -left-3 w-4 h-4 border-2 border-cat-frappe-yellow dark:border-[#e5c890] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out"></div>
+                      <div className="absolute -bottom-3 -right-3 w-4 h-4 border-2 border-cat-frappe-yellow dark:border-[#e5c890] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out"></div>
+                    </div>
                   </div>
 
                   <section className="my-10">

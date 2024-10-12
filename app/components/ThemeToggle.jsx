@@ -21,7 +21,7 @@ const ThemeToggle = () => {
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className="p-2 rounded-full bg-yellow-2 dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-yellow
                  transition-all duration-300 ease-in-out
-                 hover:bg-gradient-to-br hover:from-cat-frappe-peach hover:to-cat-frappe-yellow
+                 hover:bg-gradient-to-br hover:from-yellow-2 hover:to-cat-frappe-yellow
                  hover:text-cat-frappe-base dark:hover:text-cat-frappe-crust
                  hover:scale-110 hover:rotate-12
                  active:scale-95 active:rotate-0

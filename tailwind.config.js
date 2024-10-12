@@ -1,4 +1,5 @@
 const plugin = require('tailwindcss/plugin')
+const colors = require("tailwindcss/colors");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -65,7 +66,11 @@ module.exports = {
         "yellow-1": "#f9f9c1",
         "yellow-2": "#f9ee99",
         "light-yellow": "#FEFD97",
-        "pastel-yellow": "#F2E8CE",
+        "pastel-yellow": "#FDFD96",
+        "pastel-pink": "#FFD1DC",
+        "pastel-blue": "#AEC6CF",
+        "pastel-green": "#77DD77",
+        "pastel-purple": "#B39EB5",
         "yellow-3": "#ecd97c",
         "warm-beige": "#f5f5dc",
         'cat-frappe-rosewater': '#f2d5cf',
@@ -132,6 +137,38 @@ module.exports = {
           'operator': 'hsl(var(--cat-frappe-sky))',
           'class': 'hsl(var(--cat-frappe-yellow))',
         },
+        catppuccinFrappe: {
+          rosewater: "#f2d5cf",
+          flamingo: "#eebebe",
+          pink: "#f4b8e4",
+          mauve: "#ca9ee6",
+          red: "#e78284",
+          maroon: "#ea999c",
+          peach: "#ef9f76",
+          yellow: "#e5c890",
+          green: "#a6d189",
+          teal: "#81c8be",
+          sky: "#99d1db",
+          sapphire: "#85c1dc",
+          blue: "#8caaee",
+          lavender: "#babbf1",
+          text: "#c6d0f5",
+          subtext1: "#b5bfe2",
+          subtext0: "#a5adce",
+          overlay2: "#949cbb",
+          overlay1: "#838ba7",
+          overlay0: "#737994",
+          surface2: "#626880",
+          surface1: "#51576d",
+          surface0: "#414559",
+          base: "#303446",
+          mantle: "#292c3c",
+          crust: "#232634",
+        },
+        newColors: {
+          'deep-purple': '#5D3FD3',
+          'rich-teal': '#008080',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -168,6 +205,7 @@ module.exports = {
         beeSwarm: 'beeSwarm 10s ease-in-out infinite',
         flapWings: 'flapWings 0.15s ease-in-out infinite',
         wiggle: 'wiggle 0.5s ease-in-out infinite',
+        'spin-slow': 'spin 8s linear infinite',
       },
       typography: (theme) => ({
         DEFAULT: {
