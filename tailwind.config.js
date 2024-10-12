@@ -147,10 +147,27 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        beeSwarm: {
+          '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
+          '25%': { transform: 'translate(15px, 15px) rotate(5deg)' },
+          '50%': { transform: 'translate(-10px, 20px) rotate(-5deg)' },
+          '75%': { transform: 'translate(-20px, -10px) rotate(3deg)' },
+        },
+        flapWings: {
+          '0%, 100%': { transform: 'scaleX(1)' },
+          '50%': { transform: 'scaleX(0.8)' },
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(-3deg)' },
+          '50%': { transform: 'rotate(3deg)' },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        beeSwarm: 'beeSwarm 10s ease-in-out infinite',
+        flapWings: 'flapWings 0.15s ease-in-out infinite',
+        wiggle: 'wiggle 0.5s ease-in-out infinite',
       },
       typography: (theme) => ({
         DEFAULT: {

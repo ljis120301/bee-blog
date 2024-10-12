@@ -1,72 +1,111 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { pb } from '@/lib/pocketbase';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
+import CodeSnippet from "../../components/CodeSnippet";
 
 export default function AuthorPortal() {
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [mounted, setMounted] = useState(false);
+  const [description, setDescription] = useState('');
+  const [isSpanTwo, setIsSpanTwo] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const checkAdminStatus = async () => {
+      if (pb.authStore.isValid) {
+        const user = pb.authStore.model;
+        if (user.role === "admin") {
+          setIsAdmin(true);
+        } else {
+          router.push('/');
+        }
+      } else {
+        router.push('/auth');
+      }
+    };
+    checkAdminStatus();
+  }, [router]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Title:', title);
-    console.log('Content:', content);
-    // Here you would typically send this data to your backend
+    try {
+      const data = {
+        title,
+        content,
+        description,
+        author: pb.authStore.model.id,
+        isSpanTwo,
+      };
+      const record = await pb.collection('posts').create(data);
+      router.push(`/blogposts/${record.id}`);
+    } catch (error) {
+      console.error('Error publishing post:', error);
+    }
   };
-``
+
   const renderPreview = () => {
-    if (!mounted) return null;
-
+    const contentElements = [];
     const lines = content.split('\n');
-    const result = [];
-    let inCodeBlock = false;
+    let isInCodeBlock = false;
     let codeBlock = [];
+    let language = '';
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.startsWith('```')) {
-        if (inCodeBlock) {
-          result.push(
-            <pre key={`code-${i}`} className="bg-[#2b2e3b] text-[#e5c890] p-4 rounded-md overflow-x-auto">
-              <code>{codeBlock.join('\n')}</code>
-            </pre>
+    lines.forEach((line, index) => {
+      if (line.trim().startsWith('```')) {
+        if (isInCodeBlock) {
+          contentElements.push(
+            <CodeSnippet key={`code-${index}`} language={language} code={codeBlock.join('\n')} />
           );
           codeBlock = [];
-          inCodeBlock = false;
+          isInCodeBlock = false;
         } else {
-          inCodeBlock = true;
+          isInCodeBlock = true;
+          language = line.trim().slice(3);
         }
-      } else if (inCodeBlock) {
+      } else if (isInCodeBlock) {
         codeBlock.push(line);
       } else if (line.startsWith('# ')) {
-        result.push(<h1 key={i} className="text-3xl font-bold mt-4 mb-2">{line.slice(2)}</h1>);
+        contentElements.push(
+          <h1 key={index} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
+            {line.slice(2)}
+          </h1>
+        );
       } else if (line.startsWith('## ')) {
-        result.push(<h2 key={i} className="text-2xl font-bold mt-3 mb-2">{line.slice(3)}</h2>);
+        contentElements.push(
+          <h2 key={index} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
+            {line.slice(3)}
+          </h2>
+        );
       } else if (line.startsWith('### ')) {
-        result.push(<h3 key={i} className="text-xl font-bold mt-2 mb-1">{line.slice(4)}</h3>);
+        contentElements.push(
+          <h3 key={index} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
+            {line.slice(4)}
+          </h3>
+        );
       } else {
-        result.push(<p key={i} className="mb-2">{line}</p>);
+        contentElements.push(<p key={index} className="mb-4">{line}</p>);
       }
-    }
+    });
 
-    if (inCodeBlock) {
-      result.push(
-        <pre key={`code-${lines.length}`} className="bg-[#2b2e3b] text-[#e5c890] p-4 rounded-md overflow-x-auto">
-          <code>{codeBlock.join('\n')}</code>
-        </pre>
+    if (isInCodeBlock) {
+      contentElements.push(
+        <CodeSnippet key={`code-last`} language={language} code={codeBlock.join('\n')} />
       );
     }
 
-    return result;
+    return <div>{contentElements}</div>;
   };
+
+  if (!isAdmin) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
@@ -81,29 +120,33 @@ export default function AuthorPortal() {
             <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
               <div className="rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
                 <h1 className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-                  author portal 🐝✍️
+                  Author Portal
                 </h1>
-                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-8 text-xl mb-6">
-                  create your buzzing new blog post here!
-                </p>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label htmlFor="title" className="block text-lg font-medium text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">
-                      Title
-                    </label>
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-4">
+                    <label htmlFor="title" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Title</label>
                     <input
                       type="text"
                       id="title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                      placeholder="Enter your blog post title"
+                      required
                     />
                   </div>
-                  <div>
-                    <label htmlFor="content" className="block text-lg font-medium text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">
-                      Content
-                    </label>
+                  <div className="mb-4">
+                    <label htmlFor="description" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Description</label>
+                    <textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                      rows="3"
+                      required
+                    ></textarea>
+                  </div>
+                  <div className="mb-4">
+                    <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
                     <textarea
                       id="content"
                       value={content}
@@ -112,6 +155,20 @@ export default function AuthorPortal() {
                       className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                       placeholder="Write your blog post content here"
                     ></textarea>
+                  </div>
+                  <div className="mb-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isSpanTwo}
+                        onChange={() => setIsSpanTwo(!isSpanTwo)}
+                        className="sr-only peer"
+                      />
+                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        Span Two Columns
+                      </span>
+                    </label>
                   </div>
                   <div>
                     <button

@@ -203,3 +203,101 @@
 /* Add this at the end of your globals.css file */
 
 /* Light mode styles */
+
+@keyframes fly {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(var(--fly-x), var(--fly-y));
+  }
+  50% {
+    transform: translate(calc(var(--fly-x) * -0.5), calc(var(--fly-y) * -0.8));
+  }
+  75% {
+    transform: translate(calc(var(--fly-x) * 0.8), calc(var(--fly-y) * 0.3));
+  }
+}
+
+.bee {
+  animation: fly var(--fly-duration) ease-in-out infinite;
+  animation-delay: var(--fly-delay);
+}
+
+.beeSwarmContainer {
+  position: relative;
+  overflow: hidden;
+}
+
+.bee {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  transition: transform 3s ease-in-out;
+  transform: translate(var(--x, 0), var(--y, 0));
+}
+
+.beeBody {
+  width: 100%;
+  height: 100%;
+  background-color: #DF8E1D;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+.beeBody::before,
+.beeBody::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  height: 20%;
+  background-color: black;
+  opacity: 0.2;
+}
+
+.beeBody::before {
+  top: 30%;
+}
+
+.beeBody::after {
+  bottom: 30%;
+}
+
+.beeWing {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  top: -20%;
+}
+
+.beeWingLeft {
+  left: -20%;
+  animation: flapLeft 0.2s ease-in-out infinite alternate;
+}
+
+.beeWingRight {
+  right: -20%;
+  animation: flapRight 0.2s ease-in-out infinite alternate;
+}
+
+@keyframes flapLeft {
+  from { transform: rotate(30deg); }
+  to { transform: rotate(60deg); }
+}
+
+@keyframes flapRight {
+  from { transform: rotate(-30deg); }
+  to { transform: rotate(-60deg); }
+}
+
+.beeSwarmContainer:hover .bee {
+  transition: transform 0.5s ease-out;
+  transform: translate(
+    calc(var(--x) + (var(--mouse-x) - var(--x)) * 0.1),
+    calc(var(--y) + (var(--mouse-y) - var(--y)) * 0.1)
+  );
+}

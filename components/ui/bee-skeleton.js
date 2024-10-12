@@ -1,4 +1,5 @@
-import React from "react";
+import React from 'react';
+import styles from '../../app/styles/BeeSwarm.module.css';
 
 // Helper function to generate a random pastel color
 const getRandomPastelColor = (isDark) => {
@@ -105,11 +106,7 @@ const BeeSwarm = ({ className }) => {
   const isWide = className && className.includes('md:col-span-2');
 
   return (
-    <ThemedDiv
-      lightClass="bg-[#EFF1F5]"
-      darkClass="bg-[#292C3C]"
-      className={`relative ${className}`}
-    >
+    <div className={`relative ${className} bg-[#EFF1F5] dark:bg-[#292C3C]`}>
       {[...Array(isWide ? 8 : 5)].map((_, i) => (
         <div
           key={i}
@@ -137,7 +134,7 @@ const BeeSwarm = ({ className }) => {
           </div>
         </div>
       ))}
-    </ThemedDiv>
+    </div>
   );
 };
 
