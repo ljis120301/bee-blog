@@ -9,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className='bg-cat-frappe-lavender dark:bg-cat-frappe-surface1'>
+      <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1'>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>

@@ -23,12 +23,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/auth/page.js"
     ],
-    "/blogposts/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/blogposts/[id]/page.css",
-      "static/chunks/app/blogposts/[id]/page.js"
-    ],
     "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -38,6 +32,17 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/blogposts/aurthor-portal/page.js"
+    ],
+    "/blogposts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogposts/page.js"
+    ],
+    "/blogposts/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/blogposts/[id]/page.css",
+      "static/chunks/app/blogposts/[id]/page.js"
     ]
   }
 }

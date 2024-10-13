@@ -80,6 +80,7 @@ export const SidebarLink = ({ link, className, ...props }) => {
         "flex items-center justify-center xl:justify-start gap-3 py-3 px-4 rounded-md hover:bg-cat-frappe-surface1 dark:hover:bg-cat-frappe-surface2 transition-colors whitespace-nowrap",
         className
       )}
+      onClick={link.onClick}
       {...props}
     >
       {React.cloneElement(link.icon, { size: open ? 24 : 28 })}

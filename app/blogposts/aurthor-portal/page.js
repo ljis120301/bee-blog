@@ -24,7 +24,7 @@ export default function AuthorPortal() {
         if (user.role === "admin") {
           setIsAdmin(true);
         } else {
-          router.push('/');
+          router.push('/auth');
         }
       } else {
         router.push('/auth');

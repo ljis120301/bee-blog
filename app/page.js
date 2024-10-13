@@ -14,6 +14,7 @@ import {
   IconBrandTabler,
   IconSettings,
   IconUserBolt,
+  IconTrash,
 } from "@tabler/icons-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components/ui/sidebar";
 import Link from "next/link";
@@ -24,43 +25,45 @@ import { pb } from '@/lib/pocketbase';
 import InformationComponent from "@/app/components/Information";
 import MoreInformationComponent from "@/app/components/MoreInformation";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
+import { useRouter } from 'next/navigation';
+import ConfirmationDialog from './components/ConfirmationDialog';
 
 export default function Home() {
+  const router = useRouter();
   const [blogPosts, setBlogPosts] = useState([]);
   const [user, setUser] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
   const [open, setOpen] = useState(false);
+  const [links, setLinks] = useState([]);
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
 
-  const links = [
-    {
-      label: "Dashboard",
-      href: "#",
-      icon: (
-        <IconBrandTabler className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Profile",
-      href: "#",
-      icon: (
-        <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "#",
-      icon: (
-        <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Logout",
-      href: "#",
-      icon: (
-        <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-  ];
+  const handleLogout = async () => {
+    pb.authStore.clear();
+    setUser(null);
+    setUserAvatar(null);
+    setIsAuthor(false);
+    router.push('/auth');
+  };
+
+  const handleDeletePost = (postId) => {
+    setPostToDelete(postId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (postToDelete) {
+      try {
+        await pb.collection('posts').delete(postToDelete);
+        setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
+      } catch (error) {
+        console.error('Error deleting post:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setPostToDelete(null);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,7 +87,48 @@ export default function Home() {
         if (userData) {
           const avatarUrl = pb.getFileUrl(userData, userData.avatar);
           setUserAvatar(avatarUrl);
+          const authorStatus = userData.role === "admin" || userData.role === "author";
+          setIsAuthor(authorStatus);
+          console.log("User role:", userData.role);
+          console.log("Is author:", authorStatus);
         }
+
+        // Update links based on user authentication status
+        const baseLinks = [
+          {
+            label: "Dashboard",
+            href: "#",
+            icon: <IconBrandTabler className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          },
+          {
+            label: "Profile",
+            href: "#",
+            icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          },
+          {
+            label: "Settings",
+            href: "#",
+            icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          },
+        ];
+
+        const authLink = userData
+          ? {
+              label: "Logout",
+              href: "#",
+              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+              onClick: (e) => {
+                e.preventDefault();
+                handleLogout();
+              },
+            }
+          : {
+              label: "Sign Up",
+              href: "/auth",
+              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            };
+
+        setLinks([...baseLinks, authLink]);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -92,6 +136,9 @@ export default function Home() {
 
     fetchData();
   }, []);
+
+  // Add this console log
+  console.log("Current isAuthor state:", isAuthor);
 
   return (
     <>
@@ -103,6 +150,10 @@ export default function Home() {
       <SidebarProvider>
         <div className="flex flex-col min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-base">
           <Header />
+          {/* Add this line to display the author status */}
+          <div className="text-center py-2 bg-yellow-200">
+            Author Status: {isAuthor ? "Author" : "Not Author"}
+          </div>
           <div className="flex flex-1 relative">
             <Sidebar>
               <SidebarBody>
@@ -154,7 +205,23 @@ export default function Home() {
                           {blogPosts.map((post, i) => (
                             <BentoGridItem
                               key={i}
-                              title={post.title}
+                              title={
+                                <div className="flex justify-between items-center">
+                                  <span>{post.title}</span>
+                                  {isAuthor && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDeletePost(post.id.split('/')[1]);
+                                      }}
+                                      className="text-red-500 hover:text-red-600 transition-colors z-20"
+                                    >
+                                      <IconTrash size={20} />
+                                    </button>
+                                  )}
+                                </div>
+                              }
                               description={post.description}
                               header={post.header}
                               className={`${post.className} ${i === 0 ? 'md:col-span-2' : ''}`}
@@ -177,6 +244,12 @@ export default function Home() {
           </div>
         </div>
       </SidebarProvider>
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        message="Are you sure you want to delete this post? This action cannot be undone."
+      />
     </>
   );
 }
