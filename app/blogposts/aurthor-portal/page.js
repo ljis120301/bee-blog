@@ -18,6 +18,8 @@ export default function AuthorPortal() {
   const [isSpanTwo, setIsSpanTwo] = useState(false);
 
   useEffect(() => {
+    console.log('Auth status:', pb.authStore.isValid);
+    console.log('Auth model:', pb.authStore.model);
     const checkAdminStatus = async () => {
       if (pb.authStore.isValid) {
         const user = pb.authStore.model;

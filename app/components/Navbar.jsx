@@ -48,12 +48,14 @@ const NavbarSunnyDay = () => {
                   </Link>
                 )}
                 <NavButton onClick={handleLogout} text="Logout" bgColor="bg-yellow-2" textColor="text-cat-frappe-base" />
-                <span className="text-2xl font-bold px-6 py-3 bg-yellow-2 text-cat-frappe-base dark:bg-cat-frappe-surface1 dark:text-cat-frappe-yellow rounded-full shadow-md ml-4 border-2 border-current dark:border-cat-frappe-yellow transition-all duration-300 hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0 group">
-                  <span className="relative">
-                    ✨ {user.username}
-                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-current transform scale-x-0 transition-transform duration-300 origin-center group-hover:scale-x-100"></span>
+                <Link href="/user-profile" className="group">
+                  <span className="text-2xl font-bold px-6 py-3 bg-yellow-2 text-cat-frappe-base dark:bg-cat-frappe-surface1 dark:text-cat-frappe-yellow rounded-full shadow-md ml-4 border-2 border-current dark:border-cat-frappe-yellow transition-all duration-300 hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0">
+                    <span className="relative">
+                      ✨ {user.username}
+                      <span className="absolute inset-x-0 bottom-0 h-0.5 bg-current transform scale-x-0 transition-transform duration-300 origin-center group-hover:scale-x-100"></span>
+                    </span>
                   </span>
-                </span>
+                </Link>
               </>
             ) : (
               <NavButton href="/auth" text="Sign In / Register" bgColor="bg-yellow-2" textColor="text-cat-frappe-base" />

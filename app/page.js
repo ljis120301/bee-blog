@@ -15,6 +15,7 @@ import {
   IconSettings,
   IconUserBolt,
   IconTrash,
+  IconHeart,
 } from "@tabler/icons-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components/ui/sidebar";
 import Link from "next/link";
@@ -28,6 +29,7 @@ import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from './components/ConfirmationDialog';
 import ReactPaginate from "react-paginate";
+import FavoriteButton from './components/FavoriteButton';
 
 export default function Home() {
   const router = useRouter();
@@ -105,14 +107,14 @@ export default function Home() {
 
         // Update links based on user authentication status
         const baseLinks = [
-          {
-            label: "Dashboard",
-            href: "#",
-            icon: <IconBrandTabler className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          },
+          ...(pb.authStore.isValid ? [{
+            label: "Favorites",
+            href: "/favorites",
+            icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          }] : []),
           {
             label: "Profile",
-            href: "#",
+            href: "/user-profile",
             icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
           },
           {
@@ -145,7 +147,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, [currentPage]); // Add currentPage as a dependency
+  }, [currentPage]);
 
   const handlePageChange = (selectedItem) => {
     setCurrentPage(selectedItem.selected);
@@ -180,7 +182,7 @@ export default function Home() {
                   <SidebarLink
                     link={{
                       label: user ? user.username : "Guest",
-                      href: "/profile",
+                      href: user ? "/user-profile" : "/auth",
                       icon: (
                         <Image
                           src={userAvatar || "/bee-icon.ico"}
@@ -222,18 +224,21 @@ export default function Home() {
                               title={
                                 <div className="flex justify-between items-center">
                                   <span>{post.title}</span>
-                                  {isAuthor && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeletePost(post.id.split('/')[1]);
-                                      }}
-                                      className="text-red-500 hover:text-red-600 transition-colors z-20"
-                                    >
-                                      <IconTrash size={20} />
-                                    </button>
-                                  )}
+                                  <div>
+                                    {isAuthor && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDeletePost(post.id.split('/')[1]);
+                                        }}
+                                        className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
+                                      >
+                                        <IconTrash size={20} />
+                                      </button>
+                                    )}
+                                    <FavoriteButton postId={post.id.split('/')[1]} />
+                                  </div>
                                 </div>
                               }
                               description={post.description}
@@ -250,19 +255,11 @@ export default function Home() {
                           pageCount={totalPages}
                           onPageChange={handlePageChange}
                           containerClassName={"flex justify-center items-center space-x-2 mt-8"}
-                          pageLinkClassName={"relative px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
-                          previousLinkClassName={"px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
-                          nextLinkClassName={"px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
+                          pageLinkClassName={"relative px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
+                          previousLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
+                          nextLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
                           disabledClassName={"opacity-50 cursor-not-allowed"}
-                          activeClassName={"!text-cat-frappe-base"}
-                          pageLabelBuilder={(page) => (
-                            <span className="relative z-10">
-                              {page}
-                              {page === currentPage && (
-                                <span className="absolute inset-0 bg-cat-frappe-yellow rounded-full -z-10"></span>
-                              )}
-                            </span>
-                          )}
+                          activeClassName={"!border-cat-frappe-peach !text-cat-frappe-peach font-extrabold"}
                           renderOnZeroPageCount={null}
                         />
                       </div>
