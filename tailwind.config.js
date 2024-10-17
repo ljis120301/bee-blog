@@ -230,6 +230,13 @@ module.exports = {
       }),
     },
   },
+  variants: {
+    extend: {
+      scale: ['hover', 'active', 'group-hover'],
+      rotate: ['hover', 'active', 'group-hover'],
+      transform: ['hover', 'active', 'group-hover'],
+    }
+  },
   plugins: [
     require("tailwindcss-animate"),
     plugin(function({ addUtilities, theme }) {

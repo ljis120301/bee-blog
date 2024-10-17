@@ -27,6 +27,7 @@ import MoreInformationComponent from "@/app/components/MoreInformation";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from './components/ConfirmationDialog';
+import ReactPaginate from "react-paginate";
 
 export default function Home() {
   const router = useRouter();
@@ -38,6 +39,9 @@ export default function Home() {
   const [isAuthor, setIsAuthor] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const postsPerPage = 10;
 
   const handleLogout = async () => {
     pb.authStore.clear();
@@ -68,7 +72,13 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const records = await pb.collection('posts').getList(1, 50, {
+        const totalRecords = await pb.collection('posts').getList(1, 1, {
+          sort: '-created',
+        });
+        const totalCount = totalRecords.totalItems;
+        setTotalPages(Math.ceil(totalCount / postsPerPage));
+
+        const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
           sort: '-created',
         });
         const posts = records.items.map(post => ({
@@ -135,7 +145,11 @@ export default function Home() {
     };
 
     fetchData();
-  }, []);
+  }, [currentPage]); // Add currentPage as a dependency
+
+  const handlePageChange = (selectedItem) => {
+    setCurrentPage(selectedItem.selected);
+  };
 
   // Add this console log
   console.log("Current isAuthor state:", isAuthor);
@@ -230,6 +244,27 @@ export default function Home() {
                             />
                           ))}
                         </BentoGrid>
+                        <ReactPaginate
+                          previousLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">← Previous</span>}
+                          nextLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">Next →</span>}
+                          pageCount={totalPages}
+                          onPageChange={handlePageChange}
+                          containerClassName={"flex justify-center items-center space-x-2 mt-8"}
+                          pageLinkClassName={"relative px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
+                          previousLinkClassName={"px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
+                          nextLinkClassName={"px-4 py-2 text-cat-frappe-yellow dark:text-cat-frappe-yellow rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/20"}
+                          disabledClassName={"opacity-50 cursor-not-allowed"}
+                          activeClassName={"!text-cat-frappe-base"}
+                          pageLabelBuilder={(page) => (
+                            <span className="relative z-10">
+                              {page}
+                              {page === currentPage && (
+                                <span className="absolute inset-0 bg-cat-frappe-yellow rounded-full -z-10"></span>
+                              )}
+                            </span>
+                          )}
+                          renderOnZeroPageCount={null}
+                        />
                       </div>
                       <div className="xl:w-1/5">
                         <MoreInformationComponent />
