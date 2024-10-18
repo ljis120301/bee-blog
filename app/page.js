@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation';
 import ConfirmationDialog from './components/ConfirmationDialog';
 import ReactPaginate from "react-paginate";
 import FavoriteButton from './components/FavoriteButton';
+import { useFavorites } from '@/app/contexts/FavoritesContext';
 
 export default function Home() {
   const router = useRouter();
@@ -44,6 +45,8 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const postsPerPage = 10;
+  const { fetchFavorites } = useFavorites();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleLogout = async () => {
     pb.authStore.clear();
@@ -58,10 +61,12 @@ export default function Home() {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDeletePost = async () => {
     if (postToDelete) {
       try {
         await pb.collection('posts').delete(postToDelete);
+        console.log(`Post ${postToDelete} deleted`);
+        await fetchFavorites(); // Update favorites after deletion
         setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
       } catch (error) {
         console.error('Error deleting post:', error);
@@ -279,7 +284,7 @@ export default function Home() {
       <ConfirmationDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDelete}
+        onConfirm={confirmDeletePost}
         message="Are you sure you want to delete this post? This action cannot be undone."
       />
     </>
