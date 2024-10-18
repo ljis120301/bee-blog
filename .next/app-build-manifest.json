@@ -44,6 +44,11 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user-profile/page.js"
+    ],
+    "/blogposts/aurthor-portal/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogposts/aurthor-portal/page.js"
     ]
   }
 }

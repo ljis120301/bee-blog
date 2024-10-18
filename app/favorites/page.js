@@ -15,6 +15,8 @@ export default function Favorites() {
   const { favorites, loading, fetchFavorites, removeFavorite } = useFavorites();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,10 +41,28 @@ export default function Favorites() {
     fetchData();
   }, [fetchFavorites, router]);
 
+  const handleDeletePost = (postId) => {
+    setPostToDelete(postId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePost = async () => {
+    if (postToDelete) {
+      try {
+        await removeFavorite(postToDelete);
+        console.log(`Post ${postToDelete} removed from favorites`);
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setPostToDelete(null);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-base">
       <Header />
-      <main className="flex-1 pt-16 container mx-auto px-4 py-8 mt-16">
+      <main className="flex-1 pt-16 container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-center">Your Favorite Posts</h1>
         {isLoading ? (
           <div>Loading favorites...</div>
@@ -61,7 +81,10 @@ export default function Favorites() {
                     <div className="flex justify-between items-center">
                       <span>{fav.expand?.posts?.title || 'Unknown Title'}</span>
                       <div>
-                        <FavoriteButton postId={postId} />
+                        <FavoriteButton 
+                          postId={postId} 
+                          onRemove={() => handleDeletePost(postId)} // Call handleDeletePost on heart click
+                        />
                       </div>
                     </div>
                   }
@@ -76,6 +99,32 @@ export default function Favorites() {
         )}
       </main>
       <Footer />
+      
+      {/* Confirmation Dialog for Deletion */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#fffbe6] dark:bg-[#2e3440] rounded-lg p-6 max-w-sm w-full">
+            <h2 className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-yellow mb-4">Confirm Delete</h2>
+            <p className="text-cat-frappe-surface1 dark:text-cat-frappe-text mb-6">
+              Are you sure you want to remove this post from your favorites? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="px-4 py-2 rounded-md border border-black bg-white text-black text-sm hover:shadow-[4px_4px_0px_0px_rgba(0,0,0)] transition duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeletePost}
+                className="px-4 py-2 rounded-md border border-black bg-cat-frappe-red text-cat-frappe-base text-sm hover:shadow-[4px_4px_0px_0px_rgba(0,0,0)] transition duration-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
 import Head from "next/head";
 import Header from "../../components/Header";
@@ -11,16 +11,19 @@ import ScrollProgressBar from "../../components/ScrollProgressBar";
 import CodeSnippet from "../../components/CodeSnippet";
 import { HoneycombLoader } from '@/components/ui/bee-skeleton';
 import { Sidebar, SidebarProvider, SidebarLink, SidebarBody } from '@/components/ui/sidebar';
-import { IconHome, IconArticle, IconUser, IconBrandTabler, IconUserBolt, IconSettings, IconArrowLeft } from '@tabler/icons-react';
+import { IconHome, IconArticle, IconUser, IconBrandTabler, IconUserBolt, IconSettings, IconArrowLeft, IconHeart } from '@tabler/icons-react';
 import Image from "next/image";
+import Link from "next/link";
 
 export default function BlogPost() {
   const { id } = useParams();
+  const router = useRouter();
   const [post, setPost] = useState(null);
   const [contentReady, setContentReady] = useState(false);
   const [user, setUser] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
   const [open, setOpen] = useState(false);
+  const [links, setLinks] = useState([]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -36,12 +39,56 @@ export default function BlogPost() {
           const avatarUrl = pb.getFileUrl(userData, userData.avatar);
           setUserAvatar(avatarUrl);
         }
+
+        // Update links based on user authentication status
+        const baseLinks = [
+          ...(pb.authStore.isValid ? [{
+            label: "Favorites",
+            href: "/favorites",
+            icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          }] : []),
+          {
+            label: "Profile",
+            href: "/user-profile",
+            icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          },
+          {
+            label: "Settings",
+            href: "#",
+            icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+          },
+        ];
+
+        const authLink = userData
+          ? {
+              label: "Logout",
+              href: "#",
+              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+              onClick: (e) => {
+                e.preventDefault();
+                handleLogout();
+              },
+            }
+          : {
+              label: "Sign Up",
+              href: "/auth",
+              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            };
+
+        setLinks([...baseLinks, authLink]);
       } catch (error) {
         console.error('Error fetching post:', error);
       }
     };
     fetchPost();
   }, [id]);
+
+  const handleLogout = async () => {
+    pb.authStore.clear();
+    setUser(null);
+    setUserAvatar(null);
+    router.push('/auth');
+  };
 
   const renderContent = () => {
     if (!post) return null;
@@ -98,16 +145,6 @@ export default function BlogPost() {
     return contentElements;
   };
 
-  const sidebarLinks = [
-    { href: '/', icon: <IconHome />, label: 'Home' },
-    { href: '/blog', icon: <IconArticle />, label: 'Blog' },
-    { href: '/about', icon: <IconUser />, label: 'About' },
-    { href: '#', icon: <IconBrandTabler />, label: 'Dashboard' },
-    { href: '#', icon: <IconUserBolt />, label: 'Profile' },
-    { href: '#', icon: <IconSettings />, label: 'Settings' },
-    { href: '#', icon: <IconArrowLeft />, label: 'Logout' },
-  ];
-
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full bg-[#E9D4BA] dark:bg-cat-frappe-base overflow-x-hidden">
@@ -116,7 +153,7 @@ export default function BlogPost() {
           <Sidebar>
             <SidebarBody>
               <div className="flex flex-col space-y-2">
-                {sidebarLinks.map((link, idx) => (
+                {links.map((link, idx) => (
                   <SidebarLink key={idx} link={link} />
                 ))}
               </div>
@@ -124,7 +161,7 @@ export default function BlogPost() {
                 <SidebarLink
                   link={{
                     label: user ? user.username : "Guest",
-                    href: "/profile",
+                    href: user ? "/user-profile" : "/auth",
                     icon: (
                       <Image
                         src={userAvatar || "/bee-icon.ico"}
@@ -151,8 +188,11 @@ export default function BlogPost() {
                   {post && (
                     <div className="pt-24 w-full">
                       <div className="flex justify-center items-center p-4">
-                        <h2 className="text-2xl sm:text-3xl md:text-4xl text-center mb-5 relative inline-block text-[#e5c890] after:content-[''] after:absolute after:bottom-[-10px] after:left-1/2 after:-translate-x-1/2 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-[#ef9f76] after:to-[#e5c890] after:rounded-[2px] font-bold">
-                          {post.title}
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl text-center mb-8 relative inline-block font-bold group">
+                          <span className="relative z-10 text-cat-frappe-base dark:text-cat-frappe-subtext0 transition-colors duration-300 ease-in-out group-hover:text-cat-frappe-peach dark:group-hover:text-cat-frappe-peach">
+                            {post.title}
+                          </span>
+                          <span className="absolute inset-x-0 bottom-0 h-1 bg-cat-frappe-peach dark:bg-cat-frappe-peach transform scale-x-0 transition-transform duration-300 ease-in-out group-hover:scale-x-100"></span>
                         </h2>
                       </div>
                       <section className="my-10">

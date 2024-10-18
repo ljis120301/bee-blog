@@ -8,6 +8,7 @@ import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
 import CodeSnippet from "../../components/CodeSnippet";
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function AuthorPortal() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function AuthorPortal() {
   const [content, setContent] = useState('');
   const [description, setDescription] = useState('');
   const [isSpanTwo, setIsSpanTwo] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState([]);
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -35,6 +37,26 @@ export default function AuthorPortal() {
     checkAdminStatus();
   }, [router]);
 
+  const handleImageUpload = async (files) => {
+    const uploadedFiles = [];
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const fileRecord = await pb.collection('files').create(formData);
+        const imageUrl = pb.getFileUrl(fileRecord, fileRecord.file);
+        uploadedFiles.push({ name: file.name, url: imageUrl });
+      } catch (error) {
+        console.error('Error uploading image:', error);
+      }
+    }
+    setUploadedImages([...uploadedImages, ...uploadedFiles]);
+  };
+
+  const insertImageIntoContent = (imageUrl) => {
+    setContent(prevContent => prevContent + `\n![Image](${imageUrl})\n`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -44,11 +66,16 @@ export default function AuthorPortal() {
         description,
         author: pb.authStore.model.id,
         isSpanTwo,
+        images: uploadedImages.map(img => img.url),
       };
+      console.log('Submitting data:', data); // For debugging
       const record = await pb.collection('posts').create(data);
       router.push(`/blogposts/${record.id}`);
     } catch (error) {
       console.error('Error publishing post:', error);
+      if (error.data) {
+        console.error('Validation errors:', error.data);
+      }
     }
   };
 
@@ -90,6 +117,13 @@ export default function AuthorPortal() {
           <h3 key={index} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
             {line.slice(4)}
           </h3>
+        );
+      } else if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
+        // Image syntax: ![alt text](image_url)
+        const altText = line.slice(2, line.indexOf(']'));
+        const imageUrl = line.slice(line.indexOf('(') + 1, -1);
+        contentElements.push(
+          <img key={index} src={imageUrl} alt={altText} className="max-w-full h-auto my-4 rounded-md" />
         );
       } else {
         contentElements.push(<p key={index} className="mb-4">{line}</p>);
@@ -147,6 +181,33 @@ export default function AuthorPortal() {
                       required
                     ></textarea>
                   </div>
+                  <div className="mb-4">
+                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Upload Images</label>
+                    <div className="w-full max-w-4xl mx-auto min-h-48 border border-dashed bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 rounded-lg">
+                      <FileUpload onChange={handleImageUpload} />
+                    </div>
+                  </div>
+                  
+                  {uploadedImages.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Uploaded Images</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {uploadedImages.map((img, index) => (
+                          <div key={index} className="relative group">
+                            <img src={img.url} alt={img.name} className="w-24 h-24 object-cover rounded" />
+                            <button
+                              type="button"
+                              onClick={() => insertImageIntoContent(img.url)}
+                              className="absolute inset-0 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                            >
+                              Insert
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
                     <textarea

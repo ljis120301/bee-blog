@@ -1,7 +1,7 @@
 {
   "/page": "app/page.js",
-  "/favorites/page": "app/favorites/page.js",
   "/auth/page": "app/auth/page.js",
   "/blogposts/[id]/page": "app/blogposts/[id]/page.js",
-  "/user-profile/page": "app/user-profile/page.js"
+  "/user-profile/page": "app/user-profile/page.js",
+  "/blogposts/aurthor-portal/page": "app/blogposts/aurthor-portal/page.js"
 }

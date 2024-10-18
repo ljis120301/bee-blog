@@ -44,6 +44,7 @@ export const Sidebar = ({ children, className, ...props }) => {
         className
       )}
       animate={{ width: open ? "16rem" : "5rem" }}
+      transition={{ duration: 0.075 }} 
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       {...props}
@@ -84,11 +85,10 @@ export const SidebarLink = ({ link, className, ...props }) => {
       {...props}
     >
       {React.cloneElement(link.icon, { size: open ? 24 : 28 })}
-      {open && (
-        <span className="hidden xl:inline overflow-hidden transition-opacity duration-100">
-          {link.label}
-        </span>
-      )}
+      {/* Always show the label regardless of the open state */}
+      <span className="overflow-hidden transition-opacity duration-100">
+        {link.label}
+      </span>
     </Link>
   );
 };
