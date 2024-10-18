@@ -1,5 +1,6 @@
 {
   "/page": "app/page.js",
-  "/favorites/page": "app/favorites/page.js",
-  "/auth/page": "app/auth/page.js"
+  "/auth/page": "app/auth/page.js",
+  "/blogposts/[id]/page": "app/blogposts/[id]/page.js",
+  "/favorites/page": "app/favorites/page.js"
 }
