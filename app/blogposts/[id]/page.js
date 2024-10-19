@@ -1,94 +1,31 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
-import Head from "next/head";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
 import CodeSnippet from "../../components/CodeSnippet";
-import { HoneycombLoader } from '@/components/ui/bee-skeleton';
-import { Sidebar, SidebarProvider, SidebarLink, SidebarBody } from '@/components/ui/sidebar';
-import { IconHome, IconArticle, IconUser, IconBrandTabler, IconUserBolt, IconSettings, IconArrowLeft, IconHeart } from '@tabler/icons-react';
-import Image from "next/image";
-import Link from "next/link";
+import Image from 'next/image';
 
 export default function BlogPost() {
-  const { id } = useParams();
-  const router = useRouter();
   const [post, setPost] = useState(null);
-  const [contentReady, setContentReady] = useState(false);
-  const [user, setUser] = useState(null);
-  const [userAvatar, setUserAvatar] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [links, setLinks] = useState([]);
+  const params = useParams();
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const record = await pb.collection('posts').getOne(id);
+        const record = await pb.collection('posts').getOne(params.id);
         setPost(record);
-        setTimeout(() => setContentReady(true), 100);
-
-        const userData = pb.authStore.model;
-        setUser(userData);
-
-        if (userData) {
-          const avatarUrl = pb.getFileUrl(userData, userData.avatar);
-          setUserAvatar(avatarUrl);
-        }
-
-        // Update links based on user authentication status
-        const baseLinks = [
-          ...(pb.authStore.isValid ? [{
-            label: "Favorites",
-            href: "/favorites",
-            icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          }] : []),
-          {
-            label: "Profile",
-            href: "/user-profile",
-            icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          },
-          {
-            label: "Settings",
-            href: "#",
-            icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          },
-        ];
-
-        const authLink = userData
-          ? {
-              label: "Logout",
-              href: "#",
-              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-              onClick: (e) => {
-                e.preventDefault();
-                handleLogout();
-              },
-            }
-          : {
-              label: "Sign Up",
-              href: "/auth",
-              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            };
-
-        setLinks([...baseLinks, authLink]);
       } catch (error) {
         console.error('Error fetching post:', error);
       }
     };
-    fetchPost();
-  }, [id]);
 
-  const handleLogout = async () => {
-    pb.authStore.clear();
-    setUser(null);
-    setUserAvatar(null);
-    router.push('/auth');
-  };
+    fetchPost();
+  }, [params.id]);
 
   const renderContent = () => {
     if (!post) return null;
@@ -133,6 +70,22 @@ export default function BlogPost() {
             {line.slice(4)}
           </h3>
         );
+      } else if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
+        // Image syntax: ![alt text](image_url)
+        const altText = line.slice(2, line.indexOf(']'));
+        const imageUrl = line.slice(line.indexOf('(') + 1, -1);
+        contentElements.push(
+          <div key={index} className="my-4">
+            <Image
+              src={imageUrl}
+              alt={altText}
+              width={800}
+              height={600}
+              layout="responsive"
+              className="rounded-lg"
+            />
+          </div>
+        );
       } else {
         contentElements.push(
           <p key={index} className="mb-4 break-words">
@@ -145,92 +98,56 @@ export default function BlogPost() {
     return contentElements;
   };
 
-  return (
-    <SidebarProvider>
-      <div className="flex flex-col min-h-screen w-full bg-[#E9D4BA] dark:bg-cat-frappe-base overflow-x-hidden">
+  if (!post) {
+    return (
+      <>
+        <ScrollProgressBar />
         <Header />
-        <div className="flex flex-1 relative w-full">
-          <Sidebar>
-            <SidebarBody>
-              <div className="flex flex-col space-y-2">
-                {links.map((link, idx) => (
-                  <SidebarLink key={idx} link={link} />
-                ))}
+        <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px] min-h-screen flex items-center justify-center">
+          <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow animate-pulse">
+            <div className="rounded-lg p-8 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 border-t-4 border-cat-frappe-yellow border-solid rounded-full animate-spin"></div>
+                <h2 className="mt-4 text-xl font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow">
+                  Loading post 🌈...
+                </h2>
+                <p className="mt-2 text-cat-frappe-subtext0">Please bee patient!</p>
               </div>
-              <div className="mt-auto pt-4">
-                <SidebarLink
-                  link={{
-                    label: user ? user.username : "Guest",
-                    href: user ? "/user-profile" : "/auth",
-                    icon: (
-                      <Image
-                        src={userAvatar || "/bee-icon.ico"}
-                        className="rounded-full"
-                        width={28}
-                        height={28}
-                        alt="Avatar"
-                      />
-                    ),
-                  }}
-                />
-              </div>
-            </SidebarBody>
-          </Sidebar>
-          <div className="flex flex-col flex-1 w-full transition-all duration-150 ease-in-out" 
-             style={{ marginLeft: open ? "16rem" : "5rem", width: open ? "calc(100% - 16rem)" : "calc(100% - 5rem)" }}>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 w-full">
-                <Head>
-                  <title>{post?.title || 'Loading...'}</title>
-                  <meta name="description" content={post?.description || ''} />
-                </Head>
-                <div className={`transition-opacity duration-300 ease-in-out ${contentReady ? 'opacity-100' : 'opacity-0'} w-full`}>
-                  {post && (
-                    <div className="pt-24 w-full">
-                      <div className="flex justify-center items-center p-4">
-                        <h2 className="text-2xl sm:text-3xl md:text-4xl text-center mb-8 relative inline-block font-bold group">
-                          <span className="relative z-10 text-cat-frappe-base dark:text-cat-frappe-subtext0 transition-colors duration-300 ease-in-out group-hover:text-cat-frappe-peach dark:group-hover:text-cat-frappe-peach">
-                            {post.title}
-                          </span>
-                          <span className="absolute inset-x-0 bottom-0 h-1 bg-cat-frappe-peach dark:bg-cat-frappe-peach transform scale-x-0 transition-transform duration-300 ease-in-out group-hover:scale-x-100"></span>
-                        </h2>
-                      </div>
-                      <section className="my-10">
-                        <div className="flex flex-col xl:flex-row gap-4 sm:gap-8">
-                          <div className="xl:w-1/5 w-full hidden xl:block">
-                            <Information />
-                          </div>
-                          <div className="w-full xl:w-3/5">
-                            <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-                              <div className="rounded-lg p-3 sm:p-4 lg:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg overflow-hidden">
-                                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4 sm:mt-8 text-sm sm:text-base lg:text-lg mb-4 sm:mb-6 break-words">
-                                  {post.description}
-                                </p>
-                                <div className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4 sm:mt-8 text-sm sm:text-base lg:text-lg break-words">
-                                  {renderContent()}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="xl:w-1/5 w-full hidden xl:block">
-                            <MoreInformation />
-                          </div>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-                </div>
-                {!contentReady && (
-                  <div className="fixed inset-0 flex items-center justify-center bg-blue-100 dark:bg-cat-frappe-base">
-                    <HoneycombLoader />
-                  </div>
-                )}
-              </div>
-            </main>
-            <Footer />
+            </div>
           </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ScrollProgressBar />
+      <Header />
+      <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-8">
+          <aside className="lg:col-span-1">
+            <Information />
+          </aside>
+          <div className="lg:col-span-2">
+            <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
+              <div className="rounded-lg p-3 sm:p-4 lg:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg overflow-hidden">
+                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4 sm:mt-8 text-sm sm:text-base lg:text-lg mb-4 sm:mb-6 break-words">
+                  {post.description}
+                </p>
+                <div className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4 sm:mt-8 text-sm sm:text-base lg:text-lg break-words">
+                  {renderContent()}
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside className="lg:col-span-1">
+            <MoreInformation />
+          </aside>
         </div>
-      </div>
-    </SidebarProvider>
+      </main>
+      <Footer />
+    </>
   );
 }

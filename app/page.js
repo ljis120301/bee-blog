@@ -31,6 +31,7 @@ import ConfirmationDialog from './components/ConfirmationDialog';
 import ReactPaginate from "react-paginate";
 import FavoriteButton from './components/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
+import LoadingSpinner from './components/LoadingSpinner';
 
 export default function Home() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function Home() {
   const postsPerPage = 10;
   const { fetchFavorites } = useFavorites();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleLogout = async () => {
     pb.authStore.clear();
@@ -77,82 +79,97 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const totalRecords = await pb.collection('posts').getList(1, 1, {
-          sort: '-created',
-        });
-        const totalCount = totalRecords.totalItems;
-        setTotalPages(Math.ceil(totalCount / postsPerPage));
+    let isMounted = true;
+    const debounceTimer = setTimeout(() => {
+      const fetchData = async () => {
+        setIsLoading(true);
+        try {
+          const totalRecords = await pb.collection('posts').getList(1, 1, {
+            sort: '-created',
+          });
+          const totalCount = totalRecords.totalItems;
+          if (isMounted) setTotalPages(Math.ceil(totalCount / postsPerPage));
 
-        const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
-          sort: '-created',
-        });
-        const posts = records.items.map(post => ({
-          title: post.title,
-          description: post.description,
-          id: `blogposts/${post.id}`,
-          icon: <IconSignature className="h-4 w-4 text-neutral-500" />,
-          header: <BeeSwarm />,
-          className: post.isSpanTwo ? 'col-span-2' : '',
-        }));
-        setBlogPosts(posts);
+          const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
+            sort: '-created',
+          });
+          const posts = records.items.map(post => ({
+            title: post.title,
+            description: post.description,
+            id: `blogposts/${post.id}`,
+            icon: <IconSignature className="h-4 w-4 text-neutral-500" />,
+            header: <BeeSwarm />,
+            className: post.isSpanTwo ? 'col-span-2' : '',
+          }));
+          if (isMounted) setBlogPosts(posts);
 
-        const userData = pb.authStore.model;
-        setUser(userData);
+          const userData = pb.authStore.model;
+          if (isMounted) setUser(userData);
 
-        if (userData) {
-          const avatarUrl = pb.getFileUrl(userData, userData.avatar);
-          setUserAvatar(avatarUrl);
-          const authorStatus = userData.role === "admin" || userData.role === "author";
-          setIsAuthor(authorStatus);
-          console.log("User role:", userData.role);
-          console.log("Is author:", authorStatus);
-        }
+          if (userData) {
+            const avatarUrl = pb.getFileUrl(userData, userData.avatar);
+            if (isMounted) setUserAvatar(avatarUrl);
+            const authorStatus = userData.role === "admin" || userData.role === "author";
+            if (isMounted) setIsAuthor(authorStatus);
+            console.log("User role:", userData.role);
+            console.log("Is author:", authorStatus);
+          }
 
-        // Update links based on user authentication status
-        const baseLinks = [
-          ...(pb.authStore.isValid ? [{
-            label: "Favorites",
-            href: "/favorites",
-            icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          }] : []),
-          {
-            label: "Profile",
-            href: "/user-profile",
-            icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          },
-          {
-            label: "Settings",
-            href: "#",
-            icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-          },
-        ];
-
-        const authLink = userData
-          ? {
-              label: "Logout",
+          // Update links based on user authentication status
+          const baseLinks = [
+            ...(pb.authStore.isValid ? [{
+              label: "Favorites",
+              href: "/favorites",
+              icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            }] : []),
+            {
+              label: "Profile",
+              href: "/user-profile",
+              icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            },
+            {
+              label: "Settings",
               href: "#",
-              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-              onClick: (e) => {
-                e.preventDefault();
-                handleLogout();
-              },
-            }
-          : {
-              label: "Sign Up",
-              href: "/auth",
-              icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            };
+              icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            },
+          ];
 
-        setLinks([...baseLinks, authLink]);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+          const authLink = userData
+            ? {
+                label: "Logout",
+                href: "#",
+                icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+                onClick: (e) => {
+                  e.preventDefault();
+                  handleLogout();
+                },
+              }
+            : {
+                label: "Sign Up",
+                href: "/auth",
+                icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+              };
+
+          if (isMounted) setLinks([...baseLinks, authLink]);
+        } catch (error) {
+          if (error.message.includes('autocancelled')) {
+            console.warn('Fetch request was canceled:', error);
+          } else {
+            console.error('Error fetching data:', error);
+          }
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
+      };
+
+      fetchData();
+    }, 300); // 300ms debounce
+
+    return () => {
+      clearTimeout(debounceTimer); // Clear the timer on cleanup
+      isMounted = false; // Prevent state updates on unmounted component
     };
-
-    fetchData();
-  }, [currentPage]);
+  }, [currentPage, fetchFavorites]);
 
   const handlePageChange = (selectedItem) => {
     setCurrentPage(selectedItem.selected);
@@ -222,51 +239,57 @@ export default function Home() {
                         <InformationComponent />
                       </div>
                       <div className="xl:w-3/5">
-                        <BentoGrid className="xl:auto-rows-[20rem] gap-4">
-                          {blogPosts.map((post, i) => (
-                            <BentoGridItem
-                              key={i}
-                              title={
-                                <div className="flex justify-between items-center">
-                                  <span>{post.title}</span>
-                                  <div>
-                                    {isAuthor && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          handleDeletePost(post.id.split('/')[1]);
-                                        }}
-                                        className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
-                                      >
-                                        <IconTrash size={20} />
-                                      </button>
-                                    )}
-                                    <FavoriteButton postId={post.id.split('/')[1]} />
-                                  </div>
-                                </div>
-                              }
-                              description={post.description}
-                              header={post.header}
-                              className={`${post.className} ${i === 0 ? 'md:col-span-2' : ''}`}
-                              icon={post.icon}
-                              href={post.id}
+                        {isLoading ? (
+                          <LoadingSpinner />
+                        ) : (
+                          <>
+                            <BentoGrid className="xl:auto-rows-[20rem] gap-4">
+                              {blogPosts.map((post, i) => (
+                                <BentoGridItem
+                                  key={i}
+                                  title={
+                                    <div className="flex justify-between items-center">
+                                      <span>{post.title}</span>
+                                      <div>
+                                        {isAuthor && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              handleDeletePost(post.id.split('/')[1]);
+                                            }}
+                                            className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
+                                          >
+                                            <IconTrash size={20} />
+                                          </button>
+                                        )}
+                                        <FavoriteButton postId={post.id.split('/')[1]} />
+                                      </div>
+                                    </div>
+                                  }
+                                  description={post.description}
+                                  header={post.header}
+                                  className={`${post.className} ${i === 0 ? 'md:col-span-2' : ''}`}
+                                  icon={post.icon}
+                                  href={post.id}
+                                />
+                              ))}
+                            </BentoGrid>
+                            <ReactPaginate
+                              previousLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">← Previous</span>}
+                              nextLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">Next →</span>}
+                              pageCount={totalPages}
+                              onPageChange={handlePageChange}
+                              containerClassName={"flex justify-center items-center space-x-2 mt-8"}
+                              pageLinkClassName={"relative px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
+                              previousLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
+                              nextLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
+                              disabledClassName={"opacity-50 cursor-not-allowed"}
+                              activeClassName={"!border-cat-frappe-peach !text-cat-frappe-peach font-extrabold"}
+                              renderOnZeroPageCount={null}
                             />
-                          ))}
-                        </BentoGrid>
-                        <ReactPaginate
-                          previousLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">← Previous</span>}
-                          nextLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">Next →</span>}
-                          pageCount={totalPages}
-                          onPageChange={handlePageChange}
-                          containerClassName={"flex justify-center items-center space-x-2 mt-8"}
-                          pageLinkClassName={"relative px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
-                          previousLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
-                          nextLinkClassName={"px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
-                          disabledClassName={"opacity-50 cursor-not-allowed"}
-                          activeClassName={"!border-cat-frappe-peach !text-cat-frappe-peach font-extrabold"}
-                          renderOnZeroPageCount={null}
-                        />
+                          </>
+                        )}
                       </div>
                       <div className="xl:w-1/5">
                         <MoreInformationComponent />

@@ -1,0 +1,49 @@
+{
+  "name": "BeeBlog - Buzzing with Code and Tech",
+  "short_name": "BeeBlog",
+  "description": "Your hive for coding insights, tech trends, and sweet development tips.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E9D4BA",
+  "theme_color": "#E9D4BA",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maskable_icon.png",
+      "sizes": "196x196",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["technology", "programming", "web development"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Latest Posts",
+      "short_name": "Latest",
+      "description": "View the latest blog posts",
+      "url": "/latest",
+      "icons": [{ "src": "/latest-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Categories",
+      "short_name": "Categories",
+      "description": "Browse posts by category",
+      "url": "/categories",
+      "icons": [{ "src": "/categories-icon.png", "sizes": "192x192" }]
+    }
+  ]
+}
