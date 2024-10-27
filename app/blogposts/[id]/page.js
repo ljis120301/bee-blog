@@ -7,14 +7,41 @@ import Footer from "../../components/Footer";
 import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
+import MarkdownIt from 'markdown-it';
+import sub from 'markdown-it-sub';
+import sup from 'markdown-it-sup';
+import ins from 'markdown-it-ins';
+import mark from 'markdown-it-mark';
+import taskLists from 'markdown-it-task-lists';
 import CodeSnippet from "../../components/CodeSnippet";
-import Image from 'next/image';
 
 export default function BlogPost() {
   const [post, setPost] = useState(null);
   const params = useParams();
+  const [mdParser, setMdParser] = useState(null);
 
   useEffect(() => {
+    const initializeMdParser = () => {
+      const mdInstance = new MarkdownIt({
+        html: true,
+        linkify: true,
+        typographer: true,
+        breaks: true,
+      })
+      .use(sub)
+      .use(sup)
+      .use(ins)
+      .use(mark)
+      .use(taskLists);
+
+      // Enable all header levels
+      mdInstance.enable('heading');
+
+      setMdParser(mdInstance);
+    };
+
+    initializeMdParser();
+
     const fetchPost = async () => {
       try {
         const record = await pb.collection('posts').getOne(params.id);
@@ -28,74 +55,95 @@ export default function BlogPost() {
   }, [params.id]);
 
   const renderContent = () => {
-    if (!post) return null;
+    if (!post || !mdParser) return null;
+
+    const htmlContent = mdParser.render(post.content);
+
+    // Parse the HTML content
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
 
     const contentElements = [];
-    const lines = post.content.split('\n');
-    let isInCodeBlock = false;
-    let codeBlock = [];
-    let language = '';
 
-    lines.forEach((line, index) => {
-      if (line.trim().startsWith('```')) {
-        if (isInCodeBlock) {
+    // Process each element in the parsed HTML
+    doc.body.childNodes.forEach((node, index) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.tagName === 'H1') {
           contentElements.push(
-            <div key={`code-${index}`} className="overflow-x-auto max-w-full">
-              <CodeSnippet language={language} code={codeBlock.join('\n')} />
+            <h1 key={`h1-${index}`} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
+              {node.textContent}
+            </h1>
+          );
+        } else if (node.tagName === 'H2') {
+          contentElements.push(
+            <h2 key={`h2-${index}`} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
+              {node.textContent}
+            </h2>
+          );
+        } else if (node.tagName === 'H3') {
+          contentElements.push(
+            <h3 key={`h3-${index}`} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
+              {node.textContent}
+            </h3>
+          );
+        } else if (node.tagName === 'PRE' && node.querySelector('code')) {
+          const codeElement = node.querySelector('code');
+          const language = codeElement.className.replace('language-', '');
+          contentElements.push(
+            <CodeSnippet key={`code-${index}`} language={language} code={codeElement.textContent} />
+          );
+        } else if (node.tagName === 'IMG') {
+          contentElements.push(
+            <img key={`img-${index}`} src={node.src} alt={node.alt} className="max-w-full h-auto my-4 rounded-md" />
+          );
+        } else if (node.tagName === 'TABLE') {
+          contentElements.push(
+            <div key={`table-${index}`} className="overflow-x-auto my-4">
+              <table className="w-full border-collapse">
+                {Array.from(node.children).map((child, childIndex) => {
+                  if (child.tagName === 'THEAD') {
+                    return (
+                      <thead key={`thead-${childIndex}`} className="bg-blue-200 dark:bg-cat-frappe-yellow">
+                        {Array.from(child.rows).map((row, rowIndex) => (
+                          <tr key={`thead-row-${rowIndex}`}>
+                            {Array.from(row.cells).map((cell, cellIndex) => (
+                              <th key={`thead-cell-${cellIndex}`} className="border border-gray-300 dark:border-cat-frappe-surface0 p-2 font-bold text-left text-gray-800 dark:text-cat-frappe-base">
+                                {cell.textContent}
+                              </th>
+                            ))}
+                          </tr>
+                        ))}
+                      </thead>
+                    );
+                  } else if (child.tagName === 'TBODY') {
+                    return (
+                      <tbody key={`tbody-${childIndex}`}>
+                        {Array.from(child.rows).map((row, rowIndex) => (
+                          <tr key={`tbody-row-${rowIndex}`} className={rowIndex % 2 === 0 ? 'bg-gray-100 dark:bg-cat-frappe-surface1' : 'bg-white dark:bg-cat-frappe-mantle'}>
+                            {Array.from(row.cells).map((cell, cellIndex) => (
+                              <td key={`tbody-cell-${cellIndex}`} className="border border-gray-300 dark:border-cat-frappe-surface0 p-2 text-gray-800 dark:text-cat-frappe-subtext1">
+                                {cell.textContent}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    );
+                  }
+                  return null;
+                })}
+              </table>
             </div>
           );
-          codeBlock = [];
-          isInCodeBlock = false;
         } else {
-          isInCodeBlock = true;
-          language = line.trim().slice(3);
+          contentElements.push(
+            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          );
         }
-      } else if (isInCodeBlock) {
-        codeBlock.push(line);
-      } else if (line.startsWith('# ')) {
-        contentElements.push(
-          <h1 key={index} className="text-2xl sm:text-3xl font-bold mb-4 break-words">
-            {line.slice(2)}
-          </h1>
-        );
-      } else if (line.startsWith('## ')) {
-        contentElements.push(
-          <h2 key={index} className="text-xl sm:text-2xl font-bold mb-3 break-words">
-            {line.slice(3)}
-          </h2>
-        );
-      } else if (line.startsWith('### ')) {
-        contentElements.push(
-          <h3 key={index} className="text-lg sm:text-xl font-bold mb-2 break-words">
-            {line.slice(4)}
-          </h3>
-        );
-      } else if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
-        // Image syntax: ![alt text](image_url)
-        const altText = line.slice(2, line.indexOf(']'));
-        const imageUrl = line.slice(line.indexOf('(') + 1, -1);
-        contentElements.push(
-          <div key={index} className="my-4">
-            <Image
-              src={imageUrl}
-              alt={altText}
-              width={800}
-              height={600}
-              layout="responsive"
-              className="rounded-lg"
-            />
-          </div>
-        );
-      } else {
-        contentElements.push(
-          <p key={index} className="mb-4 break-words">
-            {line}
-          </p>
-        );
       }
     });
 
-    return contentElements;
+    return <div>{contentElements}</div>;
   };
 
   if (!post) {
@@ -133,6 +181,7 @@ export default function BlogPost() {
           <div className="lg:col-span-2">
             <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
               <div className="rounded-lg p-3 sm:p-4 lg:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg overflow-hidden">
+                <h1 className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">{post.title}</h1>
                 <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-4 sm:mt-8 text-sm sm:text-base lg:text-lg mb-4 sm:mb-6 break-words">
                   {post.description}
                 </p>

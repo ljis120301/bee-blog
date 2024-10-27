@@ -1,4 +1,10 @@
 {
+  "app/blogposts/aurthor-portal/page.js -> react-markdown-editor-lite": {
+    "id": "app/blogposts/aurthor-portal/page.js -> react-markdown-editor-lite",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_react-markdown-editor-lite_esm_index_js.js"
+    ]
+  },
   "node_modules/react-syntax-highlighter/dist/esm/async-languages/hljs.js -> highlight.js/lib/languages/1c": {
     "id": "node_modules/react-syntax-highlighter/dist/esm/async-languages/hljs.js -> highlight.js/lib/languages/1c",
     "files": []

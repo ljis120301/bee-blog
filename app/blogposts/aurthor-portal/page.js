@@ -7,8 +7,21 @@ import Footer from "../../components/Footer";
 import Information from "../../components/Information";
 import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
-import CodeSnippet from "../../components/CodeSnippet";
 import { FileUpload } from "@/components/ui/file-upload";
+import dynamic from 'next/dynamic';
+import 'react-markdown-editor-lite/lib/index.css';
+import MarkdownIt from 'markdown-it';
+import sub from 'markdown-it-sub';
+import sup from 'markdown-it-sup';
+import ins from 'markdown-it-ins';
+import mark from 'markdown-it-mark';
+import taskLists from 'markdown-it-task-lists';
+import CodeSnippet from "../../components/CodeSnippet";
+
+const MdEditor = dynamic(() => import('react-markdown-editor-lite'), {
+  ssr: false,
+  loading: () => <p>Loading editor...</p>
+});
 
 export default function AuthorPortal() {
   const router = useRouter();
@@ -18,6 +31,7 @@ export default function AuthorPortal() {
   const [description, setDescription] = useState('');
   const [isSpanTwo, setIsSpanTwo] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [mdParser, setMdParser] = useState(null);
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -37,6 +51,33 @@ export default function AuthorPortal() {
     checkAdminStatus();
   }, [router]);
 
+  useEffect(() => {
+    const initializeMdParser = () => {
+      const mdInstance = new MarkdownIt({
+        html: true,
+        linkify: true,
+        typographer: true,
+        breaks: true,
+      })
+      .use(sub)
+      .use(sup)
+      .use(ins)
+      .use(mark)
+      .use(taskLists);
+
+      // Enable all header levels
+      mdInstance.enable('heading');
+
+      setMdParser(mdInstance);
+    };
+
+    initializeMdParser();
+  }, []);
+
+  const handleEditorChange = ({ text }) => {
+    setContent(text);
+  };
+
   const handleImageUpload = async (files) => {
     const uploadedFiles = [];
     for (const file of files) {
@@ -51,6 +92,11 @@ export default function AuthorPortal() {
       }
     }
     setUploadedImages([...uploadedImages, ...uploadedFiles]);
+    // Insert the last uploaded image into the editor
+    if (uploadedFiles.length > 0) {
+      const lastImage = uploadedFiles[uploadedFiles.length - 1];
+      insertImageIntoContent(lastImage.url);
+    }
   };
 
   const insertImageIntoContent = (imageUrl) => {
@@ -80,61 +126,93 @@ export default function AuthorPortal() {
   };
 
   const renderPreview = () => {
-    const contentElements = [];
-    const lines = content.split('\n');
-    let isInCodeBlock = false;
-    let codeBlock = [];
-    let language = '';
+    if (!mdParser) return null;
 
-    lines.forEach((line, index) => {
-      if (line.trim().startsWith('```')) {
-        if (isInCodeBlock) {
+    const htmlContent = mdParser.render(content);
+
+    // Parse the HTML content
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+
+    const contentElements = [];
+
+    // Process each element in the parsed HTML
+    doc.body.childNodes.forEach((node, index) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.tagName === 'H1') {
           contentElements.push(
-            <CodeSnippet key={`code-${index}`} language={language} code={codeBlock.join('\n')} />
+            <h1 key={`h1-${index}`} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
+              {node.textContent}
+            </h1>
           );
-          codeBlock = [];
-          isInCodeBlock = false;
+        } else if (node.tagName === 'H2') {
+          contentElements.push(
+            <h2 key={`h2-${index}`} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
+              {node.textContent}
+            </h2>
+          );
+        } else if (node.tagName === 'H3') {
+          contentElements.push(
+            <h3 key={`h3-${index}`} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
+              {node.textContent}
+            </h3>
+          );
+        } else if (node.tagName === 'PRE' && node.querySelector('code')) {
+          const codeElement = node.querySelector('code');
+          const language = codeElement.className.replace('language-', '');
+          contentElements.push(
+            <CodeSnippet key={`code-${index}`} language={language} code={codeElement.textContent} />
+          );
+        } else if (node.tagName === 'IMG') {
+          contentElements.push(
+            <img key={`img-${index}`} src={node.src} alt={node.alt} className="max-w-full h-auto my-4 rounded-md" />
+          );
+        } else if (node.tagName === 'TABLE') {
+          contentElements.push(
+            <div key={`table-${index}`} className="overflow-x-auto my-4">
+              <table className="w-full border-collapse">
+                {Array.from(node.children).map((child, childIndex) => {
+                  if (child.tagName === 'THEAD') {
+                    return (
+                      <thead key={`thead-${childIndex}`} className="bg-blue-200 dark:bg-cat-frappe-yellow border border-gray-800 dark:border-cat-frappe-surface0">
+                        {Array.from(child.rows).map((row, rowIndex) => (
+                          <tr key={`thead-row-${rowIndex}`}>
+                            {Array.from(row.cells).map((cell, cellIndex) => (
+                              <th key={`thead-cell-${cellIndex}`} className="border border-gray-800 dark:border-cat-frappe-surface0 p-2 font-bold text-left text-gray-800 dark:text-cat-frappe-base">
+                                {cell.textContent}
+                              </th>
+                            ))}
+                          </tr>
+                        ))}
+                      </thead>
+                    );
+                  } else if (child.tagName === 'TBODY') {
+                    return (
+                      <tbody key={`tbody-${childIndex}`}>
+                        {Array.from(child.rows).map((row, rowIndex) => (
+                          <tr key={`tbody-row-${rowIndex}`} className={rowIndex % 2 === 0 ? 'bg-gray-300 dark:bg-cat-frappe-surface1' : 'bg-gray-200 dark:bg-cat-frappe-mantle'}>
+                            {Array.from(row.cells).map((cell, cellIndex) => (
+                              <td key={`tbody-cell-${cellIndex}`} className="border border-gray-700 dark:border-cat-frappe-surface0 p-2 text-gray-800 dark:text-cat-frappe-subtext1">
+                                {cell.textContent}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    );
+                  }
+                  return null;
+                })}
+              </table>
+            </div>
+          );
         } else {
-          isInCodeBlock = true;
-          language = line.trim().slice(3);
+          contentElements.push(
+            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          );
         }
-      } else if (isInCodeBlock) {
-        codeBlock.push(line);
-      } else if (line.startsWith('# ')) {
-        contentElements.push(
-          <h1 key={index} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-            {line.slice(2)}
-          </h1>
-        );
-      } else if (line.startsWith('## ')) {
-        contentElements.push(
-          <h2 key={index} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
-            {line.slice(3)}
-          </h2>
-        );
-      } else if (line.startsWith('### ')) {
-        contentElements.push(
-          <h3 key={index} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
-            {line.slice(4)}
-          </h3>
-        );
-      } else if (line.startsWith('![') && line.includes('](') && line.endsWith(')')) {
-        // Image syntax: ![alt text](image_url)
-        const altText = line.slice(2, line.indexOf(']'));
-        const imageUrl = line.slice(line.indexOf('(') + 1, -1);
-        contentElements.push(
-          <img key={index} src={imageUrl} alt={altText} className="max-w-full h-auto my-4 rounded-md" />
-        );
-      } else {
-        contentElements.push(<p key={index} className="mb-4">{line}</p>);
       }
     });
-
-    if (isInCodeBlock) {
-      contentElements.push(
-        <CodeSnippet key={`code-last`} language={language} code={codeBlock.join('\n')} />
-      );
-    }
 
     return <div>{contentElements}</div>;
   };
@@ -154,7 +232,7 @@ export default function AuthorPortal() {
           </aside>
           <div className="lg:col-span-2">
             <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-              <div className="rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
+              <div className="rounded-lg p-4 lg:p-6 bg-gray-300 dark:bg-cat-frappe-base shadow-lg">
                 <h1 className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
                   Author Portal
                 </h1>
@@ -210,14 +288,47 @@ export default function AuthorPortal() {
 
                   <div className="mb-4">
                     <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                    <textarea
-                      id="content"
+                    <MdEditor
                       value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      rows="10"
-                      className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                      placeholder="Write your blog post content here"
-                    ></textarea>
+                      style={{ height: '500px' }}
+                      renderHTML={(text) => mdParser ? mdParser.render(text) : ''}
+                      onChange={handleEditorChange}
+                      plugins={[
+                        'header',
+                        'font-bold',
+                        'font-italic',
+                        'font-underline',
+                        'font-strikethrough',
+                        'list-unordered',
+                        'list-ordered',
+                        'block-quote',
+                        'block-wrap',
+                        'block-code-inline',
+                        'block-code-block',
+                        'table',
+                        'image',
+                        'link',
+                        'clear',
+                        'logger',
+                        'mode-toggle',
+                        'full-screen',
+                        'tab-insert',
+                      ]}
+                      config={{
+                        view: {
+                          menu: true,
+                          md: true,
+                          html: true,
+                          fullScreen: true,
+                          hideMenu: false,
+                        },
+                        table: {
+                          maxRow: 5,
+                          maxCol: 6,
+                        },
+                        imageUrl: handleImageUpload,
+                      }}
+                    />
                   </div>
                   <div className="mb-4">
                     <label className="flex items-center cursor-pointer">

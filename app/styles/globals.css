@@ -376,3 +376,136 @@
   font-weight: 900;
   font-style: italic;
 }
+
+/* Markdown Editor Styles */
+.rc-md-editor {
+  @apply bg-white dark:bg-cat-frappe-base text-cat-frappe-text dark:text-cat-frappe-subtext0 border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-md overflow-hidden;
+  /* Sets the background and text color for light and dark modes, adds a border, and rounds the corners */
+}
+
+.rc-md-editor .rc-md-navigation {
+  @apply bg-cat-frappe-surface0 dark:bg-cat-frappe-surface1 border-b border-cat-frappe-surface1 dark:border-cat-frappe-surface0;
+  /* Styles the navigation bar at the top of the editor */
+}
+
+.rc-md-editor .rc-md-navigation .button-wrap .button {
+  @apply text-cat-frappe-text dark:text-cat-frappe-subtext0 hover:bg-cat-frappe-surface1 dark:hover:bg-cat-frappe-surface2;
+  /* Styles the buttons in the navigation bar */
+}
+
+.rc-md-editor .editor-container {
+  @apply bg-white dark:bg-cat-frappe-base;
+  /* Sets the background color for the main editor container */
+}
+
+.rc-md-editor .editor-container .sec-md .input {
+  @apply bg-white dark:bg-cat-frappe-base text-cat-frappe-text dark:text-cat-frappe-subtext0;
+  /* Styles the Markdown input area */
+}
+
+.rc-md-editor .editor-container .sec-html .html-wrap {
+  @apply bg-white dark:bg-cat-frappe-base text-cat-frappe-text dark:text-cat-frappe-subtext0;
+  /* Styles the HTML preview area */
+}
+
+.rc-md-editor .rc-md-divider {
+  @apply bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0;
+  /* Styles the divider between Markdown and HTML sections */
+}
+
+.rc-md-editor .drop-wrap {
+  @apply border-cat-frappe-surface1 dark:border-cat-frappe-surface0;
+  /* Styles the border of dropdown menus */
+}
+
+.rc-md-editor .header-list .list-item:hover {
+  @apply bg-cat-frappe-surface1 dark:bg-cat-frappe-surface2;
+  /* Styles the hover effect for header dropdown items */
+}
+
+.rc-md-editor .table-list .list-item:hover {
+  @apply bg-cat-frappe-surface1 dark:bg-cat-frappe-surface2;
+  /* Styles the hover effect for table dropdown items */
+}
+
+/* Additional styles for better readability in dark mode */
+.dark .rc-md-editor .editor-container .sec-md .input {
+  @apply text-cat-frappe-text;
+  /* Ensures text is readable in the Markdown input area in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap {
+  @apply text-cat-frappe-text;
+  /* Ensures text is readable in the HTML preview area in dark mode */
+}
+
+/* Style for the preview section */
+.bg-[#eff1f5].dark\:bg-cat-frappe-surface0 {
+  @apply text-cat-frappe-text dark:text-cat-frappe-subtext0;
+  /* Ensures text is readable in the preview section in both light and dark modes */
+}
+
+/* Additional styles for better contrast in dark mode */
+.dark .rc-md-editor .editor-container .sec-html .html-wrap {
+  @apply text-cat-frappe-text;
+  /* Improves readability of HTML preview text in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h1,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h2,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h3,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h4,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h5,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap h6 {
+  @apply text-cat-frappe-yellow;
+  /* Sets header colors in HTML preview for better contrast in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap a {
+  @apply text-cat-frappe-blue underline;
+  /* Styles links in HTML preview for better visibility in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap code {
+  @apply bg-cat-frappe-surface0 text-cat-frappe-green px-1 rounded;
+  /* Styles inline code in HTML preview for better readability in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap pre {
+  @apply bg-cat-frappe-surface0 p-2 rounded;
+  /* Styles code blocks in HTML preview for better readability in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap blockquote {
+  @apply border-l-4 border-cat-frappe-blue pl-4 italic text-cat-frappe-subtext1;
+  /* Styles blockquotes in HTML preview for better visibility in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap table {
+  @apply border-collapse border border-cat-frappe-surface1;
+  /* Styles tables in HTML preview for better visibility in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap th,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap td {
+  @apply border border-cat-frappe-surface1 p-2;
+  /* Styles table cells in HTML preview for better visibility in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap img {
+  @apply max-w-full h-auto;
+  /* Ensures images in HTML preview are responsive and maintain aspect ratio */
+}
+
+/* Improve readability of regular text in HTML preview for dark mode */
+.dark .rc-md-editor .editor-container .sec-html .html-wrap {
+  @apply text-cat-frappe-text;
+  /* Sets the color for all text in the HTML preview area in dark mode */
+}
+
+.dark .rc-md-editor .editor-container .sec-html .html-wrap p,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap li,
+.dark .rc-md-editor .editor-container .sec-html .html-wrap span {
+  @apply text-cat-frappe-text;
+  /* Explicitly sets the color for paragraphs, list items, and spans in dark mode */
+}
