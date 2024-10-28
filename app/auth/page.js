@@ -22,6 +22,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [verificationSent, setVerificationSent] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -30,12 +31,23 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        await pb.collection('users').authWithPassword(email, password);
+        const authData = await pb.collection('users').authWithPassword(email, password);
+        
+        if (!authData.record.verified) {
+          setError('Please verify your email address before logging in.');
+          // Optionally resend verification email
+          await pb.collection('users').requestVerification(email);
+          setVerificationSent(true);
+          return;
+        }
+        
+        router.push('/');
       } else {
         if (password !== confirmPassword) {
           setError("Passwords don't match");
           return;
         }
+        
         const data = {
           username: username,
           email: email,
@@ -46,10 +58,15 @@ const AuthPage = () => {
           last_name: lastName,
           role: "user",
         };
+        
         await pb.collection('users').create(data);
-        await pb.collection('users').authWithPassword(email, password);
+        // Store password temporarily for auto-login after verification
+        localStorage.setItem('tempPassword', password);
+        // Send verification email
+        await pb.collection('users').requestVerification(email);
+        setVerificationSent(true);
+        setError('');
       }
-      router.push('/');
     } catch (err) {
       setError(err.message);
     }
@@ -74,6 +91,14 @@ const AuthPage = () => {
                   {isLogin ? 'please sign in to your account to leave comments and so much more 🌈' : 'please make an account to be able to leave comments and so much more 🌈'}
                 </p>
                 {error && <p className="text-red-500 mt-4">{error}</p>}
+                {verificationSent && (
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mt-4">
+                    <p>
+                      A verification email has been sent to your email address. 
+                      Please check your inbox and click the verification link to complete your registration.
+                    </p>
+                  </div>
+                )}
                 <form className="mt-8" onSubmit={handleSubmit}>
                   {!isLogin && (
                     <>
