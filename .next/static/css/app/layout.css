@@ -1158,6 +1158,9 @@ video {
 .gap-8 {
   gap: 2rem;
 }
+.gap-1 {
+  gap: 0.25rem;
+}
 .gap-x-px {
   column-gap: 1px;
 }

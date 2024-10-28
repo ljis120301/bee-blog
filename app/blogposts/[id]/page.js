@@ -46,6 +46,11 @@ export default function BlogPost() {
       try {
         const record = await pb.collection('posts').getOne(params.id);
         setPost(record);
+        
+        // Increment view counter
+        await pb.collection('posts').update(params.id, {
+          views: (record.views || 0) + 1
+        });
       } catch (error) {
         console.error('Error fetching post:', error);
       }

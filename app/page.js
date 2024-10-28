@@ -16,6 +16,7 @@ import {
   IconUserBolt,
   IconTrash,
   IconHeart,
+  IconEye,
 } from "@tabler/icons-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components/ui/sidebar";
 import Link from "next/link";
@@ -97,7 +98,10 @@ export default function Home() {
             title: post.title,
             description: post.description,
             id: `blogposts/${post.id}`,
-            icon: <IconSignature className="h-4 w-4 text-neutral-500" />,
+            icon: <div className="flex items-center gap-1 text-neutral-500">
+                    <IconEye className="h-4 w-4" />
+                    <span className="text-sm">{post.views || 0}</span>
+                  </div>,
             header: <BeeSwarm />,
             className: post.isSpanTwo ? 'col-span-2' : '',
           }));
