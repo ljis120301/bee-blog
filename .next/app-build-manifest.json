@@ -43,6 +43,17 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/verify/page.js"
+    ],
+    "/user-profile/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user-profile/page.js"
+    ],
+    "/favorites/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/favorites/page.css",
+      "static/chunks/app/favorites/page.js"
     ]
   }
 }
