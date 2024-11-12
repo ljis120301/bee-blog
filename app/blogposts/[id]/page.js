@@ -62,89 +62,64 @@ export default function BlogPost() {
   const renderContent = () => {
     if (!post || !mdParser) return null;
 
+    // Process markdown content first
     const htmlContent = mdParser.render(post.content);
-
-    // Parse the HTML content
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
-
     const contentElements = [];
 
-    // Process each element in the parsed HTML
+    // Track processed URLs to avoid duplicates
+    const processedUrls = new Set();
+
+    // Process media items first
+    const mediaItems = [...(post.media || []), ...(post.images || [])]
+      .filter(item => {
+        if (processedUrls.has(item.url)) {
+          return false;
+        }
+        processedUrls.add(item.url);
+        return true;
+      });
+
+    // Add media elements
+    mediaItems.forEach((mediaItem, index) => {
+      if (mediaItem.type === 'video') {
+        contentElements.push(
+          <div key={`media-video-${index}`} className="video-wrapper">
+            <video
+              controls
+              preload="metadata"
+              className="max-w-full h-auto my-4 rounded-md"
+              playsInline
+            >
+              <source src={mediaItem.url} type="video/mp4" />
+              <p>Your browser doesn't support HTML5 video.</p>
+            </video>
+          </div>
+        );
+      } else {
+        contentElements.push(
+          <img
+            key={`media-image-${index}`}
+            src={mediaItem.url}
+            alt={mediaItem.name}
+            className="max-w-full h-auto my-4 rounded-md"
+          />
+        );
+      }
+    });
+
+    // Process markdown content nodes
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.tagName === 'H1') {
-          contentElements.push(
-            <h1 key={`h1-${index}`} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-              {node.textContent}
-            </h1>
-          );
-        } else if (node.tagName === 'H2') {
-          contentElements.push(
-            <h2 key={`h2-${index}`} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
-              {node.textContent}
-            </h2>
-          );
-        } else if (node.tagName === 'H3') {
-          contentElements.push(
-            <h3 key={`h3-${index}`} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
-              {node.textContent}
-            </h3>
-          );
-        } else if (node.tagName === 'PRE' && node.querySelector('code')) {
-          const codeElement = node.querySelector('code');
-          const language = codeElement.className.replace('language-', '');
-          contentElements.push(
-            <CodeSnippet key={`code-${index}`} language={language} code={codeElement.textContent} />
-          );
-        } else if (node.tagName === 'IMG') {
-          contentElements.push(
-            <img key={`img-${index}`} src={node.src} alt={node.alt} className="max-w-full h-auto my-4 rounded-md" />
-          );
-        } else if (node.tagName === 'TABLE') {
-          contentElements.push(
-            <div key={`table-${index}`} className="overflow-x-auto my-4">
-              <table className="w-full border-collapse">
-                {Array.from(node.children).map((child, childIndex) => {
-                  if (child.tagName === 'THEAD') {
-                    return (
-                      <thead key={`thead-${childIndex}`} className="bg-blue-200 dark:bg-cat-frappe-yellow">
-                        {Array.from(child.rows).map((row, rowIndex) => (
-                          <tr key={`thead-row-${rowIndex}`}>
-                            {Array.from(row.cells).map((cell, cellIndex) => (
-                              <th key={`thead-cell-${cellIndex}`} className="border border-gray-300 dark:border-cat-frappe-surface0 p-2 font-bold text-left text-gray-800 dark:text-cat-frappe-base">
-                                {cell.textContent}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                    );
-                  } else if (child.tagName === 'TBODY') {
-                    return (
-                      <tbody key={`tbody-${childIndex}`}>
-                        {Array.from(child.rows).map((row, rowIndex) => (
-                          <tr key={`tbody-row-${rowIndex}`} className={rowIndex % 2 === 0 ? 'bg-gray-100 dark:bg-cat-frappe-surface1' : 'bg-white dark:bg-cat-frappe-mantle'}>
-                            {Array.from(row.cells).map((cell, cellIndex) => (
-                              <td key={`tbody-cell-${cellIndex}`} className="border border-gray-300 dark:border-cat-frappe-surface0 p-2 text-gray-800 dark:text-cat-frappe-subtext1">
-                                {cell.textContent}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    );
-                  }
-                  return null;
-                })}
-              </table>
-            </div>
-          );
-        } else {
-          contentElements.push(
-            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
-          );
+        // Skip media elements that we've already processed
+        const mediaUrl = node.querySelector('img')?.src || node.querySelector('video source')?.src;
+        if (mediaUrl && processedUrls.has(mediaUrl)) {
+          return;
         }
+        contentElements.push(
+          <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+        );
       }
     });
 

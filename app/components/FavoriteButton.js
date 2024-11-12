@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { IconHeart, IconHeartFilled } from '@tabler/icons-react';
 import { useFavorites } from '../contexts/FavoritesContext';
+import LoadingSpinner from './LoadingSpinner';
 
 const FavoriteButton = ({ postId }) => {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
@@ -28,7 +29,7 @@ const FavoriteButton = ({ postId }) => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>; // Or a loading spinner
+    return <div > <IconHeartFilled /> </div>; // Or a loading spinner
   }
 
   return (

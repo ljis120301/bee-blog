@@ -17,6 +17,8 @@ import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import CodeSnippet from "../../components/CodeSnippet";
+import { useDebouncedCallback } from 'use-debounce';
+import { revalidatePath } from 'next/cache';
 
 const MdEditor = dynamic(() => import('react-markdown-editor-lite'), {
   ssr: false,
@@ -32,6 +34,9 @@ export default function AuthorPortal() {
   const [isSpanTwo, setIsSpanTwo] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [mdParser, setMdParser] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(new Set());
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -57,7 +62,7 @@ export default function AuthorPortal() {
         html: true,
         linkify: true,
         typographer: true,
-        breaks: true,
+        breaks: true
       })
       .use(sub)
       .use(sup)
@@ -65,8 +70,17 @@ export default function AuthorPortal() {
       .use(mark)
       .use(taskLists);
 
-      // Enable all header levels
-      mdInstance.enable('heading');
+      // Add custom rendering rules for videos
+      const defaultRender = mdInstance.renderer.rules.html_block || 
+        ((tokens, idx) => tokens[idx].content);
+
+      mdInstance.renderer.rules.html_block = (tokens, idx, options, env, self) => {
+        const content = tokens[idx].content;
+        if (content.includes('<video')) {
+          return content; // Return video HTML as-is
+        }
+        return defaultRender(tokens, idx, options, env, self);
+      };
 
       setMdParser(mdInstance);
     };
@@ -78,47 +92,153 @@ export default function AuthorPortal() {
     setContent(text);
   };
 
-  const handleImageUpload = async (files) => {
-    const uploadedFiles = [];
-    for (const file of files) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        const fileRecord = await pb.collection('files').create(formData);
-        const imageUrl = pb.getFileUrl(fileRecord, fileRecord.file);
-        uploadedFiles.push({ name: file.name, url: imageUrl });
-      } catch (error) {
-        console.error('Error uploading image:', error);
-      }
-    }
-    setUploadedImages([...uploadedImages, ...uploadedFiles]);
-    // Insert the last uploaded image into the editor
-    if (uploadedFiles.length > 0) {
-      const lastImage = uploadedFiles[uploadedFiles.length - 1];
-      insertImageIntoContent(lastImage.url);
+  const handleFileUpload = async (files) => {
+    const file = files[0]; // Get the single file we're uploading
+    setIsUploading(true);
+    
+    try {
+      // Create temporary preview
+      const tempFileObj = {
+        name: file.name,
+        type: file.type.startsWith('video/') ? 'video' : 'image',
+        url: URL.createObjectURL(file),
+        size: file.size
+      };
+      
+      // Add to UI immediately with loading state
+      setUploadedImages(prev => [...prev, tempFileObj]);
+      setLoadingFiles(prev => new Set([...prev, file.name]));
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentCompleted = Math.round((event.loaded * 100) / event.total);
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: percentCompleted
+          }));
+        }
+      });
+
+      const response = await new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.response);
+              resolve(response);
+            } catch (e) {
+              reject(new Error('Invalid JSON response'));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error occurred'));
+        xhr.onabort = () => reject(new Error('Upload aborted'));
+
+        xhr.open('POST', '/api/upload');
+        xhr.setRequestHeader('Authorization', `Bearer ${pb.authStore.token}`);
+        xhr.send(formData);
+      });
+
+      // Update the temporary file with the real URL
+      setUploadedImages(prev => 
+        prev.map(f => 
+          f.name === file.name 
+            ? { ...f, url: response.url }
+            : f
+        )
+      );
+
+      return response.url;
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      // Remove failed upload from UI
+      setUploadedImages(prev => prev.filter(f => f.name !== file.name));
+      alert(`Failed to upload: ${error.message}`);
+      return '';
+    } finally {
+      // Clean up states
+      setIsUploading(false);
+      setLoadingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(file.name);
+        return next;
+      });
+      setUploadProgress({});
     }
   };
 
-  const insertImageIntoContent = (imageUrl) => {
-    setContent(prevContent => prevContent + `\n![Image](${imageUrl})\n`);
+  const insertFileIntoContent = (fileUrl, fileType) => {
+    let markdown = '';
+    const editor = document.querySelector('.rc-md-editor textarea');
+    if (!editor) {
+      console.error('Editor not found');
+      return;
+    }
+
+    // Determine if it's a video based on the URL or file type
+    const isVideo = fileType?.startsWith('video/') || 
+                   fileUrl.match(/\.(mp4|webm|ogg)$/i);
+
+    if (isVideo) {
+      markdown = `
+<div class="video-wrapper">
+  <video 
+    controls 
+    preload="metadata"
+    width="100%"
+    class="max-w-full h-auto my-4 rounded-md"
+    playsinline
+  >
+    <source src="${fileUrl}" type="video/mp4">
+    <p>Your browser doesn't support HTML5 video.</p>
+  </video>
+</div>
+
+`; // Extra newline for better markdown formatting
+    } else {
+      markdown = `![Image](${fileUrl})\n\n`;
+    }
+    
+    const cursorPosition = editor.selectionStart;
+    const newContent = 
+      content.substring(0, cursorPosition) + 
+      markdown + 
+      content.substring(cursorPosition);
+    
+    setContent(newContent);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Remove any duplicate media items
+      const uniqueMedia = Array.from(new Map(uploadedImages.map(item => 
+        [item.url, item]
+      )).values());
+
       const data = {
         title,
         content,
         description,
         author: pb.authStore.model.id,
         isSpanTwo,
-        images: uploadedImages.map(img => img.url),
+        media: uniqueMedia,
+        images: uniqueMedia.filter(item => item.type === 'image')
       };
-      console.log('Submitting data:', data); // For debugging
+
+      console.log('Creating post with data:', data);
       const record = await pb.collection('posts').create(data);
       router.push(`/blogposts/${record.id}`);
     } catch (error) {
-      console.error('Error publishing post:', error);
+      console.error('Error creating post:', error);
       if (error.data) {
         console.error('Validation errors:', error.data);
       }
@@ -129,92 +249,90 @@ export default function AuthorPortal() {
     if (!mdParser) return null;
 
     const htmlContent = mdParser.render(content);
-
-    // Parse the HTML content
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
-
     const contentElements = [];
+    const processedUrls = new Set();
 
-    // Process each element in the parsed HTML
+    // Process uploaded media first
+    uploadedImages.forEach((file, index) => {
+      if (processedUrls.has(file.url)) return;
+      processedUrls.add(file.url);
+      
+      if (file.type === 'video') {
+        contentElements.push(
+          <div key={`video-${index}`} className="video-wrapper">
+            <video
+              controls
+              preload="metadata"
+              className="max-w-full h-auto my-4 rounded-md"
+              playsInline
+            >
+              <source src={file.url} type="video/mp4" />
+              <p>Your browser doesn't support HTML5 video.</p>
+            </video>
+          </div>
+        );
+      } else {
+        contentElements.push(
+          <img
+            key={`image-${index}`}
+            src={file.url}
+            alt={file.name}
+            className="max-w-full h-auto my-4 rounded-md"
+          />
+        );
+      }
+    });
+
+    // Process markdown content
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.tagName === 'H1') {
-          contentElements.push(
-            <h1 key={`h1-${index}`} className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-              {node.textContent}
-            </h1>
-          );
-        } else if (node.tagName === 'H2') {
-          contentElements.push(
-            <h2 key={`h2-${index}`} className="text-3xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">
-              {node.textContent}
-            </h2>
-          );
-        } else if (node.tagName === 'H3') {
-          contentElements.push(
-            <h3 key={`h3-${index}`} className="text-2xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">
-              {node.textContent}
-            </h3>
-          );
-        } else if (node.tagName === 'PRE' && node.querySelector('code')) {
-          const codeElement = node.querySelector('code');
-          const language = codeElement.className.replace('language-', '');
-          contentElements.push(
-            <CodeSnippet key={`code-${index}`} language={language} code={codeElement.textContent} />
-          );
-        } else if (node.tagName === 'IMG') {
-          contentElements.push(
-            <img key={`img-${index}`} src={node.src} alt={node.alt} className="max-w-full h-auto my-4 rounded-md" />
-          );
-        } else if (node.tagName === 'TABLE') {
-          contentElements.push(
-            <div key={`table-${index}`} className="overflow-x-auto my-4">
-              <table className="w-full border-collapse">
-                {Array.from(node.children).map((child, childIndex) => {
-                  if (child.tagName === 'THEAD') {
-                    return (
-                      <thead key={`thead-${childIndex}`} className="bg-blue-200 dark:bg-cat-frappe-yellow border border-gray-800 dark:border-cat-frappe-surface0">
-                        {Array.from(child.rows).map((row, rowIndex) => (
-                          <tr key={`thead-row-${rowIndex}`}>
-                            {Array.from(row.cells).map((cell, cellIndex) => (
-                              <th key={`thead-cell-${cellIndex}`} className="border border-gray-800 dark:border-cat-frappe-surface0 p-2 font-bold text-left text-gray-800 dark:text-cat-frappe-base">
-                                {cell.textContent}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                    );
-                  } else if (child.tagName === 'TBODY') {
-                    return (
-                      <tbody key={`tbody-${childIndex}`}>
-                        {Array.from(child.rows).map((row, rowIndex) => (
-                          <tr key={`tbody-row-${rowIndex}`} className={rowIndex % 2 === 0 ? 'bg-gray-300 dark:bg-cat-frappe-surface1' : 'bg-gray-200 dark:bg-cat-frappe-mantle'}>
-                            {Array.from(row.cells).map((cell, cellIndex) => (
-                              <td key={`tbody-cell-${cellIndex}`} className="border border-gray-700 dark:border-cat-frappe-surface0 p-2 text-gray-800 dark:text-cat-frappe-subtext1">
-                                {cell.textContent}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    );
-                  }
-                  return null;
-                })}
-              </table>
-            </div>
-          );
-        } else {
-          contentElements.push(
-            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
-          );
+        const mediaUrl = node.querySelector('img')?.src || node.querySelector('video source')?.src;
+        if (mediaUrl && processedUrls.has(mediaUrl)) {
+          return;
         }
+        contentElements.push(
+          <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+        );
       }
     });
 
     return <div>{contentElements}</div>;
+  };
+
+  const updateProgress = useDebouncedCallback((fileName, progress) => {
+    setUploadProgress(prev => ({
+      ...prev,
+      [fileName]: progress
+    }));
+  }, 100);
+
+  const UploadProgress = () => {
+    if (!isUploading) return null;
+
+    return (
+      <div className="fixed bottom-4 right-4 bg-white dark:bg-cat-frappe-base p-4 rounded-lg shadow-lg max-w-sm w-full" role="status" aria-live="polite">
+        {Object.entries(uploadProgress).map(([fileName, progress]) => (
+          <div key={fileName} className="mb-2" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100">
+            <div className="flex justify-between mb-1">
+              <span className="text-sm font-medium">
+                {fileName}
+              </span>
+              <span className="text-sm">
+                {progress}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div 
+                className="bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow h-2.5 rounded-full"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (!isAdmin) {
@@ -260,26 +378,95 @@ export default function AuthorPortal() {
                     ></textarea>
                   </div>
                   <div className="mb-4">
-                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Upload Images</label>
+                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Upload Media</label>
                     <div className="w-full max-w-4xl mx-auto min-h-48 border border-dashed bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 rounded-lg">
-                      <FileUpload onChange={handleImageUpload} />
+                      <FileUpload 
+                        onChange={handleFileUpload}
+                        accept={{
+                          'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+                          'video/*': ['.mp4', '.webm', '.ogg']
+                        }}
+                      />
                     </div>
                   </div>
                   
                   {uploadedImages.length > 0 && (
                     <div className="mb-4">
-                      <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Uploaded Images</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {uploadedImages.map((img, index) => (
-                          <div key={index} className="relative group">
-                            <img src={img.url} alt={img.name} className="w-24 h-24 object-cover rounded" />
-                            <button
-                              type="button"
-                              onClick={() => insertImageIntoContent(img.url)}
-                              className="absolute inset-0 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
-                            >
-                              Insert
-                            </button>
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setUploadedImages([])}
+                            className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {uploadedImages.map((file, index) => (
+                          <div key={index} className="relative group aspect-square">
+                            {loadingFiles.has(file.name) ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
+                                <span className="animate-pulse">Loading...</span>
+                              </div>
+                            ) : file.type === 'video' ? (
+                              <video 
+                                className="w-full h-full object-cover rounded-md"
+                                muted
+                                loop
+                                onMouseOver={(e) => {
+                                  const playPromise = e.target.play();
+                                  if (playPromise !== undefined) {
+                                    playPromise.catch(error => {
+                                      console.error("Video playback error:", error);
+                                    });
+                                  }
+                                }}
+                                onMouseOut={(e) => {
+                                  e.target.pause();
+                                  e.target.currentTime = 0;
+                                }}
+                                onError={(e) => console.error("Video loading error:", e)}
+                              >
+                                <source src={file.url} type="video/mp4" />
+                                <p>Your browser doesn't support HTML5 video.</p>
+                              </video>
+                            ) : (
+                              <img 
+                                src={file.url} 
+                                alt={file.name} 
+                                className="w-full h-full object-cover rounded-md"
+                                onLoad={() => {
+                                  setLoadingFiles(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(file.name);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            )}
+                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2 p-2">
+                              <button
+                                type="button"
+                                onClick={() => insertFileIntoContent(file.url, file.type)}
+                                className="w-full bg-cat-frappe-yellow text-cat-frappe-base px-2 py-1 rounded-md text-sm font-medium hover:bg-cat-frappe-peach transition-colors"
+                              >
+                                Insert
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
+                                className="w-full bg-cat-frappe-red text-white px-2 py-1 rounded-md text-sm font-medium hover:bg-red-600 transition-colors"
+                              >
+                                Remove
+                              </button>
+                              <div className="text-white text-xs text-center mt-1 truncate w-full">
+                                {file.name}
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -326,7 +513,7 @@ export default function AuthorPortal() {
                           maxRow: 5,
                           maxCol: 6,
                         },
-                        imageUrl: handleImageUpload,
+                        imageUrl: handleFileUpload,
                       }}
                     />
                   </div>
@@ -368,6 +555,7 @@ export default function AuthorPortal() {
           </aside>
         </div>
       </main>
+      <UploadProgress />
       <Footer />
     </>
   );
