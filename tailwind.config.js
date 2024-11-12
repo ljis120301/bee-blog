@@ -303,6 +303,7 @@ module.exports = {
         },
       }
       addUtilities(newUtilities, ['dark', 'responsive'])
-    })
+    }),
+    require('@tailwindcss/typography'),
   ],
 };
