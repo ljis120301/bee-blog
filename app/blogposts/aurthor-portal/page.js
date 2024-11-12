@@ -252,53 +252,30 @@ export default function AuthorPortal() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const contentElements = [];
-    const processedUrls = new Set();
 
-    // Process uploaded media first
-    uploadedImages.forEach((file, index) => {
-      if (processedUrls.has(file.url)) return;
-      processedUrls.add(file.url);
-      
-      if (file.type === 'video') {
-        contentElements.push(
-          <div key={`video-${index}`} className="video-wrapper">
-            <video
-              controls
-              preload="metadata"
-              className="max-w-full h-auto my-4 rounded-md"
-              playsInline
-            >
-              <source src={file.url} type="video/mp4" />
-              <p>Your browser doesn't support HTML5 video.</p>
-            </video>
-          </div>
-        );
-      } else {
-        contentElements.push(
-          <img
-            key={`image-${index}`}
-            src={file.url}
-            alt={file.name}
-            className="max-w-full h-auto my-4 rounded-md"
-          />
-        );
-      }
-    });
-
-    // Process markdown content
+    // Process all nodes in order
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        const mediaUrl = node.querySelector('img')?.src || node.querySelector('video source')?.src;
-        if (mediaUrl && processedUrls.has(mediaUrl)) {
-          return;
+        // Check if it's a video wrapper
+        if (node.classList.contains('video-wrapper')) {
+          contentElements.push(
+            <div key={`element-${index}`} className="video-wrapper">
+              {node.innerHTML}
+            </div>
+          );
+        } else {
+          contentElements.push(
+            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          );
         }
+      } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
         contentElements.push(
-          <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          <div key={`text-${index}`}>{node.textContent}</div>
         );
       }
     });
 
-    return <div>{contentElements}</div>;
+    return <div className="prose dark:prose-invert max-w-none">{contentElements}</div>;
   };
 
   const updateProgress = useDebouncedCallback((fileName, progress) => {

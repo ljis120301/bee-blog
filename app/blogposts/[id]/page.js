@@ -62,68 +62,48 @@ export default function BlogPost() {
   const renderContent = () => {
     if (!post || !mdParser) return null;
 
-    // Process markdown content first
+    // Process markdown content
     const htmlContent = mdParser.render(post.content);
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const contentElements = [];
 
-    // Track processed URLs to avoid duplicates
-    const processedUrls = new Set();
-
-    // Process media items first
-    const mediaItems = [...(post.media || []), ...(post.images || [])]
-      .filter(item => {
-        if (processedUrls.has(item.url)) {
-          return false;
-        }
-        processedUrls.add(item.url);
-        return true;
-      });
-
-    // Add media elements
-    mediaItems.forEach((mediaItem, index) => {
-      if (mediaItem.type === 'video') {
-        contentElements.push(
-          <div key={`media-video-${index}`} className="video-wrapper">
-            <video
-              controls
-              preload="metadata"
-              className="max-w-full h-auto my-4 rounded-md"
-              playsInline
-            >
-              <source src={mediaItem.url} type="video/mp4" />
-              <p>Your browser doesn't support HTML5 video.</p>
-            </video>
-          </div>
-        );
-      } else {
-        contentElements.push(
-          <img
-            key={`media-image-${index}`}
-            src={mediaItem.url}
-            alt={mediaItem.name}
-            className="max-w-full h-auto my-4 rounded-md"
-          />
-        );
-      }
-    });
-
-    // Process markdown content nodes
+    // Process all nodes in order
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        // Skip media elements that we've already processed
-        const mediaUrl = node.querySelector('img')?.src || node.querySelector('video source')?.src;
-        if (mediaUrl && processedUrls.has(mediaUrl)) {
-          return;
+        // Check if it's a video element
+        if (node.tagName === 'VIDEO') {
+          const videoSources = Array.from(node.getElementsByTagName('source')).map((source, idx) => (
+            <source key={idx} src={source.src} type={source.type} />
+          ));
+
+          contentElements.push(
+            <div key={`video-${index}`} className="video-wrapper">
+              <video
+                controls
+                preload="metadata"
+                width="100%"
+                className="max-w-full h-auto my-4 rounded-md"
+                playsInline
+              >
+                {videoSources}
+                <p>Your browser doesn't support HTML5 video.</p>
+              </video>
+            </div>
+          );
+        } else {
+          contentElements.push(
+            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          );
         }
+      } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
         contentElements.push(
-          <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
+          <div key={`text-${index}`}>{node.textContent}</div>
         );
       }
     });
 
-    return <div>{contentElements}</div>;
+    return <div className="prose dark:prose-invert max-w-none">{contentElements}</div>;
   };
 
   if (!post) {
