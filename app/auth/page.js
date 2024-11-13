@@ -96,6 +96,7 @@ const AuthPage = () => {
                     <p>
                       A verification email has been sent to your email address. 
                       Please check your inbox and click the verification link to complete your registration.
+                      (if you don't see it, check your spam folder)
                     </p>
                   </div>
                 )}

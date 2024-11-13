@@ -2115,6 +2115,9 @@ video {
 .pt-\[calc\(64px\+8px\)\] {
   padding-top: calc(64px + 8px);
 }
+.pl-\[80px\] {
+  padding-left: 80px;
+}
 .text-left {
   text-align: left;
 }

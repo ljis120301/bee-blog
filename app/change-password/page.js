@@ -79,69 +79,68 @@ const ChangePasswordPage = () => {
                 </div>
               </SidebarBody>
             </Sidebar>
-            <main className="flex-1 pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-8">
-                <aside className="lg:col-span-1">
-                  <Information />
-                </aside>
-                <div className="lg:col-span-2">
-                  <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-                    <div className="rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
-                      <h1 className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-                        change password 🔐
-                      </h1>
-                      {error && <p className="text-red-500 mt-4">{error}</p>}
-                      {success && <p className="text-green-500 mt-4">{success}</p>}
-                      <form onSubmit={handleSubmit} className="mt-8">
-                        <LabelInputContainer className="mb-4">
-                          <Label htmlFor="oldPassword">Current Password</Label>
-                          <Input 
-                            id="oldPassword" 
-                            type="password"
-                            value={oldPassword}
-                            onChange={(e) => setOldPassword(e.target.value)}
-                            required
-                          />
-                        </LabelInputContainer>
-                        <LabelInputContainer className="mb-4">
-                          <Label htmlFor="newPassword">New Password</Label>
-                          <Input 
-                            id="newPassword" 
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required
-                          />
-                        </LabelInputContainer>
-                        <LabelInputContainer className="mb-6">
-                          <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                          <Input 
-                            id="confirmPassword" 
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                          />
-                        </LabelInputContainer>
-                        <button
-                          type="submit"
-                          className="w-full bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust py-2 px-4 rounded-md font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:opacity-90"
-                        >
-                          Change Password
-                        </button>
-                      </form>
+            <div className="flex flex-col flex-1" style={{ marginLeft: "5rem" }}>
+              <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-8">
+                  <aside className="lg:col-span-1">
+                    <Information />
+                  </aside>
+                  <div className="lg:col-span-2">
+                    <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
+                      <div className="rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
+                        {error && <p className="text-red-500 mt-4">{error}</p>}
+                        {success && <p className="text-green-500 mt-4">{success}</p>}
+                        <form onSubmit={handleSubmit} className="mt-8">
+                          <LabelInputContainer className="mb-4">
+                            <Label htmlFor="oldPassword">Current Password</Label>
+                            <Input 
+                              id="oldPassword" 
+                              type="password"
+                              value={oldPassword}
+                              onChange={(e) => setOldPassword(e.target.value)}
+                              required
+                            />
+                          </LabelInputContainer>
+                          <LabelInputContainer className="mb-4">
+                            <Label htmlFor="newPassword">New Password</Label>
+                            <Input 
+                              id="newPassword" 
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              required
+                            />
+                          </LabelInputContainer>
+                          <LabelInputContainer className="mb-6">
+                            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                            <Input 
+                              id="confirmPassword" 
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              required
+                            />
+                          </LabelInputContainer>
+                          <button
+                            type="submit"
+                            className="w-full bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust py-2 px-4 rounded-md font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:opacity-90"
+                          >
+                            Change Password
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
+                  <aside className="lg:col-span-1">
+                    <MoreInformation />
+                  </aside>
                 </div>
-                <aside className="lg:col-span-1">
-                  <MoreInformation />
-                </aside>
-              </div>
-            </main>
+              </main>
+              <Footer />
+            </div>
           </div>
         </div>
       </SidebarProvider>
-      <Footer />
     </>
   );
 };
