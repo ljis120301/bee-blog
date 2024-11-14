@@ -1,7 +1,9 @@
 {
-  "/auth/page": "app/auth/page.js",
   "/verify/page": "app/verify/page.js",
   "/user-profile/page": "app/user-profile/page.js",
   "/change-password/page": "app/change-password/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/blogposts/aurthor-portal/page": "app/blogposts/aurthor-portal/page.js",
+  "/api/upload/route": "app/api/upload/route.js",
+  "/blogposts/[id]/page": "app/blogposts/[id]/page.js"
 }

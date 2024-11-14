@@ -62,33 +62,63 @@ export default function BlogPost() {
   const renderContent = () => {
     if (!post || !mdParser) return null;
 
-    // Process markdown content
     const htmlContent = mdParser.render(post.content);
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const contentElements = [];
 
-    // Process all nodes in order
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        // Check if it's a video element
-        if (node.tagName === 'VIDEO') {
-          const videoSources = Array.from(node.getElementsByTagName('source')).map((source, idx) => (
-            <source key={idx} src={source.src} type={source.type} />
-          ));
-
+        if (node.tagName === 'TABLE') {
           contentElements.push(
-            <div key={`video-${index}`} className="video-wrapper">
-              <video
-                controls
-                preload="metadata"
-                width="100%"
-                className="max-w-full h-auto my-4 rounded-md"
-                playsInline
-              >
-                {videoSources}
-                <p>Your browser doesn't support HTML5 video.</p>
-              </video>
+            <div key={`table-wrapper-${index}`} className="my-8">
+              <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
+                <div className="rounded-lg bg-[#F6EEE5] dark:bg-cat-frappe-base overflow-x-auto">
+                  <table className="w-full">
+                    {Array.from(node.children).map((child, childIndex) => {
+                      if (child.tagName === 'THEAD') {
+                        return (
+                          <thead key={`thead-${childIndex}`}>
+                            {Array.from(child.rows).map((row, rowIndex) => (
+                              <tr key={`thead-row-${rowIndex}`}>
+                                {Array.from(row.cells).map((cell, cellIndex) => (
+                                  <th 
+                                    key={`thead-cell-${cellIndex}`} 
+                                    className="px-6 py-4 text-left font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap bg-[#E9D4BA]/50 dark:bg-cat-frappe-surface0"
+                                  >
+                                    {cell.textContent}
+                                  </th>
+                                ))}
+                              </tr>
+                            ))}
+                          </thead>
+                        );
+                      } else if (child.tagName === 'TBODY') {
+                        return (
+                          <tbody key={`tbody-${childIndex}`}>
+                            {Array.from(child.rows).map((row, rowIndex) => (
+                              <tr 
+                                key={`tbody-row-${rowIndex}`}
+                                className="transition-colors duration-200 hover:bg-[#E9D4BA]/20 dark:hover:bg-cat-frappe-surface0/50"
+                              >
+                                {Array.from(row.cells).map((cell, cellIndex) => (
+                                  <td 
+                                    key={`tbody-cell-${cellIndex}`}
+                                    className="px-6 py-4 text-cat-frappe-base dark:text-cat-frappe-text border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap"
+                                  >
+                                    {cell.textContent}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        );
+                      }
+                      return null;
+                    })}
+                  </table>
+                </div>
+              </div>
             </div>
           );
         } else {
@@ -96,10 +126,6 @@ export default function BlogPost() {
             <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
           );
         }
-      } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-        contentElements.push(
-          <div key={`text-${index}`}>{node.textContent}</div>
-        );
       }
     });
 
