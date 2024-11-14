@@ -1764,6 +1764,9 @@ video {
 .border-transparent {
   border-color: transparent;
 }
+.border-cat-frappe-surface0\/10 {
+  border-color: rgb(65 69 89 / 0.1);
+}
 .bg-\[\#292C3C\] {
   --tw-bg-opacity: 1;
   background-color: rgb(41 44 60 / var(--tw-bg-opacity));
@@ -1926,6 +1929,12 @@ video {
   --tw-bg-opacity: 1;
   background-color: rgb(250 204 21 / var(--tw-bg-opacity));
 }
+.bg-\[\#E9D4BA\]\/10 {
+  background-color: rgb(233 212 186 / 0.1);
+}
+.bg-\[\#E9D4BA\]\/50 {
+  background-color: rgb(233 212 186 / 0.5);
+}
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5;
 }
@@ -2046,6 +2055,9 @@ video {
 }
 .p-\[4px\] {
   padding: 4px;
+}
+.p-\[1px\] {
+  padding: 1px;
 }
 .px-1 {
   padding-left: 0.25rem;
@@ -2180,6 +2192,9 @@ video {
 }
 .font-semibold {
   font-weight: 600;
+}
+.uppercase {
+  text-transform: uppercase;
 }
 .leading-none {
   line-height: 1;
@@ -3474,6 +3489,10 @@ video {
   background-color: rgb(234 179 8 / var(--tw-bg-opacity));
 }
 
+.hover\:bg-\[\#E9D4BA\]\/20:hover {
+  background-color: rgb(233 212 186 / 0.2);
+}
+
 .hover\:bg-gradient-to-br:hover {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }
@@ -3698,6 +3717,10 @@ video {
   border-color: rgb(255 255 255 / 0.2);
 }
 
+.dark\:border-cat-frappe-surface0\/20:is(.dark *) {
+  border-color: rgb(65 69 89 / 0.2);
+}
+
 .dark\:bg-\[\#292C3C\]:is(.dark *) {
   --tw-bg-opacity: 1;
   background-color: rgb(41 44 60 / var(--tw-bg-opacity));
@@ -3820,6 +3843,10 @@ video {
 .dark\:bg-zinc-900:is(.dark *) {
   --tw-bg-opacity: 1;
   background-color: rgb(24 24 27 / var(--tw-bg-opacity));
+}
+
+.dark\:bg-cat-frappe-surface0\/20:is(.dark *) {
+  background-color: rgb(65 69 89 / 0.2);
 }
 
 .dark\:bg-gradient-to-br:is(.dark *) {
@@ -4028,6 +4055,10 @@ video {
 .dark\:hover\:bg-cat-frappe-surface2:hover:is(.dark *) {
   --tw-bg-opacity: 1;
   background-color: rgb(98 104 128 / var(--tw-bg-opacity));
+}
+
+.dark\:hover\:bg-cat-frappe-surface0\/50:hover:is(.dark *) {
+  background-color: rgb(65 69 89 / 0.5);
 }
 
 .dark\:hover\:from-\[\#737994\]:hover:is(.dark *) {

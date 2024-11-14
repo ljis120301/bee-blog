@@ -253,13 +253,63 @@ export default function AuthorPortal() {
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const contentElements = [];
 
-    // Process all nodes in order
     doc.body.childNodes.forEach((node, index) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        // Check if it's a video wrapper
-        if (node.classList.contains('video-wrapper')) {
+        if (node.tagName === 'TABLE') {
           contentElements.push(
-            <div key={`element-${index}`} className="video-wrapper">
+            <div key={`table-wrapper-${index}`} className="my-8">
+              <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
+                <div className="rounded-lg bg-[#F6EEE5] dark:bg-cat-frappe-base overflow-x-auto">
+                  <table className="w-full">
+                    {Array.from(node.children).map((child, childIndex) => {
+                      if (child.tagName === 'THEAD') {
+                        return (
+                          <thead key={`thead-${childIndex}`}>
+                            {Array.from(child.rows).map((row, rowIndex) => (
+                              <tr key={`thead-row-${rowIndex}`}>
+                                {Array.from(row.cells).map((cell, cellIndex) => (
+                                  <th 
+                                    key={`thead-cell-${cellIndex}`} 
+                                    className="px-6 py-4 text-left font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap bg-[#E9D4BA]/50 dark:bg-cat-frappe-surface0"
+                                  >
+                                    {cell.textContent}
+                                  </th>
+                                ))}
+                              </tr>
+                            ))}
+                          </thead>
+                        );
+                      } else if (child.tagName === 'TBODY') {
+                        return (
+                          <tbody key={`tbody-${childIndex}`}>
+                            {Array.from(child.rows).map((row, rowIndex) => (
+                              <tr 
+                                key={`tbody-row-${rowIndex}`}
+                                className="transition-colors duration-200 hover:bg-[#E9D4BA]/20 dark:hover:bg-cat-frappe-surface0/50"
+                              >
+                                {Array.from(row.cells).map((cell, cellIndex) => (
+                                  <td 
+                                    key={`tbody-cell-${cellIndex}`}
+                                    className="px-6 py-4 text-cat-frappe-base dark:text-cat-frappe-text border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap"
+                                  >
+                                    {cell.textContent}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        );
+                      }
+                      return null;
+                    })}
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        } else if (node.classList?.contains('video-wrapper')) {
+          contentElements.push(
+            <div key={`video-${index}`} className="video-wrapper">
               {node.innerHTML}
             </div>
           );
