@@ -38,6 +38,10 @@ const nextConfig = {
           { 
             key: 'Access-Control-Allow-Credentials', 
             value: 'true' 
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "object-src 'self' blob: data: filesystem: *;"
           }
         ],
       },

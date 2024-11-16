@@ -19,6 +19,7 @@ import taskLists from 'markdown-it-task-lists';
 import CodeSnippet from "../../components/CodeSnippet";
 import { useDebouncedCallback } from 'use-debounce';
 import { revalidatePath } from 'next/cache';
+import { uploadInChunks } from '@/lib/chunkUpload';
 
 const MdEditor = dynamic(() => import('react-markdown-editor-lite'), {
   ssr: false,
@@ -35,8 +36,10 @@ export default function AuthorPortal() {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [mdParser, setMdParser] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [activeUploads, setActiveUploads] = useState(new Set());
   const [isUploading, setIsUploading] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -92,90 +95,73 @@ export default function AuthorPortal() {
     setContent(text);
   };
 
-  const handleFileUpload = async (files) => {
-    const file = files[0]; // Get the single file we're uploading
-    setIsUploading(true);
+  const showNotification = (message, type = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
     
-    try {
-      // Create temporary preview
-      const tempFileObj = {
-        name: file.name,
-        type: file.type.startsWith('video/') ? 'video' : 'image',
-        url: URL.createObjectURL(file),
-        size: file.size
-      };
-      
-      // Add to UI immediately with loading state
-      setUploadedImages(prev => [...prev, tempFileObj]);
-      setLoadingFiles(prev => new Set([...prev, file.name]));
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const xhr = new XMLHttpRequest();
-      
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentCompleted = Math.round((event.loaded * 100) / event.total);
-          setUploadProgress(prev => ({
-            ...prev,
-            [file.name]: percentCompleted
-          }));
-        }
-      });
-
-      const response = await new Promise((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.response);
-              resolve(response);
-            } catch (e) {
-              reject(new Error('Invalid JSON response'));
-            }
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error occurred'));
-        xhr.onabort = () => reject(new Error('Upload aborted'));
-
-        xhr.open('POST', '/api/upload');
-        xhr.setRequestHeader('Authorization', `Bearer ${pb.authStore.token}`);
-        xhr.send(formData);
-      });
-
-      // Update the temporary file with the real URL
-      setUploadedImages(prev => 
-        prev.map(f => 
-          f.name === file.name 
-            ? { ...f, url: response.url }
-            : f
-        )
-      );
-
-      return response.url;
-
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      // Remove failed upload from UI
-      setUploadedImages(prev => prev.filter(f => f.name !== file.name));
-      alert(`Failed to upload: ${error.message}`);
-      return '';
-    } finally {
-      // Clean up states
-      setIsUploading(false);
-      setLoadingFiles(prev => {
-        const next = new Set(prev);
-        next.delete(file.name);
-        return next;
-      });
-      setUploadProgress({});
-    }
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(notification => notification.id !== id));
+    }, 3000);
   };
 
-  const insertFileIntoContent = (fileUrl, fileType) => {
+  const handleFileUpload = async (files) => {
+    const uploadedFiles = [];
+    const newLoadingFiles = new Set(loadingFiles);
+
+    for (const file of files) {
+      try {
+        newLoadingFiles.add(file.name);
+        setLoadingFiles(newLoadingFiles);
+        setActiveUploads(prev => new Set(prev).add(file.name));
+        
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: 0
+        }));
+
+        const result = await uploadInChunks(pb, file, (progress) => {
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: Math.round(progress)
+          }));
+        });
+
+        if (result.success) {
+          uploadedFiles.push({
+            name: file.name,
+            url: result.url,
+            type: file.type,
+            id: result.id
+          });
+          showNotification(`Successfully uploaded ${file.name}`, 'success');
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        showNotification(`Failed to upload ${file.name}`, 'error');
+      } finally {
+        newLoadingFiles.delete(file.name);
+        setLoadingFiles(newLoadingFiles);
+        setActiveUploads(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(file.name);
+          return newSet;
+        });
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[file.name];
+          return newProgress;
+        });
+      }
+    }
+
+    setUploadedImages(prev => [...prev, ...uploadedFiles]);
+  };
+
+  const insertFileIntoContent = async (fileUrl, fileType, fileId) => {
     let markdown = '';
     const editor = document.querySelector('.rc-md-editor textarea');
     if (!editor) {
@@ -183,12 +169,25 @@ export default function AuthorPortal() {
       return;
     }
 
-    // Determine if it's a video based on the URL or file type
-    const isVideo = fileType?.startsWith('video/') || 
-                   fileUrl.match(/\.(mp4|webm|ogg)$/i);
+    if (fileType?.startsWith('video/')) {
+      console.log('Generating video markdown for file:', fileId);
+      
+      try {
+        // Generate a fresh token for the file
+        const token = await pb.files.getToken();
+        
+        // Create record object for getUrl
+        const record = {
+          id: fileId,
+          collectionId: '4bz5g6gp5umym7d',
+          file: fileUrl.split('/').pop().split('?')[0] // Get clean filename without query params
+        };
+        
+        // Generate clean URL with single token
+        const directUrl = pb.files.getUrl(record, record.file, { token });
+        console.log('Generated direct URL:', directUrl);
 
-    if (isVideo) {
-      markdown = `
+        markdown = `
 <div class="video-wrapper">
   <video 
     controls 
@@ -197,23 +196,33 @@ export default function AuthorPortal() {
     class="max-w-full h-auto my-4 rounded-md"
     playsinline
   >
-    <source src="${fileUrl}" type="video/mp4">
+    <source src="${directUrl}" type="${fileType}">
     <p>Your browser doesn't support HTML5 video.</p>
   </video>
 </div>
 
 `; // Extra newline for better markdown formatting
+        
+        const cursorPosition = editor.selectionStart;
+        const newContent = 
+          content.substring(0, cursorPosition) + 
+          markdown + 
+          content.substring(cursorPosition);
+        
+        setContent(newContent);
+      } catch (error) {
+        console.error('Error generating video markdown:', error);
+      }
     } else {
+      // Handle images as before
       markdown = `![Image](${fileUrl})\n\n`;
+      const cursorPosition = editor.selectionStart;
+      const newContent = 
+        content.substring(0, cursorPosition) + 
+        markdown + 
+        content.substring(cursorPosition);
+      setContent(newContent);
     }
-    
-    const cursorPosition = editor.selectionStart;
-    const newContent = 
-      content.substring(0, cursorPosition) + 
-      markdown + 
-      content.substring(cursorPosition);
-    
-    setContent(newContent);
   };
 
   const handleSubmit = async (e) => {
@@ -310,7 +319,7 @@ export default function AuthorPortal() {
         } else if (node.classList?.contains('video-wrapper')) {
           contentElements.push(
             <div key={`video-${index}`} className="video-wrapper">
-              {node.innerHTML}
+              <div dangerouslySetInnerHTML={{ __html: node.innerHTML }} />
             </div>
           );
         } else {
@@ -328,34 +337,53 @@ export default function AuthorPortal() {
     return <div className="prose dark:prose-invert max-w-none">{contentElements}</div>;
   };
 
-  const updateProgress = useDebouncedCallback((fileName, progress) => {
-    setUploadProgress(prev => ({
-      ...prev,
-      [fileName]: progress
-    }));
-  }, 100);
-
   const UploadProgress = () => {
-    if (!isUploading) return null;
+    const hasActiveUploads = Object.keys(uploadProgress).length > 0;
+    
+    if (!hasActiveUploads) return null;
 
     return (
-      <div className="fixed bottom-4 right-4 bg-white dark:bg-cat-frappe-base p-4 rounded-lg shadow-lg max-w-sm w-full" role="status" aria-live="polite">
-        {Object.entries(uploadProgress).map(([fileName, progress]) => (
-          <div key={fileName} className="mb-2" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100">
-            <div className="flex justify-between mb-1">
-              <span className="text-sm font-medium">
-                {fileName}
+      <div className="fixed bottom-4 right-4 w-80 bg-white dark:bg-cat-frappe-base rounded-lg shadow-lg p-4 z-50">
+        {Object.entries(uploadProgress).map(([filename, progress]) => (
+          <div key={filename} className="mb-3 last:mb-0">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm text-cat-frappe-base dark:text-cat-frappe-text truncate pr-2">
+                {filename}
               </span>
-              <span className="text-sm">
+              <span className="text-sm text-cat-frappe-peach">
                 {progress}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+            <div className="w-full h-2 bg-gray-200 dark:bg-cat-frappe-surface0 rounded-full overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow h-2.5 rounded-full"
-                style={{ width: `${progress}%` }}
-              ></div>
+                className="h-full bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow rounded-full transition-all duration-300 ease-out"
+                style={{ 
+                  width: `${progress}%`,
+                  transition: 'width 0.3s ease-out'
+                }}
+              />
             </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const Notifications = () => {
+    return (
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map(({ id, message, type }) => (
+          <div
+            key={id}
+            className={`px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 ${
+              type === 'error' 
+                ? 'bg-cat-frappe-red text-white' 
+                : type === 'success'
+                ? 'bg-cat-frappe-green text-white'
+                : 'bg-cat-frappe-yellow text-cat-frappe-base'
+            }`}
+          >
+            {message}
           </div>
         ))}
       </div>
@@ -439,26 +467,24 @@ export default function AuthorPortal() {
                               <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
                                 <span className="animate-pulse">Loading...</span>
                               </div>
-                            ) : file.type === 'video' ? (
+                            ) : file.type.startsWith('video/') ? (
                               <video 
                                 className="w-full h-full object-cover rounded-md"
-                                muted
-                                loop
-                                onMouseOver={(e) => {
-                                  const playPromise = e.target.play();
-                                  if (playPromise !== undefined) {
-                                    playPromise.catch(error => {
-                                      console.error("Video playback error:", error);
-                                    });
-                                  }
-                                }}
-                                onMouseOut={(e) => {
-                                  e.target.pause();
-                                  e.target.currentTime = 0;
-                                }}
-                                onError={(e) => console.error("Video loading error:", e)}
+                                controls
+                                preload="metadata"
+                                playsInline
                               >
-                                <source src={file.url} type="video/mp4" />
+                                <source 
+                                  src={`${file.url}`}
+                                  type={file.type} 
+                                />
+                                {/* Add fallback sources for different formats */}
+                                {file.type === 'video/mp4' && (
+                                  <>
+                                    <source src={`${file.url}`} type="video/webm" />
+                                    <source src={`${file.url}`} type="video/ogg" />
+                                  </>
+                                )}
                                 <p>Your browser doesn't support HTML5 video.</p>
                               </video>
                             ) : (
@@ -466,19 +492,12 @@ export default function AuthorPortal() {
                                 src={file.url} 
                                 alt={file.name} 
                                 className="w-full h-full object-cover rounded-md"
-                                onLoad={() => {
-                                  setLoadingFiles(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(file.name);
-                                    return next;
-                                  });
-                                }}
                               />
                             )}
                             <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2 p-2">
                               <button
                                 type="button"
-                                onClick={() => insertFileIntoContent(file.url, file.type)}
+                                onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
                                 className="w-full bg-cat-frappe-yellow text-cat-frappe-base px-2 py-1 rounded-md text-sm font-medium hover:bg-cat-frappe-peach transition-colors"
                               >
                                 Insert
@@ -582,6 +601,7 @@ export default function AuthorPortal() {
           </aside>
         </div>
       </main>
+      <Notifications />
       <UploadProgress />
       <Footer />
     </>
