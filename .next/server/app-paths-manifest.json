@@ -2,3 +2,5 @@
   "/blogposts/aurthor-portal/page": "app/blogposts/aurthor-portal/page.js",
   "/page": "app/page.js",
   "/blogposts/[id]/page": "app/blogposts/[id]/page.js",
+  "/_not-found/page": "app/_not-found/page.js"
+}
