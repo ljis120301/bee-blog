@@ -121,6 +121,12 @@ export default function BlogPost() {
               </div>
             </div>
           );
+        } else if (node.classList?.contains('video-wrapper')) {
+          contentElements.push(
+            <div key={`video-${index}`} className="video-wrapper">
+              <div dangerouslySetInnerHTML={{ __html: node.innerHTML }} />
+            </div>
+          );
         } else {
           contentElements.push(
             <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
