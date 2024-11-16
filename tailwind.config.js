@@ -197,6 +197,10 @@ module.exports = {
         wiggle: {
           '0%, 100%': { transform: 'rotate(-3deg)' },
           '50%': { transform: 'rotate(3deg)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '200% 50%' },
+          '100%': { backgroundPosition: '-200% 50%' }
         }
       },
       animation: {
@@ -206,6 +210,7 @@ module.exports = {
         flapWings: 'flapWings 0.15s ease-in-out infinite',
         wiggle: 'wiggle 0.5s ease-in-out infinite',
         'spin-slow': 'spin 8s linear infinite',
+        shimmer: 'shimmer 2s linear infinite',
       },
       typography: (theme) => ({
         DEFAULT: {

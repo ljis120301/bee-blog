@@ -20,6 +20,8 @@ import CodeSnippet from "../../components/CodeSnippet";
 import { useDebouncedCallback } from 'use-debounce';
 import { revalidatePath } from 'next/cache';
 import { uploadInChunks } from '@/lib/chunkUpload';
+import LoadingSpinner from '../../components/LoadingSpinner';
+
 
 const MdEditor = dynamic(() => import('react-markdown-editor-lite'), {
   ssr: false,
@@ -121,6 +123,7 @@ export default function AuthorPortal() {
         }));
 
         const result = await uploadInChunks(pb, file, (progress) => {
+          console.log(`Upload progress for ${file.name}: ${Math.round(progress)}%`);
           setUploadProgress(prev => ({
             ...prev,
             [file.name]: Math.round(progress)
@@ -134,15 +137,23 @@ export default function AuthorPortal() {
             type: file.type,
             id: result.id
           });
+          
+          // Immediately update UI after successful upload
+          setUploadedImages(prev => [...prev, {
+            name: file.name,
+            url: result.url,
+            type: file.type,
+            id: result.id
+          }]);
+          
           showNotification(`Successfully uploaded ${file.name}`, 'success');
-        } else {
-          throw new Error(result.error || 'Upload failed');
         }
 
       } catch (error) {
         console.error(`Error uploading ${file.name}:`, error);
         showNotification(`Failed to upload ${file.name}`, 'error');
       } finally {
+        // Clean up immediately
         newLoadingFiles.delete(file.name);
         setLoadingFiles(newLoadingFiles);
         setActiveUploads(prev => {
@@ -157,8 +168,6 @@ export default function AuthorPortal() {
         });
       }
     }
-
-    setUploadedImages(prev => [...prev, ...uploadedFiles]);
   };
 
   const insertFileIntoContent = async (fileUrl, fileType, fileId) => {
@@ -351,15 +360,30 @@ export default function AuthorPortal() {
                 {filename}
               </span>
               <span className="text-sm text-cat-frappe-peach">
-                {progress}%
+                {progress === 98 ? (
+                  <span className="inline-flex items-center">
+                    Processing
+                    <span className="ml-1 animate-bounce delay-0">.</span>
+                    <span className="ml-0.5 animate-bounce delay-150">.</span>
+                    <span className="ml-0.5 animate-bounce delay-300">.</span>
+                  </span>
+                ) : (
+                  `${progress}%`
+                )}
               </span>
             </div>
             <div className="w-full h-2 bg-gray-200 dark:bg-cat-frappe-surface0 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow rounded-full transition-all duration-300 ease-out"
+                className={`h-full rounded-full transition-all duration-300 ease-out ${
+                  progress === 98 
+                    ? 'bg-gradient-to-r from-cat-frappe-peach via-cat-frappe-yellow to-cat-frappe-peach animate-[shimmer_2s_linear_infinite]'
+                    : 'bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow'
+                }`}
                 style={{ 
-                  width: `${progress}%`,
-                  transition: 'width 0.3s ease-out'
+                  width: progress === 98 ? '100%' : `${progress}%`,
+                  transition: 'width 0.3s ease-out',
+                  backgroundSize: progress === 98 ? '200% 100%' : '100% 100%',
+                  backgroundPosition: progress === 98 ? 'right center' : 'left center'
                 }}
               />
             </div>
@@ -391,7 +415,7 @@ export default function AuthorPortal() {
   };
 
   if (!isAdmin) {
-    return <div>Loading...</div>;
+    return <div><LoadingSpinner /></div>;
   }
 
   return (
@@ -449,68 +473,57 @@ export default function AuthorPortal() {
                     <div className="mb-4">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setUploadedImages([])}
-                            className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
-                          >
-                            Clear All
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUploadedImages([])}
+                          className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
+                        >
+                          Clear All
+                        </button>
                       </div>
                       
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {uploadedImages.map((file, index) => (
-                          <div key={index} className="relative group aspect-square">
-                            {loadingFiles.has(file.name) ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
-                                <span className="animate-pulse">Loading...</span>
-                              </div>
-                            ) : file.type.startsWith('video/') ? (
-                              <video 
-                                className="w-full h-full object-cover rounded-md"
-                                controls
-                                preload="metadata"
-                                playsInline
-                              >
-                                <source 
-                                  src={`${file.url}`}
-                                  type={file.type} 
+                          <div key={index} className="relative group">
+                            <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                              {loadingFiles.has(file.name) ? (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <span className="animate-pulse">Loading...</span>
+                                </div>
+                              ) : file.type.startsWith('video/') ? (
+                                <video 
+                                  className="w-full h-full object-cover"
+                                  controls
+                                  preload="metadata"
+                                  playsInline
+                                >
+                                  <source src={`${file.url}`} type={file.type} />
+                                </video>
+                              ) : (
+                                <img 
+                                  src={file.url} 
+                                  alt={file.name} 
+                                  className="w-full h-full object-cover"
                                 />
-                                {/* Add fallback sources for different formats */}
-                                {file.type === 'video/mp4' && (
-                                  <>
-                                    <source src={`${file.url}`} type="video/webm" />
-                                    <source src={`${file.url}`} type="video/ogg" />
-                                  </>
-                                )}
-                                <p>Your browser doesn't support HTML5 video.</p>
-                              </video>
-                            ) : (
-                              <img 
-                                src={file.url} 
-                                alt={file.name} 
-                                className="w-full h-full object-cover rounded-md"
-                              />
-                            )}
-                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2 p-2">
-                              <button
-                                type="button"
-                                onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
-                                className="w-full bg-cat-frappe-yellow text-cat-frappe-base px-2 py-1 rounded-md text-sm font-medium hover:bg-cat-frappe-peach transition-colors"
-                              >
-                                Insert
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
-                                className="w-full bg-cat-frappe-red text-white px-2 py-1 rounded-md text-sm font-medium hover:bg-red-600 transition-colors"
-                              >
-                                Remove
-                              </button>
-                              <div className="text-white text-xs text-center mt-1 truncate w-full">
-                                {file.name}
+                              )}
+
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-2 px-[5%]">
+                                  <button
+                                    type="button"
+                                    onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
+                                    className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-yellow text-cat-frappe-base px-1 py-0.5 rounded text-xs font-medium hover:bg-cat-frappe-peach transition-colors"
+                                  >
+                                    Insert
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
+                                    className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-red text-white px-1 py-0.5 rounded text-xs font-medium hover:bg-red-600 transition-colors"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
