@@ -6,12 +6,7 @@ import AboutSection from "./components/AboutSection";
 import Footer from "./components/Footer";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import {
-  IconClipboardCopy,
-  IconFileBroken,
-  IconSignature,
-  IconTableColumn,
   IconArrowLeft,
-  IconBrandTabler,
   IconSettings,
   IconUserBolt,
   IconTrash,
