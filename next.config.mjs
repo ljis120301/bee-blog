@@ -12,7 +12,10 @@ const nextConfig = {
         '192.168.1.173:3000',
         'bee.whoisjason.me',
         'localhost:8081',
-        '192.168.1.173:8081'
+        '192.168.1.173:8081',
+        '10.0.0.5:3000',
+        '10.0.0.5:8081',
+        '10.0.0.5'
       ],
     },
   },
@@ -24,7 +27,7 @@ const nextConfig = {
           { 
             key: 'Access-Control-Allow-Origin', 
             value: process.env.NODE_ENV === 'development' 
-              ? 'http://192.168.1.173:3000' 
+              ? 'http://10.0.0.5:3000' 
               : 'https://api.whoisjason.me'
           },
           { 

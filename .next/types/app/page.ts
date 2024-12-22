@@ -1,4 +1,4 @@
-// File: /DATA/Documents/bee-blog/bee-blog/app/page.js
+// File: /media/laura/New Volume1/PINAS/bee-blog/bee-blog/app/page.js
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
