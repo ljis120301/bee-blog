@@ -18,6 +18,10 @@
 
 # Misc
 .DS_Store
+._DS_Store
+._.gitignore
+._next.config.mjs
+._*
 *.pem
 .env
 .env*.local
