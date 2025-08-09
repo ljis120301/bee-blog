@@ -28,9 +28,6 @@ import ReactPaginate from "react-paginate";
 import FavoriteButton from './components/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 import LoadingSpinner from './components/LoadingSpinner';
-import BannerAd from './components/ads/BannerAd';
-import SidebarAd from './components/ads/SidebarAd';
-import SquareAd from './components/ads/SquareAd';
 
 export default function Home() {
   const router = useRouter();
@@ -234,15 +231,10 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Top Banner Ad */}
-                  <BannerAd className="mb-8" />
-
                   <section className="my-10">
                     <div className="flex flex-col xl:flex-row gap-8">
                       <div className="xl:w-1/5">
                         <InformationComponent />
-                        {/* Sidebar Ad */}
-                        <SidebarAd />
                       </div>
                       <div className="xl:w-3/5">
                         {isLoading ? (
@@ -306,15 +298,11 @@ export default function Home() {
                               activeClassName={"!border-cat-frappe-peach !text-cat-frappe-peach font-extrabold"}
                               renderOnZeroPageCount={null}
                             />
-                            {/* Mid-content Square Ad */}
-                            <SquareAd className="my-8" />
                           </>
                         )}
                       </div>
                       <div className="xl:w-1/5">
                         <MoreInformationComponent />
-                        {/* Another Sidebar Ad */}
-                        <SidebarAd />
                       </div>
                     </div>
                   </section>
