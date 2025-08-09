@@ -20,8 +20,21 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { IconSettings, IconSend } from "@tabler/icons-react";
+import { IconSettings, IconSend, IconTrash } from "@tabler/icons-react";
 import { FileUpload } from "@/components/ui/file-upload";
+import ConfirmationDialog from "../../../components/ConfirmationDialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
 
 const TipTapEditor = dynamic(() => import('@/components/editor/TipTapEditor'), {
   ssr: false,
@@ -53,6 +66,26 @@ export default function EditPost() {
   const [previewDevice, setPreviewDevice] = useState('desktop');
   const [seoAutoKeywords, setSeoAutoKeywords] = useState(true);
   const [postData, setPostData] = useState(null);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState(new Set());
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagBg, setNewTagBg] = useState('#ef9f76');
+  const [newTagFg, setNewTagFg] = useState('#303446');
+  const [selectedPreset, setSelectedPreset] = useState(0);
+  const [isDeleteTagDialogOpen, setIsDeleteTagDialogOpen] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState(null);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const TAG_COLOR_PRESETS = [
+    { name: 'Peach', bg: '#ef9f76', text: '#303446' },
+    { name: 'Yellow', bg: '#e5c890', text: '#303446' },
+    { name: 'Green', bg: '#a6d189', text: '#303446' },
+    { name: 'Mauve', bg: '#ca9ee6', text: '#303446' },
+    { name: 'Blue', bg: '#8caaee', text: '#303446' },
+    { name: 'Red', bg: '#e78284', text: '#303446' },
+    { name: 'Teal', bg: '#81c8be', text: '#303446' },
+    { name: 'Sky', bg: '#99d1db', text: '#303446' },
+    { name: 'Lavender', bg: '#babbf1', text: '#303446' },
+  ];
 
   useEffect(() => {
     const checkAuthorStatus = async () => {
@@ -97,7 +130,7 @@ export default function EditPost() {
   const fetchPostData = async () => {
     try {
       setIsLoading(true);
-      const record = await pb.collection('posts').getOne(params.id);
+      const record = await pb.collection('posts').getOne(params.id, { expand: 'tags' });
       setPostData(record);
       
       // Convert markdown content to HTML if needed (using same logic as blog post display)
@@ -115,6 +148,9 @@ export default function EditPost() {
       setSeoKeywords(Array.isArray(record.seo_keywords) ? record.seo_keywords.join(', ') : '');
       setIsSpanTwo(record.isSpanTwo || false);
       setUploadedImages(record.media || record.images || []);
+      // selected tags from record
+      const tagIds = Array.isArray(record.tags) ? record.tags : [];
+      setSelectedTagIds(new Set(tagIds));
       
       console.log('Original content:', record.content);
       console.log('Converted content for editor:', convertedContent);
@@ -148,6 +184,64 @@ export default function EditPost() {
 
     initializeMdParser();
   }, []);
+
+  // Load all tags for selection
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const tags = await pb.collection('tags').getFullList({ sort: 'name' });
+        if (mounted) setAvailableTags(tags);
+      } catch (e) {
+        console.warn('Tags not available (ensure schema exists):', e?.message || e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const toggleTag = (id) => {
+    setSelectedTagIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCreateTag = async () => {
+    const name = newTagName.trim();
+    if (!name) return;
+    try {
+      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
+      setAvailableTags(prev => [...prev, created]);
+      setSelectedTagIds(prev => new Set(prev).add(created.id));
+      setNewTagName('');
+    } catch (e) {
+      console.error('Tag create failed:', e);
+    }
+  };
+
+  const requestDeleteTag = (tag) => {
+    setTagToDelete(tag);
+    setIsDeleteTagDialogOpen(true);
+  };
+
+  const confirmDeleteTag = async () => {
+    if (!tagToDelete) return;
+    try {
+      await pb.collection('tags').delete(tagToDelete.id);
+      setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
+      setSelectedTagIds(prev => {
+        const next = new Set(prev);
+        next.delete(tagToDelete.id);
+        return next;
+      });
+    } catch (e) {
+      console.error('Delete tag failed:', e);
+    } finally {
+      setIsDeleteTagDialogOpen(false);
+      setTagToDelete(null);
+    }
+  };
 
   const estimateReadingTime = (content) => {
     const words = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(w => w.length > 0);
@@ -186,7 +280,8 @@ export default function EditPost() {
         seo_description: seoDescription || description,
         seo_keywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
         toc_enabled: false,
-        reading_time_minutes: estimateReadingTime(content)
+        reading_time_minutes: estimateReadingTime(content),
+        tags: Array.from(selectedTagIds)
       };
 
       console.log('Updating post with data:', data);
@@ -523,6 +618,98 @@ export default function EditPost() {
                           <Separator />
 
                           <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-lg font-semibold">Tags</h3>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingTags(v => !v)}
+                                className="text-xs rounded-full border px-2 py-1 bg-white dark:bg-gray-800"
+                              >
+                                {isEditingTags ? 'Done' : 'Edit tags'}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {availableTags.map(t => (
+                                <div key={t.id} className="relative inline-flex items-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleTag(t.id)}
+                                    className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
+                                    style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
+                                    title={`#${t.name}`}
+                                  >
+                                    #{t.name}
+                                  </button>
+                                  {isEditingTags && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                      className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                      title="Delete tag"
+                                    >
+                                      <IconTrash size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 grid grid-cols-1 gap-2">
+                              <div>
+                                <label className="block text-xs mb-1">New tag name</label>
+                                <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1">Color preset</label>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-[#F6EEE5] dark:bg-cat-frappe-base text-sm"
+                                    >
+                                      <span className="inline-block w-4 h-4 rounded-full border" style={{ backgroundColor: newTagBg, borderColor: `${newTagFg}22` }} />
+                                      {TAG_COLOR_PRESETS[selectedPreset]?.name || 'Choose color'}
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="w-56">
+                                    <DropdownMenuLabel>Theme presets</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuGroup>
+                                      {TAG_COLOR_PRESETS.map((p, idx) => (
+                                        <DropdownMenuItem key={p.name} onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}>
+                                          <span className="inline-block w-4 h-4 rounded-full border mr-2" style={{ backgroundColor: p.bg, borderColor: `${p.text}22` }} />
+                                          <span className="flex-1">{p.name}</span>
+                                          <span className="text-[10px] opacity-60">{p.bg}</span>
+                                        </DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuGroup>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuSub>
+                                      <DropdownMenuSubTrigger>Custom</DropdownMenuSubTrigger>
+                                      <DropdownMenuSubContent className="w-64 p-2">
+                                        <div className="space-y-2">
+                                          <div>
+                                            <label className="block text-xs mb-1">Background</label>
+                                            <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-gray-800" placeholder="#hex" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-xs mb-1">Text</label>
+                                            <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-gray-800" placeholder="#hex" />
+                                          </div>
+                                        </div>
+                                      </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                              <div>
+                                <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border bg-white dark:bg-gray-800 text-sm">
+                                  Create tag
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
                             <h3 className="text-lg font-semibold mb-4">File Upload</h3>
                             <FileUpload onChange={handleFileUploads} />
                             
@@ -598,6 +785,12 @@ export default function EditPost() {
           </div>
         )}
       </main>
+      <ConfirmationDialog
+        isOpen={isDeleteTagDialogOpen}
+        onClose={() => setIsDeleteTagDialogOpen(false)}
+        onConfirm={confirmDeleteTag}
+        message={`Delete the tag "${tagToDelete?.name ?? ''}"? This cannot be undone.`}
+      />
       <Footer />
     </>
   );

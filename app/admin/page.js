@@ -25,6 +25,8 @@ export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState('7d');
   const [posts, setPosts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [pendingComments, setPendingComments] = useState([]);
+  const [flags, setFlags] = useState([]);
 
   useEffect(() => {
     checkAdminStatusAndLoadData();
@@ -90,6 +92,25 @@ export default function AdminDashboard() {
       });
 
       setUsers(usersData.items);
+
+      // Comments moderation queue (pending or hidden)
+      try {
+        const pending = await pb.collection('comments').getList(1, 50, {
+          sort: '-created',
+          filter: 'status = "pending" || status = "hidden"',
+          expand: 'author,post',
+        });
+        setPendingComments(pending.items || []);
+      } catch {}
+
+      // Comment flags/reports
+      try {
+        const flagged = await pb.collection('comment_flags').getList(1, 100, {
+          sort: '-created',
+          expand: 'comment,user',
+        });
+        setFlags(flagged.items || []);
+      } catch {}
 
 
     } catch (error) {
@@ -161,6 +182,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const setCommentStatus = async (commentId, status) => {
+    try {
+      await pb.collection('comments').update(commentId, { status });
+      await loadDashboardData();
+    } catch (e) {
+      alert('Failed to update comment status');
+    }
+  };
+
+  const resolveFlag = async (flagId) => {
+    try {
+      await pb.collection('comment_flags').update(flagId, { resolved: true });
+      await loadDashboardData();
+    } catch (e) {
+      alert('Failed to resolve flag');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-yellow-1 dark:bg-cat-frappe-base flex items-center justify-center">
@@ -216,6 +255,85 @@ export default function AdminDashboard() {
                 <a href="/" className="text-cat-frappe-blue hover:text-cat-frappe-sapphire transition-colors duration-200 font-medium">← Back to Site</a>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Comments Moderation */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20 mb-8">
+          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Comments Moderation</h2>
+            <p className="text-sm text-cat-frappe-subtext0">Review and moderate pending/hidden comments.</p>
+          </div>
+          <div className="divide-y divide-cat-frappe-overlay0/20">
+            {pendingComments.length === 0 ? (
+              <div className="p-6 text-cat-frappe-subtext0">No comments pending moderation.</div>
+            ) : pendingComments.map((c) => (
+              <div key={c.id} className="p-6 flex flex-col gap-2">
+                <div className="text-sm text-cat-frappe-subtext0">
+                  <span className="font-medium text-cat-frappe-base dark:text-cat-frappe-text">{c.expand?.author?.username || c.expand?.author?.email}</span>
+                  <span className="ml-2">on post: {c.expand?.post?.title || c.post}</span>
+                  <span className="ml-2">{new Date(c.created).toLocaleString()}</span>
+                </div>
+                <div className="text-cat-frappe-base dark:text-cat-frappe-text whitespace-pre-wrap break-words">
+                  {c.content}
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <button className="px-3 py-1 rounded bg-cat-frappe-green/20 text-cat-frappe-green" onClick={() => setCommentStatus(c.id, 'published')}>Publish</button>
+                  <button className="px-3 py-1 rounded bg-cat-frappe-yellow/20 text-cat-frappe-yellow" onClick={() => setCommentStatus(c.id, 'hidden')}>Hide</button>
+                  <button className="px-3 py-1 rounded bg-cat-frappe-red/20 text-cat-frappe-red" onClick={() => setCommentStatus(c.id, 'deleted')}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Comment Reports */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20 mb-8">
+          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Comment Reports</h2>
+            <p className="text-sm text-cat-frappe-subtext0">User-submitted reports for moderation.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white dark:bg-cat-frappe-surface1">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Comment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Reporter</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Reason</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
+                {flags.length === 0 ? (
+                  <tr><td className="px-6 py-4 text-cat-frappe-subtext0" colSpan={6}>No reports.</td></tr>
+                ) : flags.map((f) => (
+                  <tr key={f.id}>
+                    <td className="px-6 py-4 text-sm text-cat-frappe-base dark:text-cat-frappe-text max-w-[400px]">
+                      {(f.expand?.comment?.content || '').slice(0, 200)}{(f.expand?.comment?.content || '').length > 200 ? '…' : ''}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {f.expand?.user?.username || f.expand?.user?.email || 'n/a'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {f.reason || '—'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-cat-frappe-subtext0">
+                      {new Date(f.created).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {f.resolved ? <span className="text-cat-frappe-green">Resolved</span> : <span className="text-cat-frappe-yellow">Open</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {!f.resolved && (
+                        <button className="px-3 py-1 rounded bg-cat-frappe-green/20 text-cat-frappe-green" onClick={() => resolveFlag(f.id)}>Mark Resolved</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 

@@ -20,8 +20,21 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { IconSettings, IconSend } from "@tabler/icons-react";
+import { IconSettings, IconSend, IconTrash } from "@tabler/icons-react";
 import { FileUpload } from "@/components/ui/file-upload";
+import ConfirmationDialog from "../../components/ConfirmationDialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
 
 
 const TipTapEditor = dynamic(() => import('@/components/editor/TipTapEditor'), {
@@ -51,6 +64,34 @@ export default function AuthorPortal() {
   const [notifications, setNotifications] = useState([]);
   const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [seoAutoKeywords, setSeoAutoKeywords] = useState(true);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState(new Set());
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagBg, setNewTagBg] = useState('#ef9f76');
+  const [newTagFg, setNewTagFg] = useState('#303446');
+  const TAG_COLOR_PRESETS = [
+    // Core theme tones
+    { name: 'Peach', bg: '#ef9f76', text: '#303446' },
+    { name: 'Yellow', bg: '#e5c890', text: '#303446' },
+    { name: 'Green', bg: '#a6d189', text: '#303446' },
+    { name: 'Mauve', bg: '#ca9ee6', text: '#303446' },
+    { name: 'Blue', bg: '#8caaee', text: '#303446' },
+    // Extended palette aligned with site theme
+    { name: 'Red', bg: '#e78284', text: '#303446' },
+    { name: 'Maroon', bg: '#ea999c', text: '#303446' },
+    { name: 'Pink', bg: '#f4b8e4', text: '#303446' },
+    { name: 'Sky', bg: '#99d1db', text: '#303446' },
+    { name: 'Teal', bg: '#81c8be', text: '#303446' },
+    { name: 'Sapphire', bg: '#85c1dc', text: '#303446' },
+    { name: 'Lavender', bg: '#babbf1', text: '#303446' },
+    { name: 'Rosewater', bg: '#f2d5cf', text: '#303446' },
+    { name: 'Flamingo', bg: '#eebebe', text: '#303446' },
+    { name: 'Overlay', bg: '#e6e9ef', text: '#303446' },
+  ];
+  const [selectedPreset, setSelectedPreset] = useState(0);
+  const [isDeleteTagDialogOpen, setIsDeleteTagDialogOpen] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState(null);
+  const [isEditingTags, setIsEditingTags] = useState(false);
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -101,6 +142,64 @@ export default function AuthorPortal() {
 
     initializeMdParser();
   }, []);
+
+  // Load existing tags
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const tags = await pb.collection('tags').getFullList({ sort: 'name' });
+        if (mounted) setAvailableTags(tags);
+      } catch (e) {
+        console.warn('Tags not available (create schema):', e?.message || e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const toggleTag = (id) => {
+    setSelectedTagIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCreateTag = async () => {
+    const name = newTagName.trim();
+    if (!name) return;
+    try {
+      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
+      setAvailableTags(prev => [...prev, created]);
+      setSelectedTagIds(prev => new Set(prev).add(created.id));
+      setNewTagName('');
+    } catch (e) {
+      console.error('Tag create failed:', e);
+    }
+  };
+
+  const requestDeleteTag = (tag) => {
+    setTagToDelete(tag);
+    setIsDeleteTagDialogOpen(true);
+  };
+
+  const confirmDeleteTag = async () => {
+    if (!tagToDelete) return;
+    try {
+      await pb.collection('tags').delete(tagToDelete.id);
+      setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
+      setSelectedTagIds(prev => {
+        const next = new Set(prev);
+        next.delete(tagToDelete.id);
+        return next;
+      });
+    } catch (e) {
+      console.error('Delete tag failed:', e);
+    } finally {
+      setIsDeleteTagDialogOpen(false);
+      setTagToDelete(null);
+    }
+  };
 
   const handleEditorChange = (html) => {
     setContent(html);
@@ -265,7 +364,8 @@ export default function AuthorPortal() {
         seo_description: seoDescription || description,
         seo_keywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
         toc_enabled: false,
-        reading_time_minutes: estimateReadingTime(content)
+        reading_time_minutes: estimateReadingTime(content),
+        tags: Array.from(selectedTagIds)
       };
 
       console.log('Creating post with data:', data);
@@ -488,6 +588,101 @@ export default function AuthorPortal() {
                               </label>
                               <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
                             </div>
+                            {/* Tags selection */}
+                            <div className="mt-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="block text-sm">Tags</label>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingTags(v => !v)}
+                                  className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
+                                >
+                                  {isEditingTags ? 'Done' : 'Edit tags'}
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {availableTags.map(t => (
+                                  <div key={t.id} className="relative inline-flex items-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleTag(t.id)}
+                                      className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
+                                      style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
+                                      title={`#${t.name}`}
+                                    >
+                                      #{t.name}
+                                    </button>
+                                    {isEditingTags && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                        className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                        title="Delete tag"
+                                      >
+                                        <IconTrash size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-3 grid grid-cols-1 gap-2">
+                                <div>
+                                  <label className="block text-xs mb-1">New tag name</label>
+                                  <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs mb-1">Color preset</label>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-[#F6EEE5] dark:bg-cat-frappe-base text-sm"
+                                      >
+                                        <span className="inline-block w-4 h-4 rounded-full border" style={{ backgroundColor: newTagBg, borderColor: `${newTagFg}22` }} />
+                                        {TAG_COLOR_PRESETS[selectedPreset]?.name || 'Choose color'}
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-56">
+                                      <DropdownMenuLabel>Theme presets</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuGroup>
+                                        {TAG_COLOR_PRESETS.map((p, idx) => (
+                                          <DropdownMenuItem
+                                            key={p.name}
+                                            onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}
+                                          >
+                                            <span className="inline-block w-4 h-4 rounded-full border mr-2" style={{ backgroundColor: p.bg, borderColor: `${p.text}22` }} />
+                                            <span className="flex-1">{p.name}</span>
+                                            <span className="text-[10px] opacity-60">{p.bg}</span>
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuGroup>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>Custom</DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent className="w-64 p-2">
+                                          <div className="space-y-2">
+                                            <div>
+                                              <label className="block text-xs mb-1">Background</label>
+                                              <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs mb-1">Text</label>
+                                              <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                            </div>
+                                          </div>
+                                        </DropdownMenuSubContent>
+                                      </DropdownMenuSub>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="sm:col-span-4">
+                                  <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-white/60 dark:bg-cat-frappe-surface0 text-sm">
+                                    Create tag
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <DialogFooter>
                             <DialogClose asChild>
@@ -650,6 +845,155 @@ export default function AuthorPortal() {
           {/* Mobile/Tablet: Tabs view */}
           <div className="xl:hidden mt-6">
             <div className="rounded-lg p-4 lg:p-6 bg-gray-300 dark:bg-cat-frappe-base shadow-lg">
+              {/* Mobile/Tablet visible Settings button */}
+              <div className="flex justify-end mb-3">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md text-cat-frappe-base dark:text-cat-frappe-text hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50"
+                    >
+                      Settings
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px] border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base text-cat-frappe-base dark:text-cat-frappe-text overflow-y-auto max-h-[90vh]">
+                    <DialogHeader>
+                      <DialogTitle>Post Settings</DialogTitle>
+                      <DialogDescription>Configure metadata and presentation for this article.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-2 pr-1 pb-4">
+                      <div>
+                        <label className="block text-sm mb-1">Title</label>
+                        <input
+                          value={title}
+                          onChange={(e)=>setTitle(e.target.value)}
+                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Summary</label>
+                        <textarea
+                          value={dek || description}
+                          onChange={(e)=>{ setDek(e.target.value); setDescription(e.target.value); }}
+                          rows={3}
+                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Slug</label>
+                        <input
+                          value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') : '')}
+                          onChange={() => {}}
+                          disabled
+                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Hero Image</label>
+                        <FileUpload onChange={(files)=>{ const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm mb-1">SEO Title</label>
+                          <input value={seoTitle} onChange={(e)=>setSeoTitle(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-1">SEO Description</label>
+                          <input value={seoDescription} onChange={(e)=>setSeoDescription(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                        </div>
+                        <div className="max-w-full">
+                          <label className="block text-sm mb-1">SEO Keywords</label>
+                          <input
+                            value={seoKeywords}
+                            onChange={(e)=>{ setSeoAutoKeywords(false); setSeoKeywords(e.target.value)} }
+                            placeholder="auto-generated unless overridden"
+                            className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0"
+                            disabled={seoAutoKeywords}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="flex items-center cursor-pointer">
+                          <input type="checkbox" checked={isSpanTwo} onChange={() => setIsSpanTwo(!isSpanTwo)} className="sr-only peer" />
+                          <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Span Two Columns</span>
+                        </label>
+                        <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
+                      </div>
+                      {/* Tags selection + creation (mobile/tablet) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-sm">Tags</label>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingTags(v => !v)}
+                            className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
+                          >
+                            {isEditingTags ? 'Done' : 'Edit tags'}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {availableTags.map(t => (
+                            <div key={t.id} className="relative inline-flex items-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleTag(t.id)}
+                                className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
+                                style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
+                              >
+                                #{t.name}
+                              </button>
+                              {isEditingTags && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                  className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                  title="Delete tag"
+                                >
+                                  <IconTrash size={14} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 gap-2">
+                          <div>
+                            <label className="block text-xs mb-1">New tag name</label>
+                            <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                          </div>
+                          <div>
+                            <label className="block text-xs mb-1">Color preset</label>
+                            <div className="flex flex-wrap gap-2">
+                              {TAG_COLOR_PRESETS.map((p, idx) => (
+                                <button
+                                  key={p.name}
+                                  type="button"
+                                  onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}
+                                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${selectedPreset===idx ? 'ring-2 ring-cat-frappe-yellow' : ''}`}
+                                  style={{ backgroundColor: p.bg, color: p.text, borderColor: `${p.text}22` }}
+                                  title={p.name}
+                                >
+                                  {p.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-white/60 dark:bg-cat-frappe-surface0 text-sm">
+                              Create tag
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <button type="button" className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md">Close</button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Tabs defaultValue="edit" className="w-full">
                 <TabsList className="mb-4">
                   <TabsTrigger value="edit">Editor</TabsTrigger>
@@ -731,6 +1075,12 @@ export default function AuthorPortal() {
       </main>
       <Notifications />
       <UploadProgress />
+      <ConfirmationDialog
+        isOpen={isDeleteTagDialogOpen}
+        onClose={() => setIsDeleteTagDialogOpen(false)}
+        onConfirm={confirmDeleteTag}
+        message={`Delete the tag "${tagToDelete?.name ?? ''}"? This cannot be undone.`}
+      />
       {/* Floating Publish FAB */}
       <button
         type="button"

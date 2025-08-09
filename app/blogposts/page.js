@@ -1,9 +1,22 @@
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import CodeSnippet from "../components/CodeSnippet";
-import Information from "../components/Information";
-import MoreInformation from "../components/MoreInformation";
+import Information from "../components/WelcomeSection";
+import TagAndEngagementCard from "../components/TagAndEngagementCard";
+import MostLikedCard from "../components/MostLikedCard";
+import UserFavoritesCard from "../components/UserFavoritesCard";
 import ScrollProgressBar from "../components/ScrollProgressBar";
+import { pb } from "@/lib/pocketbase";
+import BlogPostsList from "../components/BlogPostsList";
+import Link from "next/link";
+import { IconFileText, IconHome } from "@tabler/icons-react";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export const metadata = {
   title: 'Blog Posts',
@@ -19,54 +32,54 @@ export const metadata = {
   },
 };
 
-export default function Blog() {
+export default async function Blog() {
+  // Fetch a reasonable number of recent posts on the server for initial render
+  let posts = [];
+  try {
+    const result = await pb.collection("posts").getList(1, 50, { sort: "-created", expand: 'tags' });
+    posts = result?.items ?? [];
+  } catch (error) {
+    console.error("Error fetching posts list:", error);
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Metadata for this route is defined via the app router metadata API in parent layout */}
       <ScrollProgressBar />
       <Header />
       <main className="flex-grow pt-16 text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-8">
+        <div className="mt-6">
+          <Breadcrumb className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-[#F6EEE5]/70 dark:bg-cat-frappe-base/60 backdrop-blur-md ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
+            <BreadcrumbList className="text-[#4c4f69] dark:text-cat-frappe-subtext0 text-sm sm:text-base md:text-lg">
+              <BreadcrumbItem>
+                <BreadcrumbLink className="flex items-center hover:text-cat-frappe-peach" asChild>
+                  <Link href="/">
+                    <IconHome size={16} className="mr-1" />
+                    Home
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">
+                  <span className="inline-flex items-center"><IconFileText size={16} className="mr-1" /> Blog Posts</span>
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-6">
           <aside className="lg:col-span-1">
-            <Information />
+            <div className="space-y-4">
+              <TagAndEngagementCard postId={null} tagIds={[]} />
+              <UserFavoritesCard limit={5} />
+            </div>
           </aside>
           <div className="lg:col-span-2">
-            <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-              <div className="text-center rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
-                <h1 className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-1/2 after:-translate-x-1/2 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-                  an introduction: 🌈
-                </h1>
-                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-8 text-xl">
-                  Hello! Welcome to my blog website! I will be using this site to keep
-                  the world updated on what projects I am working on.
-                </p>
-                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">
-                  I intend to use this site to also inform the world of any changes I
-                  made in software to get it working or other tips and tricks
-                </p>
-                <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">
-                  That is why I implemented a cool way of displaying code on my
-                  website!
-                </p>
-                <article className="mt-8 text-left">
-                  <div className="text-cat-frappe-base dark:text-cat-frappe-yellow text-3xl font-bold">
-                    here's a cute code snippet:
-                  </div>
-                  <p className="text-[#4c4f69] dark:text-cat-frappe-subtext0 mt-2 text-xl">
-                    This is for me to talk about the code I wrote
-                  </p>
-                  <CodeSnippet
-                    title={"a title for the code snippet"}
-                    code={`def cute_function():
-                       print("Hello, cute world!") 
-                       return "🌈🦄✨"`}
-                  />
-                </article>
-              </div>
-            </div>
+            <BlogPostsList initialPosts={posts} />
           </div>
           <aside className="lg:col-span-1">
-            <MoreInformation />
+            <MostLikedCard limit={5} />
           </aside>
         </div>
       </main>
