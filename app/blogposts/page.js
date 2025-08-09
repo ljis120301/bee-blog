@@ -5,6 +5,20 @@ import Information from "../components/Information";
 import MoreInformation from "../components/MoreInformation";
 import ScrollProgressBar from "../components/ScrollProgressBar";
 
+export const metadata = {
+  title: 'Blog Posts',
+  description: 'Explore our latest coding insights, tech trends, and programming tutorials. Discover expert tips, best practices, and in-depth guides for web development, software engineering, and emerging technologies.',
+  keywords: 'blog posts, coding tutorials, programming guides, tech articles, web development, software engineering, javascript tutorials, react guides, coding tips, developer resources',
+  openGraph: {
+    title: 'Blog Posts | BeeBlog',
+    description: 'Explore our latest coding insights, tech trends, and programming tutorials.',
+    url: 'https://bee.whoisjason.me/blogposts',
+  },
+  alternates: {
+    canonical: 'https://bee.whoisjason.me/blogposts',
+  },
+};
+
 export default function Blog() {
   return (
     <div className="flex flex-col min-h-screen">

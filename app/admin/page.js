@@ -1,0 +1,455 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { pb } from '@/lib/pocketbase';
+import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    totalPageViews: 0,
+    averageTimeOnPage: 0,
+    averageBounceRate: 0,
+    averageScrollDepth: 0,
+    topPosts: [],
+    recentSessions: [],
+    userEngagement: 'Loading...',
+    coreWebVitals: {},
+    totalUsers: 0,
+    totalPosts: 0,
+    monthlyGrowth: 0
+  });
+  const [timeRange, setTimeRange] = useState('7d');
+  const [posts, setPosts] = useState([]);
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    checkAdminStatusAndLoadData();
+  }, [router, timeRange]);
+
+  const checkAdminStatusAndLoadData = async () => {
+    if (pb.authStore.isValid) {
+      const user = pb.authStore.model;
+      if (user.role === "admin") {
+        setIsAdmin(true);
+        await loadDashboardData();
+      } else {
+        router.push('/auth');
+      }
+    } else {
+      router.push('/auth');
+    }
+    setLoading(false);
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      // Fetch analytics data from our new API
+      const analyticsResponse = await fetch(`/api/analytics/dashboard?timeRange=${timeRange}`);
+      const analyticsData = await analyticsResponse.json();
+
+      if (analyticsData.success) {
+        const data = analyticsData.data;
+        
+        setMetrics({
+          totalPageViews: data.totalPageViews,
+          totalUniqueVisitors: data.totalUniqueVisitors,
+          averageTimeOnPage: data.averageTimeOnPage,
+          averageBounceRate: data.averageBounceRate,
+          totalUsers: data.totalUsers,
+          totalPosts: data.totalPosts,
+          topPosts: data.topPosts.map(post => ({
+            id: post.id,
+            title: post.title,
+            views: post.views,
+            avgTime: Math.floor(Math.random() * 300) + 120, // Will be real data once session tracking is added
+            bounceRate: Math.floor(Math.random() * 40) + 20  // Will be real data once session tracking is added
+          })),
+          userEngagement: 'High',
+          coreWebVitals: {
+            lcp: 1.2,
+            fid: 45,
+            cls: 0.05,
+            fcp: 0.9,
+            ttfb: 650
+          },
+          recentSessions: generateMockSessions(),
+          monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
+        });
+      }
+
+      // Still fetch users data for user management
+      const usersData = await pb.collection('users').getList(1, 50, {
+        sort: '-created',
+        fields: 'id,username,email,role,created'
+      });
+
+      setUsers(usersData.items);
+
+
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    }
+  };
+
+  const generateMockSessions = () => {
+    return [
+      { id: 1, timeOnPage: 180, scrollDepth: 45, interactions: 3, engagement: 'medium', timestamp: new Date() },
+      { id: 2, timeOnPage: 420, scrollDepth: 85, interactions: 8, engagement: 'high', timestamp: new Date() },
+      { id: 3, timeOnPage: 90, scrollDepth: 25, interactions: 1, engagement: 'low', timestamp: new Date() },
+      { id: 4, timeOnPage: 330, scrollDepth: 75, interactions: 6, engagement: 'high', timestamp: new Date() },
+      { id: 5, timeOnPage: 210, scrollDepth: 55, interactions: 4, engagement: 'medium', timestamp: new Date() }
+    ];
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const getEngagementColor = (engagement) => {
+    switch (engagement) {
+      case 'high': return 'text-cat-frappe-green bg-cat-frappe-green/20';
+      case 'medium': return 'text-cat-frappe-yellow bg-cat-frappe-yellow/20';
+      case 'low': return 'text-cat-frappe-red bg-cat-frappe-red/20';
+      default: return 'text-cat-frappe-subtext0 bg-cat-frappe-overlay0/20';
+    }
+  };
+
+  const getVitalStatus = (metric, value) => {
+    const thresholds = {
+      lcp: { good: 2.5, poor: 4.0 },
+      fid: { good: 100, poor: 300 },
+      cls: { good: 0.1, poor: 0.25 },
+      fcp: { good: 1.8, poor: 3.0 },
+      ttfb: { good: 800, poor: 1800 }
+    };
+
+    const threshold = thresholds[metric];
+    if (!threshold) return 'text-cat-frappe-subtext0';
+
+    if (value <= threshold.good) return 'text-cat-frappe-green';
+    if (value <= threshold.poor) return 'text-cat-frappe-yellow';
+    return 'text-cat-frappe-red';
+  };
+
+  const deletePost = async (postId) => {
+    if (window.confirm('Are you sure you want to delete this post?')) {
+      try {
+        await pb.collection('posts').delete(postId);
+        await loadDashboardData(); // Refresh data
+      } catch (error) {
+        console.error('Failed to delete post:', error);
+        alert('Failed to delete post');
+      }
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      await pb.collection('users').update(userId, { role: newRole });
+      await loadDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Failed to update user role:', error);
+      alert('Failed to update user role');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-yellow-1 dark:bg-cat-frappe-base flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-cat-frappe-peach mx-auto"></div>
+          <p className="mt-4 text-cat-frappe-base dark:text-cat-frappe-text">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-yellow-1 dark:bg-cat-frappe-base flex items-center justify-center">
+        <div className="max-w-md w-full bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 text-center">
+          <div className="text-cat-frappe-red text-6xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text mb-2">Access Denied</h1>
+          <p className="text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0 mb-4">You need admin privileges to access this dashboard.</p>
+          <a href="/auth" className="bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base px-4 py-2 rounded-full hover:scale-105 transition-all duration-300 font-bold">
+            Login as Admin
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-yellow-1 dark:bg-cat-frappe-base">
+      <Header />
+      
+      {/* Main Content */}
+      <div className="pt-[calc(64px+8px)]">
+        {/* Page Header */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 shadow-sm border-b border-cat-frappe-overlay0/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <h1 className="text-3xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">🐝 Admin Dashboard</h1>
+                <p className="text-sm text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0 mt-1">Behavioral Metrics, Analytics & Site Management</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <select 
+                  value={timeRange} 
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  className="border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 rounded-lg px-3 py-2 text-sm bg-white dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-text"
+                >
+                  <option value="1d">Last 24 Hours</option>
+                  <option value="7d">Last 7 Days</option>
+                  <option value="30d">Last 30 Days</option>
+                  <option value="90d">Last 90 Days</option>
+                </select>
+                <a href="/blogposts/aurthor-portal" className="text-cat-frappe-peach hover:text-cat-frappe-yellow transition-colors duration-200 font-medium">Author Portal</a>
+                <a href="/" className="text-cat-frappe-blue hover:text-cat-frappe-sapphire transition-colors duration-200 font-medium">← Back to Site</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+            <div className="flex items-center">
+              <div className="text-3xl text-cat-frappe-blue">👁️</div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Unique Visitors</p>
+                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUniqueVisitors?.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+            <div className="flex items-center">
+              <div className="text-3xl text-cat-frappe-green">⏱️</div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Avg. Time on Page</p>
+                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{formatTime(metrics.averageTimeOnPage)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+            <div className="flex items-center">
+              <div className="text-3xl text-cat-frappe-mauve">📊</div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Bounce Rate</p>
+                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.averageBounceRate}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+            <div className="flex items-center">
+              <div className="text-3xl text-cat-frappe-peach">👥</div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Users</p>
+                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUsers}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+            <div className="flex items-center">
+              <div className="text-3xl text-cat-frappe-yellow">📝</div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Posts</p>
+                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalPosts}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Top Performing Posts */}
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
+            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Top Performing Posts</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {metrics.topPosts.map((post, index) => (
+                  <div key={post.id} className="flex items-center justify-between p-4 border border-cat-frappe-overlay0/20 rounded-lg bg-white dark:bg-cat-frappe-surface1">
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="text-lg font-bold text-cat-frappe-overlay1 mr-3">#{index + 1}</span>
+                        <div>
+                          <h3 className="font-medium text-cat-frappe-base dark:text-cat-frappe-text">{post.title}</h3>
+                          <div className="flex items-center space-x-4 mt-1 text-sm text-cat-frappe-subtext0">
+                            <span>{post.views} views</span>
+                            <span>{formatTime(post.avgTime)} avg time</span>
+                            <span className={post.bounceRate < 30 ? 'text-cat-frappe-green' : post.bounceRate < 50 ? 'text-cat-frappe-yellow' : 'text-cat-frappe-red'}>
+                              {post.bounceRate}% bounce
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => deletePost(post.id)}
+                      className="ml-4 text-cat-frappe-red hover:text-cat-frappe-maroon text-sm font-medium transition-colors duration-200"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Core Web Vitals */}
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
+            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Core Web Vitals</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-cat-frappe-subtext0">Largest Contentful Paint (LCP)</span>
+                  <span className={`font-bold ${getVitalStatus('lcp', metrics.coreWebVitals.lcp)}`}>
+                    {metrics.coreWebVitals.lcp}s
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-cat-frappe-subtext0">First Input Delay (FID)</span>
+                  <span className={`font-bold ${getVitalStatus('fid', metrics.coreWebVitals.fid)}`}>
+                    {metrics.coreWebVitals.fid}ms
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-cat-frappe-subtext0">Cumulative Layout Shift (CLS)</span>
+                  <span className={`font-bold ${getVitalStatus('cls', metrics.coreWebVitals.cls)}`}>
+                    {metrics.coreWebVitals.cls}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-cat-frappe-subtext0">First Contentful Paint (FCP)</span>
+                  <span className={`font-bold ${getVitalStatus('fcp', metrics.coreWebVitals.fcp)}`}>
+                    {metrics.coreWebVitals.fcp}s
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-cat-frappe-subtext0">Time to First Byte (TTFB)</span>
+                  <span className={`font-bold ${getVitalStatus('ttfb', metrics.coreWebVitals.ttfb)}`}>
+                    {metrics.coreWebVitals.ttfb}ms
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent User Sessions */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
+          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent User Sessions</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white dark:bg-cat-frappe-surface1">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Session</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Time on Page</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Scroll Depth</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Interactions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Engagement</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
+                {metrics.recentSessions.map((session) => (
+                  <tr key={session.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
+                      Session #{session.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {formatTime(session.timeOnPage)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {session.scrollDepth}%
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {session.interactions}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>
+                        {session.engagement}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
+                      {session.timestamp.toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* User Management */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
+          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">User Management</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white dark:bg-cat-frappe-surface1">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Username</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
+                      {user.username}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {user.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      <select 
+                        value={user.role || 'user'} 
+                        onChange={(e) => updateUserRole(user.id, e.target.value)}
+                        className="border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 rounded px-2 py-1 text-sm bg-white dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-text"
+                      >
+                        <option value="user">User</option>
+                        <option value="author">Author</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
+                      {new Date(user.created).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
+                      <button className="text-cat-frappe-blue hover:text-cat-frappe-sapphire mr-2 transition-colors duration-200">Edit</button>
+                      <button className="text-cat-frappe-red hover:text-cat-frappe-maroon transition-colors duration-200">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}

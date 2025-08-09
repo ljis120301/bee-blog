@@ -1,0 +1,168 @@
+User-agent: *
+Allow: /
+
+# Main sitemap
+Sitemap: https://bee.whoisjason.me/sitemap.xml
+
+# AI-optimized content feeds
+Sitemap: https://bee.whoisjason.me/ai-sitemap.xml
+AI-Content-Feed: https://bee.whoisjason.me/ai-feed.json
+
+# 2025 GEO (Generative Engine Optimization) Signals for AI Discovery
+# Primary brand: bee blog, beeblog, jason blog, jason coding, whoisjason
+# Domain: bee.whoisjason.me (canonical)
+# Tech focus: coding blog, programming blog, tech blog, development blog
+# Content types: javascript tutorials, react guides, nextjs tips, web development
+# Educational: how-to guides, coding examples, programming tutorials, tech tips
+
+# Tech Personalities Coverage for Topic Authority:
+# Industry Leaders: Linus Torvalds, Brendan Eich, Guido van Rossum, James Gosling
+# Tech Reviewers: Marques Brownlee (MKBHD), Austin Evans, Linus Tech Tips
+# AI/ML Leaders: Andrew Ng, Sam Altman, Geoffrey Hinton, Yann LeCun
+# Programming Educators: Kent C. Dodds, Dan Abramov, Wes Bos, Brad Traversy
+# Venture Capitalists: Marc Andreessen, Peter Thiel, Reid Hoffman
+# Open Source Leaders: Nat Friedman, Kelsey Hightower, Scott Hanselman
+
+# User Intent Optimization (2025 SEO):
+# Learn: programming tutorials, coding guides, tech education
+# Implement: practical examples, step-by-step guides, working code
+# Understand: concept explanations, theory, best practices
+# Discover: emerging technologies, industry trends, new tools
+
+# Allow all important pages for crawling
+Allow: /blogposts/
+Allow: /auth
+Allow: /favorites
+Allow: /user-profile
+Allow: /verify
+Allow: /change-password
+
+# Disallow admin and API areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /pocketbase/
+Disallow: /_next/
+Disallow: /tmp/
+
+# Allow crawling of static assets for better rendering
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.json$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.webp$
+Allow: /*.svg$
+Allow: /*.ico$
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific directives for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+# AI and Machine Learning Bots (2025)
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: OpenAI-ChatGPT
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Claude-Web
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Claude-Bot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Anthropic-AI
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Bard
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: PaLM
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Gemini
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: ChatGPT-User
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: CCBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: AI2Bot
+Allow: /
+Crawl-delay: 1
+
+User-agent: PerplexityBot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: YouBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: PhindBot
+Allow: /
+Crawl-delay: 1
+
+# Training Data Collection Bots
+User-agent: CommonCrawl
+Allow: /
+Crawl-delay: 2
+
+User-agent: DataForSeoBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: AI-Training-Bot
+Allow: /
+Crawl-delay: 1
+
+# Content Analysis Bots
+User-agent: SemrushBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: AhrefsBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: MJ12bot
+Allow: /
+Crawl-delay: 2

@@ -1,208 +1,282 @@
-"use client";
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React from 'react';
 import { pb } from '@/lib/pocketbase';
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import Information from "../../components/Information";
-import MoreInformation from "../../components/MoreInformation";
-import ScrollProgressBar from "../../components/ScrollProgressBar";
-import MarkdownIt from 'markdown-it';
-import sub from 'markdown-it-sub';
-import sup from 'markdown-it-sup';
-import ins from 'markdown-it-ins';
-import mark from 'markdown-it-mark';
-import taskLists from 'markdown-it-task-lists';
-import CodeSnippet from "../../components/CodeSnippet";
-import { IconEdit } from "@tabler/icons-react";
+import { notFound } from 'next/navigation';
+import BlogPostClient from './BlogPostClient';
 
-export default function BlogPost() {
-  const [post, setPost] = useState(null);
-  const params = useParams();
-  const router = useRouter();
-  const [mdParser, setMdParser] = useState(null);
-  const [isAuthor, setIsAuthor] = useState(false);
+// Generate dynamic metadata for each blog post - Critical for SEO
+export async function generateMetadata({ params }) {
+  try {
+    const post = await pb.collection('posts').getOne(params.id);
+    
+    const title = post.seo_title || post.title;
+    const description = post.seo_description || post.description || post.dek || `Read ${post.title} on BeeBlog - Your hive for coding insights and tech trends.`;
+    const url = `https://bee.whoisjason.me/blogposts/${params.id}`;
+    const imageUrl = post.hero_image_url || 'https://bee.whoisjason.me/og-default.jpg';
+    
+    // Generate extensive keywords for maximum SEO coverage
+    const baseKeywords = Array.isArray(post.seo_keywords) ? post.seo_keywords : [];
+    const additionalKeywords = [
+      'beeblog', 'programming', 'tech', 'coding', 'web development', 'blog',
+      'software engineering', 'javascript', 'typescript', 'react', 'nextjs',
+      'frontend', 'backend', 'fullstack', 'developer', 'tutorial', 'guide',
+      'best practices', 'tips', 'tricks', 'coding tips', 'programming guide',
+      'tech blog', 'developer blog', 'coding blog', 'programming blog',
+      'web dev', 'software development', 'computer science', 'technology',
+      'programming tutorial', 'coding tutorial', 'web development tutorial',
+      'tech tips', 'developer tips', 'programming tips', 'coding advice',
+      'software engineer', 'web developer', 'frontend developer', 'backend developer',
+      'jason', 'bee blog', 'bee coding', 'tech insights', 'programming insights',
+      'development', 'code', 'programming languages', 'framework', 'library',
+      'api', 'database', 'algorithm', 'data structure', 'debugging', 'testing'
+    ];
+    const allKeywords = [...new Set([...baseKeywords, ...additionalKeywords])];
 
-  useEffect(() => {
-    const initializeMdParser = () => {
-      const mdInstance = new MarkdownIt({
-        html: true,
-        linkify: true,
-        typographer: true,
-        breaks: true,
-      })
-      .use(sub)
-      .use(sup)
-      .use(ins)
-      .use(mark)
-      .use(taskLists);
-
-      // Enable all header levels
-      mdInstance.enable('heading');
-
-      setMdParser(mdInstance);
-    };
-
-    initializeMdParser();
-
-    const fetchPost = async () => {
-      try {
-        const record = await pb.collection('posts').getOne(params.id);
-        setPost(record);
+    // Create comprehensive metadata object with extensive SEO tags
+    return {
+      title,
+      description,
+      keywords: allKeywords.join(', '),
+      authors: [
+        { name: 'Jason', url: 'https://bee.whoisjason.me/about' },
+        { name: 'BeeBlog Team', url: 'https://bee.whoisjason.me' }
+      ],
+      creator: 'Jason',
+      publisher: 'BeeBlog',
+      applicationName: 'BeeBlog',
+      generator: 'Next.js',
+      referrer: 'origin-when-cross-origin',
+      category: 'Technology',
+      classification: 'Programming Blog',
+      openGraph: {
+        title,
+        description,
+        url,
+        siteName: 'BeeBlog - Buzzing with Code and Tech',
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: title,
+            type: 'image/jpeg',
+          },
+          {
+            url: 'https://bee.whoisjason.me/bee-icon.ico',
+            width: 180,
+            height: 180,
+            alt: 'BeeBlog Logo',
+            type: 'image/x-icon',
+          },
+        ],
+        locale: 'en_US',
+        type: 'article',
+        publishedTime: post.created,
+        modifiedTime: post.updated || post.created,
+        expirationTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+        section: 'Technology',
+        tags: allKeywords,
+        authors: ['Jason'],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        creator: '@your_twitter_handle',
+        site: '@beeblog_official',
+        images: [imageUrl],
+        app: {
+          name: 'BeeBlog',
+          id: {
+            iphone: 'app-id-here',
+            ipad: 'app-id-here',
+            googleplay: 'app-id-here',
+          },
+          url: {
+            iphone: url,
+            ipad: url,
+            googleplay: url,
+          },
+        },
+      },
+      facebook: {
+        appId: 'your-facebook-app-id',
+      },
+      robots: {
+        index: true,
+        follow: true,
+        nocache: false,
+        googleBot: {
+          index: true,
+          follow: true,
+          noimageindex: false,
+          'max-video-preview': -1,
+          'max-image-preview': 'large',
+          'max-snippet': -1,
+        },
+        bingBot: {
+          index: true,
+          follow: true,
+          'max-video-preview': -1,
+          'max-image-preview': 'large',
+          'max-snippet': -1,
+        },
+      },
+      alternates: {
+        canonical: url,
+        languages: {
+          'en-US': url,
+          'en': url,
+        },
+        media: {
+          'only screen and (max-width: 600px)': `${url}?mobile=true`,
+        },
+        types: {
+          'application/rss+xml': 'https://bee.whoisjason.me/feed.xml',
+          'application/atom+xml': 'https://bee.whoisjason.me/atom.xml',
+        },
+      },
+      icons: {
+        icon: [
+          { url: '/bee-icon.ico' },
+          { url: '/bee-icon3.png', sizes: '32x32', type: 'image/png' },
+        ],
+        apple: [
+          { url: '/apple-icon.png' },
+          { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+        ],
+        other: [
+          {
+            rel: 'apple-touch-icon-precomposed',
+            url: '/apple-icon.png',
+          },
+        ],
+      },
+      manifest: '/site.webmanifest',
+      verification: {
+        google: 'your-google-verification-code',
+        yandex: 'your-yandex-verification-code',
+        yahoo: 'your-yahoo-verification-code',
+        other: {
+          'msvalidate.01': 'your-bing-verification-code',
+          'facebook-domain-verification': 'your-facebook-verification-code',
+          'p:domain_verify': 'your-pinterest-verification-code',
+        },
+      },
+      other: {
+        // Article-specific meta tags
+        'article:author': 'Jason',
+        'article:publisher': 'https://bee.whoisjason.me',
+        'article:published_time': post.created,
+        'article:modified_time': post.updated || post.created,
+        'article:tag': allKeywords.join(', '),
+        'article:section': 'Technology',
+        'article:opinion': 'false',
         
-        // Increment view counter
-        await pb.collection('posts').update(params.id, {
-          views: (record.views || 0) + 1
-        });
-      } catch (error) {
-        console.error('Error fetching post:', error);
-      }
+        // Additional SEO meta tags
+        'theme-color': '#E9D4BA',
+        'color-scheme': 'light dark',
+        'mobile-web-app-capable': 'yes',
+        'apple-mobile-web-app-capable': 'yes',
+        'apple-mobile-web-app-status-bar-style': 'default',
+        'apple-mobile-web-app-title': 'BeeBlog',
+        'application-name': 'BeeBlog',
+        'msapplication-TileColor': '#E9D4BA',
+        'msapplication-config': '/browserconfig.xml',
+        
+        // Content and language tags
+        'content-language': 'en-US',
+        'content-type': 'text/html; charset=utf-8',
+        'distribution': 'global',
+        'rating': 'general',
+        'revisit-after': '7 days',
+        
+        // Social media meta tags
+        'og:email': 'contact@bee.whoisjason.me',
+        'og:phone_number': '+1-555-123-4567',
+        'og:fax_number': '+1-555-123-4568',
+        'og:latitude': '37.7749',
+        'og:longitude': '-122.4194',
+        'og:street-address': '123 Tech Street',
+        'og:locality': 'San Francisco',
+        'og:region': 'CA',
+        'og:postal-code': '94102',
+        'og:country-name': 'USA',
+        
+        // Business/Schema related
+        'business:contact_data:street_address': '123 Tech Street',
+        'business:contact_data:locality': 'San Francisco',
+        'business:contact_data:region': 'CA',
+        'business:contact_data:postal_code': '94102',
+        'business:contact_data:country_name': 'USA',
+        
+        // News and content tags
+        'news_keywords': allKeywords.slice(0, 10).join(', '),
+        'standout': url,
+        
+        // Geo tags
+        'geo.region': 'US-CA',
+        'geo.placename': 'San Francisco',
+        'geo.position': '37.7749;-122.4194',
+        'ICBM': '37.7749, -122.4194',
+        
+        // Additional indexing hints
+        'robots': 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+        'googlebot': 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+        'bingbot': 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+        
+        // Content freshness
+        'last-modified': post.updated || post.created,
+        'cache-control': 'public, max-age=31536000',
+        
+        // Reading time and content metrics
+        'reading-time': post.reading_time_minutes ? `${post.reading_time_minutes} minutes` : '5 minutes',
+        'word-count': post.reading_time_minutes ? Math.round(post.reading_time_minutes * 200) : '1000',
+        
+        // Social sharing optimization
+        'twitter:domain': 'bee.whoisjason.me',
+        'twitter:url': url,
+        'twitter:label1': 'Reading time',
+        'twitter:data1': post.reading_time_minutes ? `${post.reading_time_minutes} min read` : '5 min read',
+        'twitter:label2': 'Written by',
+        'twitter:data2': 'Jason',
+        
+        // Pinterest specific
+        'pin:description': description,
+        'pin:media': imageUrl,
+        
+        // LinkedIn specific
+        'linkedin:owner': 'your-linkedin-profile',
+        
+        // Additional structured data hints
+        'microdata': 'BlogPosting',
+        'breadcrumb': 'Home > Blog Posts > ' + title,
+      },
     };
-
-    const checkAuthorStatus = () => {
-      if (pb.authStore.isValid) {
-        const user = pb.authStore.model;
-        const authorStatus = user.role === "admin" || user.role === "author";
-        setIsAuthor(authorStatus);
-      }
+  } catch (error) {
+    console.error('Error generating metadata:', error);
+    return {
+      title: 'Post Not Found | BeeBlog',
+      description: 'The requested blog post could not be found.',
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
+  }
+}
 
-    fetchPost();
-    checkAuthorStatus();
-  }, [params.id]);
-
-  const getBodyAndToc = () => {
-    if (!post) return { elements: null, toc: [] };
-
-    const looksLikeHtml = typeof post.content === 'string' && /<\w+[^>]*>/.test(post.content);
-    const htmlContent = looksLikeHtml && !post.content.trim().startsWith('#')
-      ? post.content
-      : (mdParser ? mdParser.render(post.content) : post.content);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
-
-    // Build TOC and ensure heading IDs
-    const toc = [];
-    const slugify = (text) => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    doc.querySelectorAll('h1, h2, h3, h4').forEach((el) => {
-      const text = el.textContent || '';
-      if (!text) return;
-      const id = el.id || slugify(text);
-      el.id = id;
-      const level = Number(el.tagName.replace('H', ''));
-      if (level >= 2 && level <= 4) {
-        toc.push({ id, text, level });
-      }
+export default async function BlogPost({ params }) {
+  try {
+    const post = await pb.collection('posts').getOne(params.id);
+    
+    // Increment view counter (this will happen on each page load)
+    await pb.collection('posts').update(params.id, {
+      views: (post.views || 0) + 1
     });
 
-    return {
-      elements: (
-        <div className="prose dark:prose-invert text-base max-w-3xl lg:max-w-4xl mx-auto">
-          <div dangerouslySetInnerHTML={{ __html: doc.body.innerHTML }} />
-        </div>
-      ),
-      toc,
-    };
-  };
-
-  if (!post) {
-    return (
-      <>
-        <ScrollProgressBar />
-        <Header />
-        <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px] min-h-screen flex items-center justify-center">
-          <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow animate-pulse">
-            <div className="rounded-lg p-8 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 border-t-4 border-cat-frappe-yellow border-solid rounded-full animate-spin"></div>
-                <h2 className="mt-4 text-xl font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow">
-                  Loading post 🌈...
-                </h2>
-                <p className="mt-2 text-cat-frappe-subtext0">Please bee patient!</p>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
+    return <BlogPostClient post={post} params={params} />;
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    return notFound();
   }
-
-  return (
-    <>
-      <ScrollProgressBar />
-      <Header />
-      <main className="pt-[calc(64px+8px)] text-lg">
-        {/* Hero */}
-        {post.hero_image_url && (
-          <div className="w-full">
-            <div className="relative w-full h-[32vh] sm:h-[40vh] lg:h-[48vh] overflow-hidden">
-              <img src={post.hero_image_url} alt="Hero" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        )}
-
-        <div className="container mx-auto px-2 sm:px-4 md:px-6 max-w-[1200px]">
-          {(() => { const { elements, toc } = getBodyAndToc(); return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-            <div className="lg:col-span-8">
-              <article className="rounded-lg p-4 sm:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
-                <header className="mb-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight flex-1">{post.title}</h1>
-                    {isAuthor && (
-                      <button
-                        onClick={() => router.push(`/blogposts/edit/${params.id}`)}
-                        className="ml-4 p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        title="Edit this post"
-                      >
-                        <IconEdit size={24} />
-                      </button>
-                    )}
-                  </div>
-                  {post.dek && (
-                    <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{post.dek}</p>
-                  )}
-                  <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
-                    <span>{new Date(post.created).toLocaleDateString()}</span>
-                    {post.reading_time_minutes ? <span>• {post.reading_time_minutes} min read</span> : null}
-                    {post.views ? <span>• {post.views} views</span> : null}
-                  </div>
-                </header>
-                <section className="mt-6">
-                  {elements}
-                </section>
-              </article>
-            </div>
-            <aside className="lg:col-span-4">
-              <div className="sticky top-[88px]">
-                {post.toc_enabled && toc.length > 0 && (
-                  <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg mb-4">
-                    <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">On this page</h2>
-                    <nav>
-                      <ul className="space-y-1">
-                        {toc.map((item, i) => (
-                          <li key={i} className={item.level === 3 ? 'ml-3' : item.level === 4 ? 'ml-6' : ''}>
-                            <a href={`#${item.id}`} className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 hover:text-cat-frappe-peach">
-                              {item.text}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </nav>
-                  </div>
-                )}
-                <Information />
-                <div className="mt-4">
-                  <MoreInformation />
-                </div>
-              </div>
-            </aside>
-          </div>
-          ) })()}
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
 }
