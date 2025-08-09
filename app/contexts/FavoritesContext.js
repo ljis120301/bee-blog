@@ -20,10 +20,12 @@ export const FavoritesProvider = ({ children }) => {
 
     try {
       const userId = pb.authStore.model.id;
-      const resultList = await pb.collection('favorites').getList(1, 50, {
-        filter: `user="${userId}"`,
-        expand: 'posts',
-      });
+      const resultList = await pb.collection('favorites').getList(
+        1,
+        50,
+        { filter: `user="${userId}"`, expand: 'posts' },
+        { $autoCancel: false }
+      );
       setFavorites(resultList.items);
     } catch (error) {
       console.error("Error fetching favorites:", error);

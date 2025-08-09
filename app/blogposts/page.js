@@ -1,4 +1,3 @@
-import Head from "next/head";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import CodeSnippet from "../components/CodeSnippet";
@@ -9,13 +8,7 @@ import ScrollProgressBar from "../components/ScrollProgressBar";
 export default function Blog() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Head>
-        <title>Cute Website</title>
-        <meta
-          name="description"
-          content="A cute website built with Next.js and TailwindCSS"
-        />
-      </Head>
+      {/* Metadata for this route is defined via the app router metadata API in parent layout */}
       <ScrollProgressBar />
       <Header />
       <main className="flex-grow pt-16 text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">

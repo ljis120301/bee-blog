@@ -74,7 +74,7 @@ export const FileUpload = ({
             className="relative z-20 font-sans font-normal text-cat-frappe-subtext0 dark:text-cat-frappe-overlay2 text-base mt-2">
             Drag or drop your files here or click to upload
           </p>
-          <div className="relative w-full mt-10 max-w-xl mx-auto">
+            <div className="relative w-full mt-6 max-w-md mx-auto">
             {files.length > 0 &&
               files.map((file, idx) => (
                 <motion.div
@@ -128,7 +128,7 @@ export const FileUpload = ({
                   damping: 20,
                 }}
                 className={cn(
-                  "relative group-hover/file:shadow-2xl z-40 bg-cat-frappe-surface1 dark:bg-cat-frappe-mantle flex items-center justify-center h-32 mt-4 w-full max-w-[8rem] mx-auto rounded-md",
+                  "relative group-hover/file:shadow-2xl z-40 bg-cat-frappe-surface1 dark:bg-cat-frappe-mantle flex items-center justify-center h-20 mt-2 w-full max-w-[6rem] mx-auto rounded-md",
                   "shadow-[0px_10px_50px_rgba(0,0,0,0.1)]"
                 )}>
                 {isDragActive ? (
@@ -148,7 +148,7 @@ export const FileUpload = ({
             {!files.length && (
               <motion.div
                 variants={secondaryVariant}
-                className="absolute opacity-0 border border-dashed border-cat-frappe-blue inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full max-w-[8rem] mx-auto rounded-md"></motion.div>
+                className="absolute opacity-0 border border-dashed border-cat-frappe-blue inset-0 z-30 bg-transparent flex items-center justify-center h-20 mt-2 w-full max-w-[6rem] mx-auto rounded-md"></motion.div>
             )}
           </div>
         </div>

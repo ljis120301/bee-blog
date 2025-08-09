@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Head from "next/head";
 import Header from "./components/Header";
 import AboutSection from "./components/AboutSection";
 import Footer from "./components/Footer";
@@ -82,13 +81,13 @@ export default function Home() {
         try {
           const totalRecords = await pb.collection('posts').getList(1, 1, {
             sort: '-created',
-          });
+          }, { $autoCancel: false });
           const totalCount = totalRecords.totalItems;
           if (isMounted) setTotalPages(Math.ceil(totalCount / postsPerPage));
 
           const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
             sort: '-created',
-          });
+          }, { $autoCancel: false });
           const posts = records.items.map(post => ({
             title: post.title,
             description: post.description,
@@ -179,11 +178,6 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Bee Blog</title>
-        <meta name="description" content="A cute bee-themed blog built with Next.js and TailwindCSS" />
-        <link rel="icon" href="/bee-icon.ico" />
-      </Head>
       <SidebarProvider>
         <div className="flex flex-col min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-base">
           <Header />

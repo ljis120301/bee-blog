@@ -1,0 +1,328 @@
+.simple-editor-wrapper {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: var(--tt-gray-light-900);
+  --tt-bg-color: oklch(1 0 0); // Light mode background (white)
+  
+  /* CRITICAL FIX: Remove height constraint - inherit from parent container */
+  /* This allows content to expand beyond viewport height */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  .dark & {
+    --tt-theme-text: var(--tt-gray-dark-900);
+    --tt-bg-color: oklch(0.145 0 0); // Dark mode background
+  }
+
+  .frappe & {
+    --tt-theme-text: var(--tt-gray-frappe-900);
+    --tt-bg-color: #303446; // Catppuccin Frappé base color
+  }
+
+  font-family: "Inter", sans-serif;
+  color: var(--tt-theme-text);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  background-color: var(--tt-bg-color);
+  
+  /* CRITICAL FIX: Allow natural overflow behavior */
+  /* The content-wrapper handles the scrolling */
+  overflow: visible;
+}
+
+.simple-editor-wrapper .tiptap.ProseMirror {
+  font-family: "DM Sans", sans-serif;
+}
+
+.simple-editor-wrapper .content-wrapper {
+  flex: 1;
+  position: relative;
+  background-color: var(--tt-bg-color);
+  
+  /* CRITICAL FIX: Proper scroll container setup */
+  /* The key insight: the parent wrapper now uses height: 100% instead of 100vh */
+  /* This allows the content to expand beyond viewport height */
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  // Essential scroll optimizations
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  
+  // Scrollbar styling
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    min-height: 20px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+}
+
+.simple-editor-wrapper .simple-editor-content {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  
+  /* CRITICAL FIX: Remove ALL height constraints - let content flow naturally */
+  /* This allows the scroll container to see the full content height */
+  min-height: 0;
+}
+
+.simple-editor-wrapper .simple-editor-content .tiptap.ProseMirror {
+  padding: 2rem 3rem;
+  outline: none;
+  
+  /* Key fix: Remove the problematic min-height that was preventing bottom scroll */
+  /* Let the content determine its natural height */
+  min-height: 0;
+  
+  /* Let ProseMirror handle its own scroll behavior */
+  overflow: visible;
+  position: relative;
+  
+  /* Optimize text rendering */
+  user-select: text;
+  -webkit-user-select: text;
+  outline: none;
+}
+
+/* Ensure images render properly */
+.simple-editor-wrapper .tiptap.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.simple-editor-wrapper .tiptap.ProseMirror .tiptap-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  .simple-editor-wrapper {
+    /* CRITICAL FIX: Remove mobile height constraint too */
+    /* Let the parent container control height */
+    height: 100%;
+  }
+  
+  .simple-editor-wrapper .simple-editor-content {
+    padding: 0 0.5rem;
+  }
+  
+  .simple-editor-wrapper .simple-editor-content .tiptap.ProseMirror {
+    padding: 1.5rem 1rem;
+    
+    /* CRITICAL FIX: Remove min-height constraint that prevents bottom scroll */
+    /* Let content determine its natural height, just like desktop */
+    min-height: 0;
+  }
+
+  /* Mobile toolbar at top */
+  .simple-editor-wrapper .toolbar-mobile-top {
+    position: sticky !important;
+    top: 0 !important;
+    bottom: auto !important;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    contain: layout style paint;
+   
+    /* Enable horizontal scrolling for mobile toolbar */
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    
+    /* Hide scrollbar for Webkit browsers */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Ensure toolbar content doesn't wrap */
+    .toolbar-content {
+      display: flex;
+      flex-wrap: nowrap;
+      min-width: max-content;
+    }
+    
+    /* Ensure toolbar groups maintain proper spacing on mobile */
+    &.tiptap-toolbar {
+      gap: 0.25rem;
+      padding: 0.5rem;
+      
+      .tiptap-toolbar-group {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 0.125rem;
+      }
+      
+      .tiptap-separator {
+        flex: 0 0 auto;
+        margin: 0 0.125rem;
+      }
+    }
+    
+    /* Add a subtle gradient fade at the right edge to indicate scrollable content */
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 1rem;
+      background: linear-gradient(to right, transparent, var(--tt-bg-color));
+      pointer-events: none;
+      opacity: 0.7;
+    }
+  }
+
+  .simple-editor-wrapper .content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Mobile editor adjustments */
+  .simple-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    /* CRITICAL FIX: Remove duplicate height constraint */
+    height: 100%;
+    /* Allow natural overflow for mobile too */
+    overflow: visible;
+  }
+}
+
+/* Small mobile styles */
+@media screen and (max-width: 480px) {
+  .simple-editor-wrapper .simple-editor-content .tiptap.ProseMirror {
+    padding: 1rem 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    
+    /* CRITICAL FIX: Remove min-height constraint for small mobile too */
+    /* Let content determine its natural height */
+    min-height: 0;
+  }
+}
+
+/* 🍎 iPad Photos App Drag & Drop Visual Feedback */
+.simple-editor-wrapper .tiptap.ProseMirror.drag-over-image {
+  position: relative;
+  
+  /* Add a subtle overlay to indicate drop zone */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(59, 130, 246, 0.1); /* Blue overlay */
+    border: 2px dashed rgba(59, 130, 246, 0.5); /* Blue dashed border */
+    border-radius: 0.5rem;
+    pointer-events: none;
+    z-index: 10;
+    animation: pulse-drag-over 2s ease-in-out infinite;
+  }
+  
+  /* Add a centered drop message */
+  &::after {
+    content: '📸 Drop images here to add to your note';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 11;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Pulse animation for drag over feedback */
+@keyframes pulse-drag-over {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.001);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+/* Dark mode adjustments for drag feedback */
+.dark .simple-editor-wrapper .tiptap.ProseMirror.drag-over-image {
+  &::before {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: rgba(96, 165, 250, 0.6);
+  }
+  
+  &::after {
+    background: rgba(96, 165, 250, 0.95);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Frappe theme adjustments for drag feedback */
+.frappe .simple-editor-wrapper .tiptap.ProseMirror.drag-over-image {
+  &::before {
+    background: rgba(140, 170, 238, 0.15); /* Catppuccin blue */
+    border-color: rgba(140, 170, 238, 0.6);
+  }
+  
+  &::after {
+    background: rgba(140, 170, 238, 0.95);
+    color: #303446; /* Catppuccin base */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Mobile-specific drag feedback adjustments */
+@media screen and (max-width: 768px) {
+  .simple-editor-wrapper .tiptap.ProseMirror.drag-over-image {
+    &::after {
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+      max-width: 90%;
+      text-align: center;
+      white-space: normal;
+      line-height: 1.3;
+    }
+  }
+}
