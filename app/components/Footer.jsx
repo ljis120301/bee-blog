@@ -25,7 +25,7 @@ const Footer = () => {
               </a>
             </div>
             <div className="bg-[#f8e8e0] dark:bg-cat-frappe-surface0 p-4 rounded-lg shadow-md">
-              <h5 className="text-xl font-bold mb-2">support the hive? 🐝</h5>
+              <h5 className="text-xl font-bold mb-2">spare change? 🐝</h5>
               <p className="text-sm mb-2">Your support helps us keep buzzing! Donate XMR:</p>
               <p className="text-xs font-mono bg-[#fff] dark:bg-cat-frappe-surface1 p-2 rounded break-all">
                 48xWV6Ej4qRPZdKVEX7xQgLyWvxrSmCVXZS5pLXGpuPbMH6GhtiBjXBcHqHLxMMmEW474dkWTdLEsR6nARhhgKGRBou6nSk

@@ -1,5 +1,4 @@
 import React from 'react';
-
 const InformationComponent = () => {
   return (
     <div className="bg-yellow-1 dark:bg-gradient-to-br dark:from-cat-frappe-base dark:to-cat-frappe-crust p-6 rounded-xl shadow-lg">
@@ -10,11 +9,7 @@ const InformationComponent = () => {
         <li>Learn about new technologies</li>
         <li>Get inspired for your own coding journey</li>
       </ul>
-      <div className="mt-4">
-        <span className="inline-block bg-cat-frappe-peach dark:bg-cat-frappe-peach rounded-full px-3 py-1 text-sm font-semibold text-cat-frappe-base dark:text-cat-frappe-base mr-2 mb-2">#coding</span>
-        <span className="inline-block bg-cat-frappe-green dark:bg-cat-frappe-green rounded-full px-3 py-1 text-sm font-semibold text-cat-frappe-base dark:text-cat-frappe-base mr-2 mb-2">#technology</span>
-        <span className="inline-block bg-cat-frappe-lavender dark:bg-cat-frappe-lavender rounded-full px-3 py-1 text-sm font-semibold text-cat-frappe-base dark:text-cat-frappe-base mr-2 mb-2">#learning</span>
-      </div>
+     
     </div>
   );
 };

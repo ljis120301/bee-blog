@@ -5,7 +5,7 @@ import { pb } from '@/lib/pocketbase';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import Information from '../components/Information';
+import Information from '../components/WelcomeSection';
 import MoreInformation from '../components/MoreInformation';
 import ScrollProgressBar from '../components/ScrollProgressBar';
 import { Label } from "@/components/ui/label";

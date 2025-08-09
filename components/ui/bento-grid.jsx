@@ -24,7 +24,8 @@ export const BentoGridItem = ({
   description,
   header,
   icon,
-  href
+  href,
+  tags
 }) => {
   return (
     <Link href={href} className={cn(
@@ -67,6 +68,25 @@ export const BentoGridItem = ({
           {description}
         </div>
       </div>
+
+      {/* Tags row */}
+      {Array.isArray(tags) && tags.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-2 relative z-10">
+          {tags.map((t, idx) => {
+            const bg = t?.color_bg || '#ef9f76';
+            const fg = t?.color_text || '#303446';
+            return (
+              <span
+                key={idx}
+                className="inline-flex items-center h-7 leading-none rounded-full px-2.5 py-0 text-xs font-semibold border"
+                style={{ backgroundColor: bg, color: fg, borderColor: `${fg}22` }}
+              >
+                {t?.name || 'tag'}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Bottom gradient bar - adjust colors and opacity here */}
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#f9e2af] via-[#e6c384] to-[#df8e1d] opacity-0 group-hover/bento:opacity-100 transition-opacity duration-300"></div>

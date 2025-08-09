@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Header from "./components/Header";
-import AboutSection from "./components/AboutSection";
+import PrefaceSection from "./components/PrefaceSection";
 import Footer from "./components/Footer";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import {
@@ -19,8 +19,9 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { pb } from '@/lib/pocketbase';
-import InformationComponent from "@/app/components/Information";
+import InformationComponent from "@/app/components/WelcomeSection";
 import MoreInformationComponent from "@/app/components/MoreInformation";
+import MostLikedCard from "@/app/components/MostLikedCard";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from './components/ConfirmationDialog';
@@ -28,10 +29,21 @@ import ReactPaginate from "react-paginate";
 import FavoriteButton from './components/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 import LoadingSpinner from './components/LoadingSpinner';
+import { useDebounce } from "use-debounce";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export default function Home() {
   const router = useRouter();
   const [blogPosts, setBlogPosts] = useState([]);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery] = useDebounce(query, 200);
   const [user, setUser] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
   const [open, setOpen] = useState(false);
@@ -45,6 +57,9 @@ export default function Home() {
   const { fetchFavorites } = useFavorites();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [allTags, setAllTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState(new Set());
+  const [sortKey, setSortKey] = useState('newest'); // newest | oldest | views | reading_time
 
   const handleLogout = async () => {
     pb.authStore.clear();
@@ -92,6 +107,7 @@ export default function Home() {
 
           const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
             sort: '-created',
+            expand: 'tags'
           }, { $autoCancel: false });
           const posts = records.items.map(post => ({
             title: post.title,
@@ -103,6 +119,15 @@ export default function Home() {
                   </div>,
             header: <BeeSwarm />,
             className: post.isSpanTwo ? 'col-span-2' : '',
+            views: post.views || 0,
+            reading_time_minutes: post.reading_time_minutes || 0,
+            created: post.created,
+            tags: Array.isArray(post?.expand?.tags) ? post.expand.tags.map(t => ({
+              id: t.id,
+              name: t.name,
+              color_bg: t.color_bg,
+              color_text: t.color_text,
+            })) : []
           }));
           if (isMounted) setBlogPosts(posts);
 
@@ -154,6 +179,14 @@ export default function Home() {
               };
 
           if (isMounted) setLinks([...baseLinks, authLink]);
+
+          // Fetch all tags for filter chips
+          try {
+            const tags = await pb.collection('tags').getFullList({ $autoCancel: false, sort: 'name' });
+            if (isMounted) setAllTags(tags.map(t => ({ id: t.id, name: t.name, color_bg: t.color_bg, color_text: t.color_text })));
+          } catch (e) {
+            console.warn('Unable to load tags (ensure schema exists):', e?.message || e);
+          }
         } catch (error) {
           if (error.message.includes('autocancelled')) {
             console.warn('Fetch request was canceled:', error);
@@ -180,6 +213,39 @@ export default function Home() {
 
   // Add this console log
   console.log("Current isAuthor state:", isAuthor);
+
+  const visiblePosts = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    let filtered = blogPosts.filter((p) =>
+      (q ? `${p.title ?? ''} ${p.description ?? ''}`.toLowerCase().includes(q) : true)
+    );
+    if (selectedTagIds.size > 0) {
+      filtered = filtered.filter(p => {
+        const ids = new Set((p.tags || []).map(t => t.id));
+        // require that every selected tag is in post
+        for (const id of selectedTagIds) {
+          if (!ids.has(id)) return false;
+        }
+        return true;
+      });
+    }
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortKey === 'newest') return new Date(b.created) - new Date(a.created);
+      if (sortKey === 'oldest') return new Date(a.created) - new Date(b.created);
+      if (sortKey === 'views') return (b.views || 0) - (a.views || 0);
+      if (sortKey === 'reading_time') return (b.reading_time_minutes || 0) - (a.reading_time_minutes || 0);
+      return 0;
+    });
+    return sorted;
+  }, [blogPosts, debouncedQuery, selectedTagIds, sortKey]);
+
+  const toggleTag = (id) => {
+    setSelectedTagIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <>
@@ -241,8 +307,65 @@ export default function Home() {
                           <LoadingSpinner />
                         ) : (
                           <>
+                            <div className="mb-4">
+                              <input
+                                type="text"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search posts..."
+                                className="w-full rounded-md border border-[#ccd0da] dark:border-cat-frappe-surface2 bg-white/70 dark:bg-cat-frappe-mantle px-3 py-2 text-base outline-none focus:ring-2 focus:ring-cat-frappe-peach"
+                              />
+                              {query && (
+                                <p className="mt-2 text-xs text-[#6c6f85] dark:text-cat-frappe-subtext1">
+                                  Showing {visiblePosts.length} of {blogPosts.length}
+                                </p>
+                              )}
+                              {/* Tag filter chips */}
+                              <div className="mt-3 flex items-start justify-between gap-2">
+                                <div className="flex flex-wrap gap-2 flex-1 min-w-0">
+                                  {allTags.map(t => (
+                                    <button
+                                      key={t.id}
+                                      onClick={() => toggleTag(t.id)}
+                                      className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
+                                      style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
+                                    >
+                                      #{t.name}
+                                    </button>
+                                  ))}
+                                  {allTags.length > 0 && (
+                                    <button
+                                      onClick={() => setSelectedTagIds(new Set())}
+                                      className="inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-[#ccd0da] dark:border-cat-frappe-surface2 bg-white/60 dark:bg-cat-frappe-surface0 text-[#4c4f69] dark:text-cat-frappe-subtext0"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="shrink-0">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-[#ccd0da] dark:border-cat-frappe-surface2 bg-[#F6EEE5] dark:bg-cat-frappe-base text-[#4c4f69] dark:text-cat-frappe-subtext0"
+                                      >
+                                        Sort: {sortKey === 'newest' ? 'Newest' : sortKey === 'oldest' ? 'Oldest' : sortKey === 'views' ? 'Most viewed' : 'Reading time'}
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-44">
+                                      <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => setSortKey('newest')}>Newest</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setSortKey('oldest')}>Oldest</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setSortKey('views')}>Most viewed</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setSortKey('reading_time')}>Reading time</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+                            </div>
                             <BentoGrid className="xl:auto-rows-[20rem] gap-4">
-                              {blogPosts.map((post, i) => (
+                              {visiblePosts.map((post, i) => (
                                 <BentoGridItem
                                   key={i}
                                   title={
@@ -281,6 +404,7 @@ export default function Home() {
                                   header={post.header}
                                   className={`${post.className} ${i === 0 ? 'md:col-span-2' : ''}`}
                                   icon={post.icon}
+                                  tags={post.tags}
                                   href={post.id}
                                 />
                               ))}
@@ -302,11 +426,14 @@ export default function Home() {
                         )}
                       </div>
                       <div className="xl:w-1/5">
-                        <MoreInformationComponent />
+                        <div className="space-y-4">
+                          <MoreInformationComponent />
+                          <MostLikedCard limit={5} />
+                        </div>
                       </div>
                     </div>
                   </section>
-                  <AboutSection />
+                  <PrefaceSection />
                 </div>
               </main>
               <Footer />

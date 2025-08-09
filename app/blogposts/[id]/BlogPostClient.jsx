@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { pb } from '@/lib/pocketbase';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import Information from "../../components/Information";
-import MoreInformation from "../../components/MoreInformation";
+import MostLikedCard from "../../components/MostLikedCard";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
 import MarkdownIt from 'markdown-it';
 import sub from 'markdown-it-sub';
@@ -13,9 +13,8 @@ import sup from 'markdown-it-sup';
 import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
-import { IconEdit, IconFileText } from "@tabler/icons-react";
+import { IconEdit, IconFileText, IconHome } from "@tabler/icons-react";
 import StructuredData from "../../components/StructuredData";
-import Breadcrumb from "../../components/Breadcrumb";
 import SEOOptimizedContent from "../../components/SEOOptimizedContent";
 import AIOptimizedContent from "../../components/AIOptimizedContent";
 import AIContentMarkers from "../../components/AIContentMarkers";
@@ -27,6 +26,16 @@ import VisualSearchOptimization from "../../components/VisualSearchOptimization"
 import MobileFirstOptimization from "../../components/MobileFirstOptimization";
 import BehavioralMetricsOptimization from "../../components/BehavioralMetricsOptimization";
 import UniqueVisitorTracker from "../../components/UniqueVisitorTracker";
+import TagAndEngagementCard from "../../components/TagAndEngagementCard";
+import Comments from "../../components/Comments";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export default function BlogPostClient({ post: initialPost, params }) {
   const [post, setPost] = useState(initialPost);
@@ -143,7 +152,7 @@ export default function BlogPostClient({ post: initialPost, params }) {
       <ReadingProgress />
       <ScrollProgressBar />
       <Header />
-      <main className="pt-[calc(64px+8px)] text-lg">
+      <main className="pt-20 text-lg">
         {/* Hero */}
         {post.hero_image_url && (
           <div className="w-full">
@@ -154,12 +163,35 @@ export default function BlogPostClient({ post: initialPost, params }) {
         )}
 
         <div className="container mx-auto px-2 sm:px-4 md:px-6 max-w-[1200px]">
-          <Breadcrumb 
-            items={[
-              { name: 'Blog Posts', href: '/blogposts', icon: IconFileText },
-              { name: post?.title || 'Post', href: '#' }
-            ]} 
-          />
+          <div className={`${post.hero_image_url ? 'mt-4 sm:mt-6' : 'my-6 sm:my-8'}`}>
+            <Breadcrumb className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-[#F6EEE5]/70 dark:bg-cat-frappe-base/60 backdrop-blur-md ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
+              <BreadcrumbList className="text-[#4c4f69] dark:text-cat-frappe-subtext0 text-sm sm:text-base md:text-lg">
+                <BreadcrumbItem>
+                  <BreadcrumbLink className="flex items-center hover:text-cat-frappe-peach" asChild>
+                    <Link href="/">
+                      <IconHome size={16} className="mr-1" />
+                      Home
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink className="flex items-center hover:text-cat-frappe-peach" asChild>
+                    <Link href="/blogposts">
+                      <IconFileText size={16} className="mr-1" />
+                      Blog Posts
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">
+                    {post?.title || 'Post'}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
           {(() => { const { elements, toc } = getBodyAndToc(); return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
             <div className="lg:col-span-8">
@@ -203,6 +235,9 @@ export default function BlogPostClient({ post: initialPost, params }) {
                     tags={Array.isArray(post.seo_keywords) ? post.seo_keywords.join(',') : 'coding,programming,tech,beeblog'}
                   />
                 </div>
+                <div className="mt-10">
+                  <Comments postId={post.id} />
+                </div>
                                       </article>
                       </SEOOptimizedContent>
                     </AIOptimizedContent>
@@ -226,9 +261,9 @@ export default function BlogPostClient({ post: initialPost, params }) {
                     </nav>
                   </div>
                 )}
-                <Information />
-                <div className="mt-4">
-                  <MoreInformation />
+                <div className="space-y-4">
+                  <TagAndEngagementCard postId={post.id} tagIds={Array.isArray(post.tags) ? post.tags : []} />
+                  <MostLikedCard limit={5} />
                 </div>
               </div>
             </aside>
