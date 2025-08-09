@@ -73,18 +73,21 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet" />
       </head>
       <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1 font-sans'>
-        {process.env.NODE_ENV === 'production' && (
+        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
           <>
             <Script
               src="https://www.googletagmanager.com/gtag/js?id=G-084MBYJBPN"
-              strategy="afterInteractive"
+              strategy="lazyOnload"
             />
-            <Script id="gtag-init" strategy="afterInteractive">
+            <Script id="gtag-init" strategy="lazyOnload">
               {`
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
-                gtag('config', 'G-084MBYJBPN');
+                gtag('config', 'G-084MBYJBPN', {
+                  page_title: document.title,
+                  page_location: window.location.href
+                });
               `}
             </Script>
           </>

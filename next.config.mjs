@@ -44,7 +44,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "object-src 'self' blob: data: filesystem: *;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://api.whoisjason.me; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self' blob: data: filesystem:;"
           }
         ],
       },
