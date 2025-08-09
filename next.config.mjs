@@ -1,68 +1,94 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    domains: ['api.whoisjason.me'],
-  },
+  // Enable experimental features for better performance
   experimental: {
-    serverActions: {
-      allowedOrigins: [
-        'api.whoisjason.me',
-        'whoisjason.me',
-        'localhost:3000',
-        '192.168.1.173:3000',
-        'bee.whoisjason.me',
-        'localhost:8081',
-        '192.168.1.173:8081',
-        '10.0.0.5:3000',
-        '10.0.0.5:8081',
-        '10.0.0.5'
-      ],
-    },
+    optimizePackageImports: ['@tabler/icons-react'],
   },
+  
+  // Optimize images
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 31536000, // 1 year
+  },
+  
+  // Compress responses
+  compress: true,
+  
+  // Security headers for better SEO and security
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
-          { 
-            key: 'Access-Control-Allow-Origin', 
-            value: process.env.NODE_ENV === 'development' 
-              ? 'http://10.0.0.5:3000' 
-              : 'https://api.whoisjason.me'
-          },
-          { 
-            key: 'Access-Control-Allow-Methods', 
-            value: 'GET, POST, PUT, DELETE, OPTIONS' 
-          },
-          { 
-            key: 'Access-Control-Allow-Headers', 
-            value: 'X-Requested-With, Content-Type, Authorization, X-CSRF-Token' 
-          },
-          { 
-            key: 'Access-Control-Allow-Credentials', 
-            value: 'true' 
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
           },
           {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://api.whoisjason.me; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self' blob: data: filesystem:;"
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
           },
           {
-            key: 'Onion-Location',
-            value: 'http://47h3z3jkcqe3t4l2ufubj7o6m3qqm33gf3zhfystl3rrvbenz4evvnqd.onion/'
-          }
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
         ],
       },
       {
-        // Additional headers for API routes
-        source: '/api/:path*',
+        source: '/sitemap.xml',
         headers: [
-          { 
-            key: 'Access-Control-Max-Age', 
-            value: '86400' 
-          }
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=43200',
+          },
         ],
-      }
+      },
+      {
+        source: '/robots.txt',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400',
+          },
+        ],
+      },
     ];
+  },
+  
+  // Redirect configuration for SEO
+  async redirects() {
+    return [
+      // Add any necessary redirects here
+      // Example: redirect old URLs to new ones
+    ];
+  },
+  
+  // Webpack configuration for optimization
+  webpack: (config, { dev, isServer }) => {
+    // Optimize bundle size
+    if (!dev && !isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          vendor: {
+            chunks: 'all',
+            test: /node_modules/,
+            name: 'vendor',
+            enforce: true,
+          },
+        },
+      };
+    }
+    
+    return config;
   },
 };
 

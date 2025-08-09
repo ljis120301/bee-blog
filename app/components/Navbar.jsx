@@ -41,6 +41,20 @@ const NavbarSunnyDay = () => {
             {user ? (
               <>
                 {user.role === "admin" && (
+                  <>
+                    <Link href="/admin">
+                      <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-blue to-cat-frappe-mauve text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-mauve hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0">
+                        Admin Dashboard 🐝📊
+                      </button>
+                    </Link>
+                    <Link href="/blogposts/aurthor-portal">
+                      <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-yellow hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0">
+                        Author Portal 🐝✍️
+                      </button>
+                    </Link>
+                  </>
+                )}
+                {user.role === "author" && (
                   <Link href="/blogposts/aurthor-portal">
                     <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-yellow hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0">
                       Author Portal 🐝✍️
@@ -84,8 +98,22 @@ const NavbarSunnyDay = () => {
                   </span>
                 </span>
                 {user.role === "admin" && (
+                  <>
+                    <Link href="/admin">
+                      <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-blue to-cat-frappe-mauve text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-mauve hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0 mb-2 w-full">
+                        Admin Dashboard 🐝📊
+                      </button>
+                    </Link>
+                    <Link href="/blogposts/aurthor-portal">
+                      <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-yellow hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0 mb-2 w-full">
+                        Author Portal 🐝✍️
+                      </button>
+                    </Link>
+                  </>
+                )}
+                {user.role === "author" && (
                   <Link href="/blogposts/aurthor-portal">
-                    <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-yellow hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0">
+                    <button className="px-4 py-2 bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust rounded-full font-bold transition-all duration-300 shadow-md hover:shadow-lg border-2 border-current dark:border-cat-frappe-yellow hover:scale-105 hover:rotate-1 active:scale-95 active:rotate-0 mb-2 w-full">
                       Author Portal 🐝✍️
                     </button>
                   </Link>
