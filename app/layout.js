@@ -84,6 +84,15 @@ export default function RootLayout({ children }) {
             />
           </>
         )}
+
+        {/* Google AdSense - Add your AdSense publisher ID here */}
+        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ADS === 'true') && (
+          <script 
+            async 
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6933652811243478"
+            crossOrigin="anonymous"
+          />
+        )}
         
         {/* Update these lines for Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -15,6 +15,9 @@ import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import CodeSnippet from "../../components/CodeSnippet";
 import { IconEdit } from "@tabler/icons-react";
+import BannerAd from "../../components/ads/BannerAd";
+import SidebarAd from "../../components/ads/SidebarAd";
+import InArticleAd from "../../components/ads/InArticleAd";
 
 export default function BlogPost() {
   const [post, setPost] = useState(null);
@@ -143,6 +146,9 @@ export default function BlogPost() {
         )}
 
         <div className="container mx-auto px-2 sm:px-4 md:px-6 max-w-[1200px]">
+          {/* Top Banner Ad */}
+          <BannerAd className="mt-4 mb-6" />
+          
           {(() => { const { elements, toc } = getBodyAndToc(); return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
             <div className="lg:col-span-8">
@@ -171,6 +177,8 @@ export default function BlogPost() {
                 </header>
                 <section className="mt-6">
                   {elements}
+                  {/* In-Article Ad at the end of content */}
+                  <InArticleAd className="mt-8" />
                 </section>
               </article>
             </div>
@@ -193,6 +201,8 @@ export default function BlogPost() {
                   </div>
                 )}
                 <Information />
+                {/* Sidebar Ad */}
+                <SidebarAd />
                 <div className="mt-4">
                   <MoreInformation />
                 </div>
