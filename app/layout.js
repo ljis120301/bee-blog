@@ -606,6 +606,15 @@ export default function RootLayout({ children }) {
             />
           </>
         )}
+
+        {/* Cloudflare Web Analytics */}
+        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "779487f040cb4ca0900acc34e9e9d687"}'
+          ></script>
+        )}
         
         {/* Optimized Google Fonts loading with display=swap for better performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

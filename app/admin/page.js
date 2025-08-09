@@ -78,9 +78,7 @@ export default function AdminDashboard() {
             fcp: 0.9,
             ttfb: 650
           },
-          recentSessions: Array.isArray(data.recentSessions) && data.recentSessions.length > 0
-            ? data.recentSessions
-            : generateMockSessions(),
+          recentSessions: Array.isArray(data.recentSessions) ? data.recentSessions : [],
           monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
         });
       }
