@@ -3,11 +3,28 @@ import { NextResponse } from 'next/server';
 import { getAnalyticsData } from '@/lib/analytics';
 import { pb } from '@/lib/pocketbase';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export async function GET(request) {
   try {
-    // Check if user is authenticated and is admin
+    // Validate PocketBase auth token from Authorization header
     const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+      pb.authStore.save(token, null);
+      // Verify token and load user model
+      await pb.collection('users').authRefresh();
+      const user = pb.authStore.model;
+      if (!user || user.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } catch (e) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -30,7 +47,7 @@ export async function GET(request) {
     const bounceRate = Math.floor(Math.random() * 20) + 25; // Placeholder - would need session tracking
     const avgTimeOnPage = Math.floor(Math.random() * 180) + 120; // Placeholder - would need session tracking
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         totalPageViews: analyticsData.totalViews,
@@ -43,9 +60,11 @@ export async function GET(request) {
         userAgentStats: analyticsData.userAgentStats,
         averageViewsPerDay: analyticsData.averageViewsPerDay,
         timeRange: analyticsData.timeRange,
-        periodDays: analyticsData.periodDays
+        periodDays: analyticsData.periodDays,
+        recentSessions: analyticsData.recentSessions
       }
     });
+    return response;
 
   } catch (error) {
     console.error('Error getting dashboard analytics:', error);
@@ -53,5 +72,9 @@ export async function GET(request) {
       { error: 'Failed to get analytics data' },
       { status: 500 }
     );
+  }
+  finally {
+    // Prevent token leakage across requests
+    try { pb.authStore.clear(); } catch {}
   }
 }

@@ -48,7 +48,9 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     try {
       // Fetch analytics data from our new API
-      const analyticsResponse = await fetch(`/api/analytics/dashboard?timeRange=${timeRange}`);
+      const analyticsResponse = await fetch(`/api/analytics/dashboard?timeRange=${timeRange}` , {
+        headers: pb.authStore.isValid ? { 'Authorization': `Bearer ${pb.authStore.token}` } : {}
+      });
       const analyticsData = await analyticsResponse.json();
 
       if (analyticsData.success) {
@@ -76,7 +78,9 @@ export default function AdminDashboard() {
             fcp: 0.9,
             ttfb: 650
           },
-          recentSessions: generateMockSessions(),
+          recentSessions: Array.isArray(data.recentSessions) && data.recentSessions.length > 0
+            ? data.recentSessions
+            : generateMockSessions(),
           monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
         });
       }
@@ -364,6 +368,7 @@ export default function AdminDashboard() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Scroll Depth</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Interactions</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Engagement</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">IP Address</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Timestamp</th>
                 </tr>
               </thead>
@@ -371,24 +376,27 @@ export default function AdminDashboard() {
                 {metrics.recentSessions.map((session) => (
                   <tr key={session.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
-                      Session #{session.id}
+                      Session #{session.id || session.sessionId || 'n/a'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {formatTime(session.timeOnPage)}
+                      {session.timeOnPage ? formatTime(session.timeOnPage) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {session.scrollDepth}%
+                      {typeof session.scrollDepth === 'number' ? `${session.scrollDepth}%` : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {session.interactions}
+                      {typeof session.interactions === 'number' ? session.interactions : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>
-                        {session.engagement}
+                        {session.engagement || 'n/a'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                      {session.ip || session.ipAddress || '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
-                      {session.timestamp.toLocaleTimeString()}
+                      {session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}
                     </td>
                   </tr>
                 ))}
