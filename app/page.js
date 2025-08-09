@@ -9,6 +9,7 @@ import {
   IconSettings,
   IconUserBolt,
   IconTrash,
+  IconEdit,
   IconHeart,
   IconEye,
 } from "@tabler/icons-react";
@@ -56,6 +57,10 @@ export default function Home() {
   const handleDeletePost = (postId) => {
     setPostToDelete(postId);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleEditPost = (postId) => {
+    router.push(`/blogposts/edit/${postId}`);
   };
 
   const confirmDeletePost = async () => {
@@ -245,16 +250,28 @@ export default function Home() {
                                       <span>{post.title}</span>
                                       <div>
                                         {isAuthor && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              handleDeletePost(post.id.split('/')[1]);
-                                            }}
-                                            className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
-                                          >
-                                            <IconTrash size={20} />
-                                          </button>
+                                          <>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleEditPost(post.id.split('/')[1]);
+                                              }}
+                                              className="text-blue-500 hover:text-blue-600 transition-colors z-20 mr-2"
+                                            >
+                                              <IconEdit size={20} />
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleDeletePost(post.id.split('/')[1]);
+                                              }}
+                                              className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
+                                            >
+                                              <IconTrash size={20} />
+                                            </button>
+                                          </>
                                         )}
                                         <FavoriteButton postId={post.id.split('/')[1]} />
                                       </div>

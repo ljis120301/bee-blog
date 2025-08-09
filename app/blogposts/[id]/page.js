@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -14,11 +14,14 @@ import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import CodeSnippet from "../../components/CodeSnippet";
+import { IconEdit } from "@tabler/icons-react";
 
 export default function BlogPost() {
   const [post, setPost] = useState(null);
   const params = useParams();
+  const router = useRouter();
   const [mdParser, setMdParser] = useState(null);
+  const [isAuthor, setIsAuthor] = useState(false);
 
   useEffect(() => {
     const initializeMdParser = () => {
@@ -56,7 +59,16 @@ export default function BlogPost() {
       }
     };
 
+    const checkAuthorStatus = () => {
+      if (pb.authStore.isValid) {
+        const user = pb.authStore.model;
+        const authorStatus = user.role === "admin" || user.role === "author";
+        setIsAuthor(authorStatus);
+      }
+    };
+
     fetchPost();
+    checkAuthorStatus();
   }, [params.id]);
 
   const getBodyAndToc = () => {
@@ -136,7 +148,18 @@ export default function BlogPost() {
             <div className="lg:col-span-8">
               <article className="rounded-lg p-4 sm:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
                 <header className="mb-4">
-                  <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight">{post.title}</h1>
+                  <div className="flex justify-between items-start mb-3">
+                    <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight flex-1">{post.title}</h1>
+                    {isAuthor && (
+                      <button
+                        onClick={() => router.push(`/blogposts/edit/${params.id}`)}
+                        className="ml-4 p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        title="Edit this post"
+                      >
+                        <IconEdit size={24} />
+                      </button>
+                    )}
+                  </div>
                   {post.dek && (
                     <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{post.dek}</p>
                   )}
