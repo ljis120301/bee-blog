@@ -4,10 +4,7 @@ import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import Information from "../../components/Information";
-import MoreInformation from "../../components/MoreInformation";
 import ScrollProgressBar from "../../components/ScrollProgressBar";
-import { FileUpload } from "@/components/ui/file-upload";
 import dynamic from 'next/dynamic';
 import 'react-markdown-editor-lite/lib/index.css';
 import MarkdownIt from 'markdown-it';
@@ -16,14 +13,18 @@ import sup from 'markdown-it-sup';
 import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
-import CodeSnippet from "../../components/CodeSnippet";
-import { useDebouncedCallback } from 'use-debounce';
-import { revalidatePath } from 'next/cache';
 import { uploadInChunks } from '@/lib/chunkUpload';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { IconSettings, IconSend } from "@tabler/icons-react";
+import { FileUpload } from "@/components/ui/file-upload";
 
 
-const MdEditor = dynamic(() => import('react-markdown-editor-lite'), {
+const TipTapEditor = dynamic(() => import('@/components/editor/TipTapEditor'), {
   ssr: false,
   loading: () => <p>Loading editor...</p>
 });
@@ -34,6 +35,12 @@ export default function AuthorPortal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [description, setDescription] = useState('');
+  const [dek, setDek] = useState('');
+  const [slug, setSlug] = useState('');
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
   const [isSpanTwo, setIsSpanTwo] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [mdParser, setMdParser] = useState(null);
@@ -42,6 +49,8 @@ export default function AuthorPortal() {
   const [isUploading, setIsUploading] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const [notifications, setNotifications] = useState([]);
+  const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
+  const [seoAutoKeywords, setSeoAutoKeywords] = useState(true);
 
   useEffect(() => {
     console.log('Auth status:', pb.authStore.isValid);
@@ -93,8 +102,8 @@ export default function AuthorPortal() {
     initializeMdParser();
   }, []);
 
-  const handleEditorChange = ({ text }) => {
-    setContent(text);
+  const handleEditorChange = (html) => {
+    setContent(html);
   };
 
   const showNotification = (message, type = 'info') => {
@@ -135,7 +144,8 @@ export default function AuthorPortal() {
             name: file.name,
             url: result.url,
             type: file.type,
-            id: result.id
+            id: result.id,
+            token: result.token
           });
           
           // Immediately update UI after successful upload
@@ -143,7 +153,8 @@ export default function AuthorPortal() {
             name: file.name,
             url: result.url,
             type: file.type,
-            id: result.id
+            id: result.id,
+            token: result.token
           }]);
           
           showNotification(`Successfully uploaded ${file.name}`, 'success');
@@ -172,84 +183,89 @@ export default function AuthorPortal() {
 
   const insertFileIntoContent = async (fileUrl, fileType, fileId) => {
     let markdown = '';
-    const editor = document.querySelector('.rc-md-editor textarea');
-    if (!editor) {
-      console.error('Editor not found');
-      return;
-    }
+    // For TipTap we just append to HTML string
 
     if (fileType?.startsWith('video/')) {
-      console.log('Generating video markdown for file:', fileId);
-      
+      console.log('Generating video embed via proxy for file:', fileId);
       try {
-        // Generate a fresh token for the file
-        const token = await pb.files.getToken();
-        
-        // Create record object for getUrl
-        const record = {
-          id: fileId,
-          collectionId: '4bz5g6gp5umym7d',
-          file: fileUrl.split('/').pop().split('?')[0] // Get clean filename without query params
-        };
-        
-        // Generate clean URL with single token
-        const directUrl = pb.files.getUrl(record, record.file, { token });
-        console.log('Generated direct URL:', directUrl);
-
-        markdown = `
-<div class="video-wrapper">
-  <video 
-    controls 
-    preload="metadata"
-    width="100%"
-    class="max-w-full h-auto my-4 rounded-md"
-    playsinline
-  >
-    <source src="${directUrl}" type="${fileType}">
-    <p>Your browser doesn't support HTML5 video.</p>
-  </video>
-</div>
-
-`; // Extra newline for better markdown formatting
-        
-        const cursorPosition = editor.selectionStart;
-        const newContent = 
-          content.substring(0, cursorPosition) + 
-          markdown + 
-          content.substring(cursorPosition);
-        
-        setContent(newContent);
+        // Prefer token captured from upload response if available in uploadedImages
+        const entry = uploadedImages.find(f => f.id === fileId);
+        const token = entry?.token ? `&token=${encodeURIComponent(entry.token)}` : '';
+        const streamUrl = `/api/files?id=${fileId}${token}`;
+        // Insert bare <video> to be handled by reader and preview
+        markdown = `<video controls preload="metadata" width="100%" class="max-w-full h-auto my-4 rounded-md" playsinline src="${streamUrl}"></video>`;
+        setContent((prev) => `${prev}\n${markdown}`);
       } catch (error) {
-        console.error('Error generating video markdown:', error);
+        console.error('Error generating video embed:', error);
       }
     } else {
-      // Handle images as before
-      markdown = `![Image](${fileUrl})\n\n`;
-      const cursorPosition = editor.selectionStart;
-      const newContent = 
-        content.substring(0, cursorPosition) + 
-        markdown + 
-        content.substring(cursorPosition);
-      setContent(newContent);
+      // Insert image as HTML for TipTap
+      markdown = `<img src="${fileUrl}" alt="${fileUrl.split('/').pop()}" class="max-w-full h-auto my-4 rounded-md"/>`;
+      setContent((prev) => `${prev}\n${markdown}`);
     }
   };
 
+  const handleHeroImageFile = async (file) => {
+    if (!file) return;
+    try {
+      const result = await uploadInChunks(pb, file, (progress) => {
+        // no-op for hero image
+      });
+      if (result?.success) {
+        setHeroImageUrl(result.url);
+        showNotification('Hero image uploaded', 'success');
+      } else {
+        showNotification('Failed to upload hero image', 'error');
+      }
+    } catch (e) {
+      showNotification('Failed to upload hero image', 'error');
+    }
+  };
+
+  const wordCount = (html) => {
+    const text = (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text ? text.split(' ').length : 0;
+  };
+
+  const estimateReadingTime = (html) => {
+    const words = wordCount(html);
+    return Math.max(1, Math.ceil(words / 225));
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     try {
       // Remove any duplicate media items
       const uniqueMedia = Array.from(new Map(uploadedImages.map(item => 
         [item.url, item]
       )).values());
 
+      const defaultSeoKeywords = (titleText, descriptionText, userKeywords) => {
+        const base = new Set();
+        (titleText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3).slice(0, 8).forEach(w => base.add(w));
+        (descriptionText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4).slice(0, 6).forEach(w => base.add(w));
+        ['beeblog', 'blog', 'article'].forEach(w => base.add(w));
+        const user = (userKeywords ? userKeywords.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : []);
+        user.forEach(k => base.add(k));
+        return Array.from(base).slice(0, 15);
+      };
+
       const data = {
         title,
-        content,
+        content, // TipTap HTML string
         description,
         author: pb.authStore.model.id,
         isSpanTwo,
         media: uniqueMedia,
-        images: uniqueMedia.filter(item => item.type === 'image')
+        images: uniqueMedia.filter(item => item.type === 'image'),
+        dek,
+        slug: (slug || title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')),
+        hero_image_url: heroImageUrl || null,
+        seo_title: seoTitle || title,
+        seo_description: seoDescription || description,
+        seo_keywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
+        toc_enabled: false,
+        reading_time_minutes: estimateReadingTime(content)
       };
 
       console.log('Creating post with data:', data);
@@ -264,86 +280,16 @@ export default function AuthorPortal() {
   };
 
   const renderPreview = () => {
-    if (!mdParser) return null;
-
-    const htmlContent = mdParser.render(content);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
-    const contentElements = [];
-
-    doc.body.childNodes.forEach((node, index) => {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.tagName === 'TABLE') {
-          contentElements.push(
-            <div key={`table-wrapper-${index}`} className="my-8">
-              <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-                <div className="rounded-lg bg-[#F6EEE5] dark:bg-cat-frappe-base overflow-x-auto">
-                  <table className="w-full">
-                    {Array.from(node.children).map((child, childIndex) => {
-                      if (child.tagName === 'THEAD') {
-                        return (
-                          <thead key={`thead-${childIndex}`}>
-                            {Array.from(child.rows).map((row, rowIndex) => (
-                              <tr key={`thead-row-${rowIndex}`}>
-                                {Array.from(row.cells).map((cell, cellIndex) => (
-                                  <th 
-                                    key={`thead-cell-${cellIndex}`} 
-                                    className="px-6 py-4 text-left font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap bg-[#E9D4BA]/50 dark:bg-cat-frappe-surface0"
-                                  >
-                                    {cell.textContent}
-                                  </th>
-                                ))}
-                              </tr>
-                            ))}
-                          </thead>
-                        );
-                      } else if (child.tagName === 'TBODY') {
-                        return (
-                          <tbody key={`tbody-${childIndex}`}>
-                            {Array.from(child.rows).map((row, rowIndex) => (
-                              <tr 
-                                key={`tbody-row-${rowIndex}`}
-                                className="transition-colors duration-200 hover:bg-[#E9D4BA]/20 dark:hover:bg-cat-frappe-surface0/50"
-                              >
-                                {Array.from(row.cells).map((cell, cellIndex) => (
-                                  <td 
-                                    key={`tbody-cell-${cellIndex}`}
-                                    className="px-6 py-4 text-cat-frappe-base dark:text-cat-frappe-text border-b border-cat-frappe-surface0/10 dark:border-cat-frappe-surface0/20 whitespace-nowrap"
-                                  >
-                                    {cell.textContent}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        );
-                      }
-                      return null;
-                    })}
-                  </table>
-                </div>
-              </div>
-            </div>
-          );
-        } else if (node.classList?.contains('video-wrapper')) {
-          contentElements.push(
-            <div key={`video-${index}`} className="video-wrapper">
-              <div dangerouslySetInnerHTML={{ __html: node.innerHTML }} />
-            </div>
-          );
-        } else {
-          contentElements.push(
-            <div key={`element-${index}`} dangerouslySetInnerHTML={{ __html: node.outerHTML }} />
-          );
-        }
-      } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-        contentElements.push(
-          <div key={`text-${index}`}>{node.textContent}</div>
-        );
-      }
-    });
-
-    return <div className="prose dark:prose-invert max-w-none">{contentElements}</div>;
+    // TipTap content is HTML; fallback to markdown rendering if not HTML-like
+    const looksLikeHtml = typeof content === 'string' && /<\w+[^>]*>/.test(content);
+    const htmlContent = looksLikeHtml && !content.trim().startsWith('#')
+      ? content
+      : (mdParser ? mdParser.render(content) : content);
+    return (
+      <div className="prose dark:prose-invert text-base max-w-none">
+        <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+      </div>
+    );
   };
 
   const UploadProgress = () => {
@@ -422,55 +368,162 @@ export default function AuthorPortal() {
     <>
       <ScrollProgressBar />
       <Header />
-      <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-8">
-          <aside className="lg:col-span-1">
-            <Information />
-          </aside>
-          <div className="lg:col-span-2">
-            <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
-              <div className="rounded-lg p-4 lg:p-6 bg-gray-300 dark:bg-cat-frappe-base shadow-lg">
-                <h1 className="text-4xl font-bold mb-6 relative inline-block text-cat-frappe-base dark:text-cat-frappe-yellow after:content-[''] after:absolute after:bottom-[-10px] after:left-0 after:w-1/2 after:h-[4px] after:bg-gradient-to-r after:from-cat-frappe-peach after:to-cat-frappe-yellow after:rounded-[2px]">
-                  Author Portal
-                </h1>
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="title" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Title</label>
-                    <input
-                      type="text"
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                      required
-                    />
+      <main className="pt-[calc(64px+8px)] text-lg">
+
+        {/* Desktop split view */}
+        <div className="container mx-auto px-2 sm:px-4 md:px-6 max-w-[2000px]">
+          <div className="hidden xl:block mt-6">
+            <ResizablePanelGroup direction="horizontal" className="w-full h-[calc(100vh-140px)]">
+              {/* Editor panel */}
+              <ResizablePanel defaultSize={65} minSize={35}>
+                <div className="h-full rounded-lg bg-gray-300 dark:bg-cat-frappe-base shadow-lg flex flex-col">
+                  {/* Editor header */}
+                  <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
+                    <div className="text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">Editor</div>
+                    <div className="flex items-center gap-3 text-xs text-[#4c4f69] dark:text-cat-frappe-subtext0">
+                      <span>{wordCount(content)} words</span>
+                      <span>{estimateReadingTime(content)} min</span>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            type="button"
+                            className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md text-cat-frappe-base dark:text-cat-frappe-text hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50 inline-flex items-center gap-2"
+                          >
+                            <IconSettings size={16} />
+                            Settings
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[700px] border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base text-cat-frappe-base dark:text-cat-frappe-text overflow-y-auto max-h-[90vh]">
+                          <DialogHeader>
+                            <DialogTitle>Post Settings</DialogTitle>
+                            <DialogDescription>Configure metadata and presentation for this article. Keywords auto-generate from your title and summary by default.</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-2 pr-1 pb-4">
+                            <div>
+                              <label className="block text-sm mb-1">Title</label>
+                              <input
+                                value={title}
+                                onChange={(e)=>setTitle(e.target.value)}
+                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                              />
+                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Main headline for your post. Keep it clear and compelling.</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm mb-1">Summary</label>
+                              <textarea
+                                value={dek || description}
+                                onChange={(e)=>{ setDek(e.target.value); setDescription(e.target.value); }}
+                                rows={3}
+                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                              />
+                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Appears below the title and in listings/SEO.</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm mb-1">Slug</label>
+                              <input
+                                value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') : '')}
+                                onChange={() => {}}
+                                disabled
+                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
+                              />
+                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Auto-generated from the title. You don’t need to change this.</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm mb-1">Hero Image</label>
+                              <FileUpload onChange={(files)=>{ const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
+                              {heroImageUrl && (
+                                <div className="mt-2">
+                                  <img src={heroImageUrl} alt="Hero preview" className="h-16 w-28 object-cover rounded" />
+                                </div>
+                              )}
+                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Upload a banner image for the top of the article.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-sm mb-1">SEO Title</label>
+                                <input
+                                  value={seoTitle}
+                                  onChange={(e)=>setSeoTitle(e.target.value)}
+                                  className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                                />
+                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Appears in search results. Defaults to your Title.</p>
+                              </div>
+                              <div>
+                                <label className="block text-sm mb-1">SEO Description</label>
+                                <input
+                                  value={seoDescription}
+                                  onChange={(e)=>setSeoDescription(e.target.value)}
+                                  className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                                />
+                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Short snippet for search engines. Defaults to Description.</p>
+                              </div>
+                              <div className="max-w-full">
+                                <label className="block text-sm mb-1">SEO Keywords</label>
+                                <div className="w-full max-w-full overflow-hidden flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                  <input
+                                    value={seoKeywords}
+                                    onChange={(e)=>{ setSeoAutoKeywords(false); setSeoKeywords(e.target.value)} }
+                                    placeholder="auto-generated unless overridden"
+                                    className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                                    disabled={seoAutoKeywords}
+                                  />
+                                  <label className="inline-flex items-center gap-1 text-xs shrink-0 px-2 py-1 rounded border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-mantle/60 self-start">
+                                    <input type="checkbox" className="accent-cat-frappe-yellow" checked={seoAutoKeywords} onChange={(e)=>setSeoAutoKeywords(e.target.checked)} />
+                                    Auto
+                                  </label>
+                                </div>
+                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Auto mode recommends keywords from your Title/Description. Uncheck to edit manually.</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <label className="flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isSpanTwo}
+                                  onChange={() => setIsSpanTwo(!isSpanTwo)}
+                                  className="sr-only peer"
+                                />
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Span Two Columns (home grid feature)</span>
+                              </label>
+                              <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <button type="button" className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md">Close</button>
+                            </DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="description" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Description</label>
-                    <textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-3 py-2 border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                      rows="3"
-                      required
-                    ></textarea>
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Upload Media</label>
-                    <div className="w-full max-w-4xl mx-auto min-h-48 border border-dashed bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 rounded-lg">
-                      <FileUpload 
-                        onChange={handleFileUpload}
-                        accept={{
-                          'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-                          'video/*': ['.mp4', '.webm', '.ogg']
+                  <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
+                  <ScrollArea className="h-full px-4 sm:px-6 py-4">
+                    {/* Title & Description moved into Settings dialog */}
+                    {/* Editor */}
+                    <div className="mb-6">
+                      <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
+                      <TipTapEditor 
+                        value={content}
+                        minHeightClass="min-h-[55vh]"
+                        onChange={handleEditorChange}
+                        onRequestUpload={async (file) => {
+                          const result = await uploadInChunks(pb, file, (progress) => {
+                            setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
+                          });
+                          if (result?.success) {
+                            const entry = { name: file.name, url: result.url, type: file.type, id: result.id, token: result.token };
+                            setUploadedImages(prev => [...prev, entry]);
+                            return entry;
+                          }
+                          throw new Error('Upload failed');
                         }}
                       />
                     </div>
-                  </div>
-                  
-                  {uploadedImages.length > 0 && (
-                    <div className="mb-4">
+                    {/* Settings moved to Settings dialog */}
+                   {uploadedImages.length > 0 && (
+                      <div className="mb-6">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
                         <button
@@ -481,7 +534,6 @@ export default function AuthorPortal() {
                           Clear All
                         </button>
                       </div>
-                      
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {uploadedImages.map((file, index) => (
                           <div key={index} className="relative group">
@@ -496,9 +548,8 @@ export default function AuthorPortal() {
                                   controls
                                   preload="metadata"
                                   playsInline
-                                >
-                                  <source src={`${file.url}`} type={file.type} />
-                                </video>
+                                  src={`/api/files?id=${file.id}`}
+                                />
                               ) : (
                                 <img 
                                   src={file.url} 
@@ -506,7 +557,6 @@ export default function AuthorPortal() {
                                   className="w-full h-full object-cover"
                                 />
                               )}
-
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200">
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-2 px-[5%]">
                                   <button
@@ -531,91 +581,166 @@ export default function AuthorPortal() {
                       </div>
                     </div>
                   )}
+                    {/* Document settings moved into Settings dialog */}
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
 
+              <ResizableHandle withHandle className="bg-cat-frappe-surface1" />
+
+              {/* Preview panel */}
+              <ResizablePanel defaultSize={35} minSize={30}>
+                <div className="h-full rounded-lg bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg flex flex-col">
+                  <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
+                    <div className="text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">Preview</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('desktop')}
+                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'desktop' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
+                      >Desktop</button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('tablet')}
+                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'tablet' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
+                      >Tablet</button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('mobile')}
+                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'mobile' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
+                      >Mobile</button>
+                    </div>
+                  </div>
+                  <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
+                  <ScrollArea className="h-full px-4 sm:px-6 py-6">
+                    <div className="mx-auto">
+                      <div className={`${previewDevice === 'desktop' ? 'w-[1200px]' : previewDevice === 'tablet' ? 'w-[768px]' : 'w-[390px]'} mx-auto border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-xl bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-md overflow-hidden`}>
+                        {heroImageUrl && (
+                          <div className="w-full">
+                            <div className="relative w-full h-[28vh] sm:h-[36vh] lg:h-[44vh] overflow-hidden">
+                              <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="px-4 sm:px-6 py-6">
+                          <header className="mb-4">
+                            <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight">{title || 'Preview Title'}</h1>
+                            {dek && (
+                              <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{dek}</p>
+                            )}
+                            <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
+                              <span>{new Date().toLocaleDateString()}</span>
+                              {content ? <span>• {estimateReadingTime(content)} min read</span> : null}
+                            </div>
+                          </header>
+                          <section className="mt-6">
+                            <div className="prose dark:prose-invert text-base max-w-none">
+                              {renderPreview()}
+                            </div>
+                          </section>
+                        </div>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+
+          {/* Mobile/Tablet: Tabs view */}
+          <div className="xl:hidden mt-6">
+            <div className="rounded-lg p-4 lg:p-6 bg-gray-300 dark:bg-cat-frappe-base shadow-lg">
+              <Tabs defaultValue="edit" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="edit">Editor</TabsTrigger>
+                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                </TabsList>
+                <TabsContent value="edit">
+                  {/* Reuse the editor stack for mobile; Summary merged */}
                   <div className="mb-4">
-                    <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                    <MdEditor
-                      value={content}
-                      style={{ height: '500px' }}
-                      renderHTML={(text) => mdParser ? mdParser.render(text) : ''}
+                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Summary</label>
+                    <textarea
+                      value={dek || description}
+                      onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
+                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                      rows="3"
+                      required
+                    ></textarea>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Hero Image URL</label>
+                    <input
+                      value={heroImageUrl}
+                      onChange={(e)=>setHeroImageUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                    />
+                  </div>
+                  <div className="mb-6">
+                    <label htmlFor="content-m" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
+                    <TipTapEditor 
+                      value={content} 
                       onChange={handleEditorChange}
-                      plugins={[
-                        'header',
-                        'font-bold',
-                        'font-italic',
-                        'font-underline',
-                        'font-strikethrough',
-                        'list-unordered',
-                        'list-ordered',
-                        'block-quote',
-                        'block-wrap',
-                        'block-code-inline',
-                        'block-code-block',
-                        'table',
-                        'image',
-                        'link',
-                        'clear',
-                        'logger',
-                        'mode-toggle',
-                        'full-screen',
-                        'tab-insert',
-                      ]}
-                      config={{
-                        view: {
-                          menu: true,
-                          md: true,
-                          html: true,
-                          fullScreen: true,
-                          hideMenu: false,
-                        },
-                        table: {
-                          maxRow: 5,
-                          maxCol: 6,
-                        },
-                        imageUrl: handleFileUpload,
+                      onRequestUpload={async (file) => {
+                        const result = await uploadInChunks(pb, file, (progress) => {
+                          setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
+                        });
+                        if (result?.success) {
+                          const entry = { name: file.name, url: result.url, type: file.type, id: result.id, token: result.token };
+                          setUploadedImages(prev => [...prev, entry]);
+                          return entry;
+                        }
+                        throw new Error('Upload failed');
                       }}
                     />
                   </div>
-                  <div className="mb-4">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isSpanTwo}
-                        onChange={() => setIsSpanTwo(!isSpanTwo)}
-                        className="sr-only peer"
-                      />
-                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-                        Span Two Columns
-                      </span>
-                    </label>
-                  </div>
-                  <div>
-                    <button
-                      type="submit"
-                      className="w-full bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust py-2 px-4 rounded-md font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
-                    >
-                      Publish Post 🐝
-                    </button>
-                  </div>
-                </form>
-                <div className="mt-8">
-                  <h2 className="text-2xl font-bold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Preview</h2>
-                  <div className="bg-[#eff1f5] dark:bg-cat-frappe-surface0 p-4 rounded-md">
-                    <h1 className="text-3xl font-bold mb-4">{title}</h1>
+                  {/* Document settings moved into Settings dialog */}
+                </TabsContent>
+                <TabsContent value="preview">
+                  <div className="rounded-lg overflow-hidden bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
+                    {heroImageUrl && (
+                      <div className="w-full">
+                        <div className="relative w-full h-[28vh] sm:h-[36vh] lg:h-[44vh] overflow-hidden">
+                          <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    )}
+                    <div className="px-4 sm:px-6 py-6">
+                      <header className="mb-4">
+                        <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight">{title || 'Preview Title'}</h1>
+                        {dek && (
+                          <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{dek}</p>
+                        )}
+                        <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
+                          <span>{new Date().toLocaleDateString()}</span>
+                          {content ? <span>• {estimateReadingTime(content)} min read</span> : null}
+                        </div>
+                      </header>
+                      <section className="mt-6">
+                        <div className="prose dark:prose-invert text-base max-w-3xl lg:max-w-4xl mx-auto">
                     {renderPreview()}
                   </div>
+                      </section>
                 </div>
               </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
-          <aside className="lg:col-span-1">
-            <MoreInformation />
-          </aside>
         </div>
       </main>
       <Notifications />
       <UploadProgress />
+      {/* Floating Publish FAB */}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 shadow-xl bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust hover:shadow-2xl transition-all"
+        aria-label="Publish"
+      >
+        <IconSend size={18} />
+        Publish
+      </button>
       <Footer />
     </>
   );

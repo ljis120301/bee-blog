@@ -8,11 +8,11 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="text-center md:text-left">
             <h3 className="text-3xl font-bold mb-4">bee blog 🐝</h3>
-            <p className="text-lg mb-2">Buzzing with ideas and honey-sweet content!</p>
+            <p className="text-lg mb-2">Buzzing with ideas and content</p>
             <p className="text-sm">© {new Date().getFullYear()} bee blog. some rights reserved i think idk but it looks professional.</p>
           </div>
           <div className="text-center md:text-right">
-            <h4 className="text-xl font-semibold mb-4">Connect with Us</h4>
+            <h4 className="text-xl font-semibold mb-4">Connect with me</h4>
             <div className="flex justify-center md:justify-end space-x-4 mb-6">
               <a href="https://github.com/ljis120301/" target="_blank" rel="noopener noreferrer" className="hover:text-cat-frappe-peach transition-colors">
                 <Github className="w-8 h-8" />

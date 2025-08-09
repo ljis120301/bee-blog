@@ -1,7 +1,7 @@
 import { ThemeProvider } from 'next-themes';
 import './styles/globals.css';
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext';
-import { Metadata } from 'next';
+import Script from 'next/script';
 
 export const metadata = {
   metadataBase: new URL('https://bee.whoisjason.me'),
@@ -63,22 +63,38 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <FavoritesProvider>
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <meta name="theme-color" content="#E9D4BA" />
-          {/* Update these lines for Google Fonts */}
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet" />
-        </head>
-        <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1 font-sans'>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#E9D4BA" />
+        {/* Update these lines for Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet" />
+      </head>
+      <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1 font-sans'>
+        {process.env.NODE_ENV === 'production' && (
+          <>
+            <Script
+              src="https://www.googletagmanager.com/gtag/js?id=G-084MBYJBPN"
+              strategy="afterInteractive"
+            />
+            <Script id="gtag-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-084MBYJBPN');
+              `}
+            </Script>
+          </>
+        )}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <FavoritesProvider>
             {children}
-          </ThemeProvider>
-        </body>
-      </html>
-    </FavoritesProvider>
+          </FavoritesProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

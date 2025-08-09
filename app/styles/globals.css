@@ -440,10 +440,7 @@
 }
 
 /* Style for the preview section */
-.bg-[#eff1f5].dark\:bg-cat-frappe-surface0 {
-  @apply text-cat-frappe-text dark:text-cat-frappe-subtext0;
-  /* Ensures text is readable in the preview section in both light and dark modes */
-}
+/* Removed invalid selector targeting Tailwind utility class combination */
 
 /* Additional styles for better contrast in dark mode */
 .dark .rc-md-editor .editor-container .sec-html .html-wrap {
@@ -509,3 +506,65 @@
   @apply text-cat-frappe-text;
   /* Explicitly sets the color for paragraphs, list items, and spans in dark mode */
 }
+
+/* TipTap / article table styles */
+/* Prose table restyle for clearer contrast */
+.prose table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 1rem 0; font-size: 0.95rem; line-height: 1.2; }
+.prose th { background: #f8fafc; color: #1e293b; font-weight: 600; text-align: left; border-bottom: 2px solid #e2e8f0; }
+.dark .prose th { background: #1e293b; color: #f1f5f9; border-bottom-color: #334155; }
+.prose td, .prose th { min-width: 0; border: 1px solid #ced4da; padding: 1px 4px; vertical-align: top; box-sizing: border-box; position: relative; }
+.dark .prose td, .dark .prose th { border: 1px solid #475569; }
+.prose tbody tr:hover { background: rgba(59, 130, 246, 0.06); }
+.dark .prose tbody tr:hover { background: rgba(96, 165, 250, 0.10); }
+
+/* ProseMirror table (editor) styles to match preview */
+.ProseMirror table { margin-top: 1rem; margin-bottom: 1rem; border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 0.95rem; line-height: 1.2; }
+.ProseMirror table td, .ProseMirror table th { min-width: 0; border: 1px solid #ced4da; padding: 1px 4px; vertical-align: top; box-sizing: border-box; position: relative; }
+.ProseMirror table th { font-weight: 600; text-align: left; background-color: #f8fafc; color: #1e293b; border-bottom: 2px solid #e2e8f0; }
+.dark .ProseMirror table th { background-color: #1e293b; color: #f1f5f9; border-bottom: 2px solid #334155; }
+.dark .ProseMirror table td, .dark .ProseMirror table th { border: 1px solid #475569; }
+.prose td, .prose th, .ProseMirror td, .ProseMirror th { font-size: 0.92rem; }
+.prose td p, .prose th p, .ProseMirror td p, .ProseMirror th p { margin: 0; line-height: inherit; }
+/* Ensure empty cells have a consistent minimum line height in preview/editor */
+.prose td:empty::before,
+.prose th:empty::before,
+.ProseMirror td:empty::before,
+.ProseMirror th:empty::before {
+  content: "\00a0";
+  display: inline-block;
+}
+/* Also handle cells that contain empty paragraphs from TipTap */
+.prose td > p:empty::before,
+.prose th > p:empty::before,
+.ProseMirror td > p:empty::before,
+.ProseMirror th > p:empty::before {
+  content: "\00a0";
+}
+.ProseMirror .tableWrapper { overflow-x: auto; }
+.ProseMirror .selectedCell:after { z-index: 2; position: absolute; content: ""; left: 0; right: 0; top: 0; bottom: 0; background: rgba(200, 200, 255, 0.4); pointer-events: none; }
+.ProseMirror tbody tr:hover { background: rgba(59, 130, 246, 0.06); }
+.dark .ProseMirror tbody tr:hover { background: rgba(96, 165, 250, 0.10); }
+
+/* TipTap video node - ensure visibility and spacing */
+.ProseMirror .tiptap-video {
+  display: block;
+}
+.ProseMirror .tiptap-video video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.ProseMirror table.ProseMirror-selectednode { outline: 3px solid #3b82f6; outline-offset: 4px; position: relative; border-radius: 4px; }
+.ProseMirror table.ProseMirror-selectednode::after { content: "Press Delete or Backspace to remove table"; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #3b82f6; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; z-index: 1000; pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+.ProseMirror table.ProseMirror-selectednode::before { content: ""; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #3b82f6; z-index: 1000; pointer-events: none; }
+.dark .ProseMirror table.ProseMirror-selectednode { outline-color: #60a5fa; }
+.dark .ProseMirror table.ProseMirror-selectednode::after { background: #60a5fa; color: #1f2937; font-weight: 600; }
+.dark .ProseMirror table.ProseMirror-selectednode::before { border-top-color: #60a5fa; }
+
+/* ProseMirror table selection hints */
+.ProseMirror table.ProseMirror-selectednode { outline: 3px solid #3b82f6; outline-offset: 4px; position: relative; border-radius: 4px; }
+.ProseMirror table.ProseMirror-selectednode::after { content: "Press Delete or Backspace to remove table"; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: #3b82f6; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; z-index: 1000; pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+.ProseMirror table.ProseMirror-selectednode::before { content: ""; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #3b82f6; z-index: 1000; pointer-events: none; }
+.dark .ProseMirror table.ProseMirror-selectednode { outline-color: #60a5fa; }
+.dark .ProseMirror table.ProseMirror-selectednode::after { background: #60a5fa; color: #1f2937; font-weight: 600; }
+.dark .ProseMirror table.ProseMirror-selectednode::before { border-top-color: #60a5fa; }
