@@ -36,7 +36,15 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
         codeBlock: true,
       }),
       Underline,
-      Link.configure({ openOnClick: true }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer nofollow',
+          target: '_blank',
+        },
+      }),
       Image.configure({ inline: true, allowBase64: true }),
       Table.configure({ resizable: true }),
       TableRow,
@@ -254,6 +262,42 @@ function Toolbar({ editor }) {
       <button className={btn(editor.isActive("blockquote"))} onClick={() => editor.chain().focus().toggleBlockquote().run()} type="button">❝ ❞</button>
       <button className={btn(editor.isActive("codeBlock"))} onClick={() => editor.chain().focus().toggleCodeBlock().run()} type="button">{`</>`}</button>
       <button className={btn(false)} onClick={() => editor.chain().focus().setHorizontalRule().run()} type="button">HR</button>
+      <span className="w-px h-6 bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0 mx-1" />
+      <button
+        className={btn(editor.isActive('link'))}
+        onClick={() => {
+          const prev = editor.getAttributes('link').href || '';
+          const input = typeof window !== 'undefined' ? window.prompt('Enter URL', prev) : prev;
+          if (input === null) return;
+          const trimmed = (input || '').trim();
+          if (!trimmed) {
+            editor.chain().focus().extendMarkRange('link').unsetLink().run();
+            return;
+          }
+          const normalized = /^(https?:)?\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+          const { empty } = editor.state.selection;
+          const chain = editor.chain().focus().extendMarkRange('link');
+          if (empty) {
+            chain.insertContent({
+              type: 'text',
+              text: normalized,
+              marks: [{ type: 'link', attrs: { href: normalized } }],
+            }).run();
+          } else {
+            chain.setLink({ href: normalized }).run();
+          }
+        }}
+        type="button"
+      >
+        Link
+      </button>
+      <button
+        className={btn(false)}
+        onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
+        type="button"
+      >
+        Unlink
+      </button>
       <span className="w-px h-6 bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0 mx-1" />
       <div className="inline-flex items-center gap-1">
         <button
