@@ -22,6 +22,13 @@ export async function POST(request) {
     // Record the page view with unique visitor tracking
     const result = await recordPageView(postId, visitorData || {}, request);
 
+    if (!result?.counted && result?.error) {
+      return NextResponse.json(
+        { success: false, error: result.error, reason: result.reason || 'error' },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       counted: result.counted,
