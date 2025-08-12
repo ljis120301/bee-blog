@@ -1,4 +1,5 @@
 import { ThemeProvider } from 'next-themes';
+import { Suspense } from 'react';
 import './styles/globals.css';
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext';
 import Script from 'next/script';
@@ -634,7 +635,9 @@ export default function RootLayout({ children }) {
       <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1 font-sans'>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FavoritesProvider>
-            <ConnectionLogger />
+            <Suspense fallback={null}>
+              <ConnectionLogger />
+            </Suspense>
             {children}
           </FavoritesProvider>
         </ThemeProvider>
