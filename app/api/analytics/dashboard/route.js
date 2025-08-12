@@ -1,6 +1,8 @@
 // API Route for admin dashboard analytics data
 import { NextResponse } from 'next/server';
 import { pb } from '@/lib/pocketbase';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -206,6 +208,20 @@ export async function GET(request) {
     const bounceRate = Math.floor(Math.random() * 20) + 25; // Placeholder - would need session tracking
     const avgTimeOnPage = Math.floor(Math.random() * 180) + 120; // Placeholder - would need session tracking
 
+    // Additionally: read JSON IP log and include a recent connections section
+    let recentConnections = [];
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'ip-data.json');
+      const raw = await fs.readFile(filePath, 'utf-8');
+      const all = JSON.parse(raw);
+      if (Array.isArray(all)) {
+        // Keep last 50 entries, newest first
+        recentConnections = all.slice(-50).reverse();
+      }
+    } catch (_) {
+      recentConnections = [];
+    }
+
     const response = NextResponse.json({
       success: true,
       data: {
@@ -222,7 +238,8 @@ export async function GET(request) {
         periodDays: Math.max(1, Math.round((now - startDate) / (24*60*60*1000))),
         recentSessions,
         viewsByDay,
-        engagementBreakdown
+        engagementBreakdown,
+        recentConnections
       }
     });
     return response;

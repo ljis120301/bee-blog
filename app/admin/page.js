@@ -68,7 +68,7 @@ export default function AdminDashboard() {
       });
       const analyticsData = await analyticsResponse.json();
 
-      if (analyticsData.success) {
+          if (analyticsData.success) {
         const data = analyticsData.data;
         
         setMetrics({
@@ -94,8 +94,14 @@ export default function AdminDashboard() {
             ttfb: 650
           },
           recentSessions: Array.isArray(data.recentSessions) ? data.recentSessions : [],
-          monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
+            monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
         });
+          // Attach recentConnections to state for rendering below
+          try {
+            if (Array.isArray(data.recentConnections)) {
+              setRecentConnections(data.recentConnections);
+            }
+          } catch {}
       }
 
       // Still fetch users data for user management
@@ -140,6 +146,9 @@ export default function AdminDashboard() {
       { id: 5, timeOnPage: 210, scrollDepth: 55, interactions: 4, engagement: 'medium', timestamp: new Date() }
     ];
   };
+
+  // IP log recent connections (from JSON)
+  const [recentConnections, setRecentConnections] = useState([]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -542,6 +551,43 @@ export default function AdminDashboard() {
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{session.ip || session.ipAddress || '-'}</TableCell>
                     <TableCell className="whitespace-nowrap">{session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Recent Connections (IP Log) */}
+        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
+          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent Connections (JSON Log)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead>Path</TableHead>
+                  <TableHead>Referrer</TableHead>
+                  <TableHead>User Agent</TableHead>
+                  <TableHead>Country</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentConnections.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-cat-frappe-subtext0">No connections logged yet.</TableCell>
+                  </TableRow>
+                ) : recentConnections.map((c, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="whitespace-nowrap">{c.timestamp ? new Date(c.timestamp).toLocaleString() : '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{c.ip || '-'}</TableCell>
+                    <TableCell className="max-w-[360px] truncate">{c.path || c.url || '-'}</TableCell>
+                    <TableCell className="max-w-[360px] truncate">{c.referrer || '-'}</TableCell>
+                    <TableCell className="max-w-[360px] truncate">{c.userAgent || '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{c.country || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
