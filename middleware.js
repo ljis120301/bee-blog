@@ -11,7 +11,7 @@ export function middleware(request) {
   
   // Only handle www redirect if you decide to set up www.bee.whoisjason.me
   const correctDomain = 'bee.whoisjason.me';
-  if (host === 'www.bee.whoisjason.me') {
+  if (host === 'bee.whoisjason.me') {
     // Only redirect www if you own it and want to redirect to non-www
     url.host = correctDomain;
     url.protocol = 'https:';

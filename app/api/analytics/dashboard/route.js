@@ -42,20 +42,29 @@ export async function GET(request) {
     }
     const startIso = startDate.toISOString();
 
-    // Admin REST auth (reuse same approach as writes)
+    // Admin REST auth (prefer service token, then admin creds, fallback to verified user bearer)
     const baseUrl = process.env.PB_BASE_URL?.replace(/\/$/, '') || 'https://api.whoisjason.me';
     async function getAdminBearerToken() {
+      // 1) Service token if provided
+      const serviceToken = process.env.PB_SERVICE_TOKEN || process.env.PB_ADMIN_TOKEN || process.env.PB_TOKEN;
+      if (serviceToken) return serviceToken;
+
+      // 2) Admin email/password
       const email = process.env.PB_ADMIN_EMAIL || process.env.PB_EMAIL;
       const password = process.env.PB_ADMIN_PASSWORD || process.env.PB_PASSWORD;
-      if (!email || !password) throw new Error('Missing PB admin credentials');
-      const resp = await fetch(`${baseUrl}/api/admins/auth-with-password`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ identity: email, password })
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.message || 'Admin auth failed');
-      return json?.token;
+      if (email && password) {
+        const resp = await fetch(`${baseUrl}/api/admins/auth-with-password`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ identity: email, password })
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(json?.message || 'Admin auth failed');
+        return json?.token;
+      }
+
+      // 3) Fallback to the verified user's bearer (role already checked == 'admin')
+      return token;
     }
     const adminToken = await getAdminBearerToken();
     const authHeaders = { authorization: `Bearer ${adminToken}` };
