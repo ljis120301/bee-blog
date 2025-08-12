@@ -1,0 +1,285 @@
+name: bee-blog
+services:
+  bee-blog:
+    cpu_shares: 90
+    command: []
+    container_name: bee-blog
+    depends_on:
+      pocketbase:
+        condition: service_started
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: 22957M
+    entrypoint:
+      - sh
+      - -c
+      - >
+        echo "=== Bee Blog Startup Log ==="
+
+        echo "Node version: $(node --version)"
+
+        echo "NPM version: $(npm --version)"
+
+        echo "Operating system: $(uname -a)"
+
+        echo ""
+
+
+        echo "[STEP 1] Installing dependencies..."
+
+        apk add --no-cache git openssh-client
+
+        echo "Git installed: $(git --version)"
+
+        echo ""
+
+
+        echo "[STEP 2] Setting up workspace..."
+
+        rm -rf /app/* /app/.[^.]* 2>/dev/null || true
+
+        echo ""
+
+
+        echo "[STEP 3] Cloning repository (shallow, latest commit only)..."
+
+        cd /tmp
+
+        rm -rf bee-blog 2>/dev/null || true
+
+        git clone --depth=1 --single-branch --branch v1 https://github.com/ljis120301/bee-blog.git bee-blog
+
+        if [ $? -ne 0 ]; then
+          echo "ERROR: Failed to clone repository"
+          exit 1
+        fi
+
+
+        echo "Moving repository to /app..."
+
+        cp -r /tmp/bee-blog/. /app/
+
+        cd /app
+
+        echo "Repository cloned successfully"
+
+        echo ""
+
+
+        echo "[STEP 4] Verifying project structure..."
+
+        if [ -f package.json ]; then
+          echo "✓ package.json found"
+        else
+          echo "ERROR: package.json not found!"
+          exit 1
+        fi
+
+
+        # Verify Next.js structure
+
+        if [ -f next.config.mjs ]; then
+          echo "✓ next.config.mjs found"
+        else
+          echo "✗ next.config.mjs not found"
+        fi
+
+
+        if [ -d app ]; then
+          echo "✓ app directory found"
+        else
+          echo "✗ app directory not found"
+        fi
+
+
+        if [ -d components ]; then
+          echo "✓ components directory found"
+        else
+          echo "✗ components directory not found"
+        fi
+
+        echo ""
+
+
+        echo "[STEP 4.5] Creating .env file in Next.js project directory..."
+
+        echo "PB_ADMIN_EMAIL=ljis120301@gmail.com" > .env
+        echo "PB_ADMIN_PASSWORD=Ilikepie120301!" >> .env
+
+        echo "✓ .env file created at /app/.env"
+
+
+        echo "[STEP 5] Installing npm dependencies..."
+
+        npm ci || npm install
+
+        if [ $? -ne 0 ]; then
+          echo "ERROR: npm install failed"
+          exit 1
+        fi
+
+        echo "Dependencies installed successfully"
+
+        echo ""
+
+
+        echo "[STEP 6] Building production bundle..."
+
+        npm run build
+
+        if [ $? -ne 0 ]; then
+          echo "ERROR: npm run build failed"
+          exit 1
+        fi
+
+        echo "Build completed successfully"
+
+        echo ""
+
+
+        echo "[STEP 7] Starting production server..."
+
+        echo "Starting Next.js in production mode on 0.0.0.0:3000..."
+
+        exec npm run start -- -p 3000 -H 0.0.0.0
+    environment:
+      - GIT_TERMINAL_PROMPT=0
+      - NODE_ENV=production
+    hostname: bee-blog
+    image: node:20-alpine
+    labels:
+      icon: https://icon.casaos.io/main/all/bee-blog.png
+    ports:
+      - target: 3000
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+    working_dir: /app
+    x-casaos:
+      architectures:
+        - amd64
+        - arm64
+      category: Web
+      description:
+        en_us: A Next.js blog platform with PocketBase backend. Automatically pulls the
+          latest code from GitHub v1 branch, builds, and serves in production
+          mode.
+      developer: ljis120301
+      icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/blog.png
+      index: /
+      main: bee-blog
+      port_map: "3000"
+      scheme: http
+      store_app_id: bee-blog
+      tagline:
+        en_us: Bee Blog - Next.js Blog Platform
+      tips:
+        en_us: The application pulls the latest code from the GitHub v1 branch on each
+          container restart, builds, and serves in production. Access the blog
+          at http://your-server-ip:3000. PocketBase admin interface is available
+          at http://your-server-ip:3069/_/. Check container logs for detailed
+          startup information.
+    volumes: []
+    devices: []
+    cap_add: []
+    network_mode: bridge
+    privileged: false
+  pocketbase:
+    cpu_shares: 90
+    command: []
+    container_name: pocketbase
+    deploy:
+      resources:
+        limits:
+          memory: 22957M
+    entrypoint:
+      - sh
+      - -c
+      - >
+        echo "=== PocketBase Startup Log ==="
+
+        echo "Operating system: $(uname -a)"
+
+        echo ""
+
+
+        echo "[STEP 1] Verifying PocketBase binary..."
+
+        if [ -f ./pocketbase/pocketbase ]; then
+          echo "✓ PocketBase binary found at /app/pocketbase/pocketbase"
+          echo "PocketBase version: $(./pocketbase/pocketbase --version 2>/dev/null || echo 'Unable to determine version')"
+        else
+          echo "ERROR: PocketBase binary not found at /app/pocketbase/pocketbase"
+          echo "Current directory contents:"
+          ls -la /app/
+          if [ -d /app/pocketbase ]; then
+            echo "Contents of /app/pocketbase:"
+            ls -la /app/pocketbase/
+          fi
+          echo "Please ensure the PocketBase binary is located at /home/jason/pocketbase/pocketbase/pocketbase"
+          exit 1
+        fi
+
+        echo ""
+
+
+        echo "[STEP 2] Starting PocketBase server..."
+
+        echo "Starting PocketBase on 0.0.0.0:3069..."
+
+        exec ./pocketbase/pocketbase serve --http=0.0.0.0:3069
+    hostname: pocketbase
+    image: alpine:latest
+    labels:
+      icon: https://icon.casaos.io/main/all/bee-blog.png
+    ports:
+      - target: 3069
+        published: "3069"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /home/jason/pocketbase
+        target: /app
+    working_dir: /app
+    x-casaos:
+      architectures:
+        - amd64
+        - arm64
+      category: Database
+      description:
+        en_us: PocketBase backend database for the Bee Blog application. Provides API
+          endpoints and admin interface.
+      developer: ljis120301
+      icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/database.png
+      index: /_/
+      main: pocketbase
+      port_map: "3069"
+      scheme: http
+      store_app_id: pocketbase
+      tagline:
+        en_us: PocketBase - Backend Database
+      tips:
+        en_us: PocketBase admin interface is available at http://your-server-ip:3069/_/.
+          Database files are persisted to /home/jason/pocketbase on the host
+          system.
+    devices: []
+    cap_add: []
+    environment: []
+    network_mode: bridge
+    privileged: false
+x-casaos:
+  author: self
+  category: self
+  hostname: ""
+  icon: https://icon.casaos.io/main/all/bee-blog.png
+  index: /
+  is_uncontrolled: false
+  port_map: ""
+  scheme: http
+  store_app_id: bee-blog
+  title:
+    custom: ""
+    en_us: bee-blog
