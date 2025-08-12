@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { ChartContainer, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -31,6 +35,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     checkAdminStatusAndLoadData();
   }, [router, timeRange]);
+
+  // Near real-time refresh so new page_views appear promptly
+  useEffect(() => {
+    if (!isAdmin) return;
+    const intervalId = setInterval(() => {
+      loadDashboardData();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, [isAdmin, timeRange]);
 
   const checkAdminStatusAndLoadData = async () => {
     if (pb.authStore.isValid) {
@@ -391,43 +404,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Top Performing Posts */}
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
-            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Top Performing Posts</h2>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {metrics.topPosts.map((post, index) => (
-                  <div key={post.id} className="flex items-center justify-between p-4 border border-cat-frappe-overlay0/20 rounded-lg bg-white dark:bg-cat-frappe-surface1">
-                    <div className="flex-1">
-                      <div className="flex items-center">
-                        <span className="text-lg font-bold text-cat-frappe-overlay1 mr-3">#{index + 1}</span>
-                        <div>
-                          <h3 className="font-medium text-cat-frappe-base dark:text-cat-frappe-text">{post.title}</h3>
-                          <div className="flex items-center space-x-4 mt-1 text-sm text-cat-frappe-subtext0">
-                            <span>{post.views} views</span>
-                            <span>{formatTime(post.avgTime)} avg time</span>
-                            <span className={post.bounceRate < 30 ? 'text-cat-frappe-green' : post.bounceRate < 50 ? 'text-cat-frappe-yellow' : 'text-cat-frappe-red'}>
-                              {post.bounceRate}% bounce
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => deletePost(post.id)}
-                      className="ml-4 text-cat-frappe-red hover:text-cat-frappe-maroon text-sm font-medium transition-colors duration-200"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-8 mb-8">
           {/* Core Web Vitals */}
           <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
             <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
@@ -470,54 +447,105 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Trends & Breakdown */}
+        {/* Charts - display only those with data via Tabs */}
+        {(metrics.topPosts?.length || metrics.viewsByDay?.length || (metrics.engagementBreakdown || []).some(e => e.value > 0)) && (
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20 mb-8">
+            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Analytics</h2>
+            </div>
+            <div className="p-6">
+              <Tabs defaultValue={metrics.topPosts?.length ? 'top' : (metrics.viewsByDay?.length ? 'views' : 'engagement')}>
+                <TabsList className="mb-4">
+                  {metrics.topPosts?.length ? <TabsTrigger value="top">Top Posts</TabsTrigger> : null}
+                  {metrics.viewsByDay?.length ? <TabsTrigger value="views">Views by Day</TabsTrigger> : null}
+                  {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? <TabsTrigger value="engagement">Engagement</TabsTrigger> : null}
+                </TabsList>
+
+                {metrics.topPosts?.length ? (
+                  <TabsContent value="top">
+                    <ChartContainer id="top-posts" config={{ views: { label: 'Views', color: 'hsl(25 95% 53%)' } }}>
+                      <BarChart data={metrics.topPosts.slice(0, 10)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="title" hide />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="views" fill="var(--color-views)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  </TabsContent>
+                ) : null}
+
+                {metrics.viewsByDay?.length ? (
+                  <TabsContent value="views">
+                    <ChartContainer id="views-by-day" config={{ views: { label: 'Views', color: 'hsl(221 83% 53%)' } }}>
+                      <LineChart data={metrics.viewsByDay}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="views" stroke="var(--color-views)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                  </TabsContent>
+                ) : null}
+
+                {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? (
+                  <TabsContent value="engagement">
+                    <ChartContainer id="engagement" config={{ high: { label: 'High', color: 'hsl(142 76% 36%)' }, medium: { label: 'Medium', color: 'hsl(38 92% 50%)' }, low: { label: 'Low', color: 'hsl(0 84% 60%)' } }}>
+                      <PieChart>
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Pie data={metrics.engagementBreakdown} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90}>
+                          {metrics.engagementBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={`var(--color-${entry.name})`} />
+                          ))}
+                        </Pie>
+                        <ChartLegend content={<ChartLegendContent />} />
+                      </PieChart>
+                    </ChartContainer>
+                  </TabsContent>
+                ) : null}
+              </Tabs>
+            </div>
+          </div>
+        )}
+
         {/* Recent User Sessions */}
         <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
           <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
             <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent User Sessions</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white dark:bg-cat-frappe-surface1">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Session</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Time on Page</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Scroll Depth</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Interactions</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Engagement</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">IP Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Session</TableHead>
+                  <TableHead>Post</TableHead>
+                  <TableHead>Time on Page</TableHead>
+                  <TableHead>Scroll Depth</TableHead>
+                  <TableHead>Interactions</TableHead>
+                  <TableHead>Engagement</TableHead>
+                  <TableHead>IP Address</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {metrics.recentSessions.map((session) => (
-                  <tr key={session.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
-                      Session #{session.id || session.sessionId || 'n/a'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {session.timeOnPage ? formatTime(session.timeOnPage) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {typeof session.scrollDepth === 'number' ? `${session.scrollDepth}%` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {typeof session.interactions === 'number' ? session.interactions : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>
-                        {session.engagement || 'n/a'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {session.ip || session.ipAddress || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
-                      {session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}
-                    </td>
-                  </tr>
+                  <TableRow key={session.id}>
+                    <TableCell className="whitespace-nowrap">#{session.id || session.sessionId || 'n/a'}</TableCell>
+                    <TableCell className="max-w-[360px] truncate">{session.postTitle || session.postId || '—'}</TableCell>
+                    <TableCell>{session.timeOnPage ? formatTime(session.timeOnPage) : '-'}</TableCell>
+                    <TableCell>{typeof session.scrollDepth === 'number' ? `${session.scrollDepth}%` : '-'}</TableCell>
+                    <TableCell>{typeof session.interactions === 'number' ? session.interactions : '-'}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>{session.engagement || 'n/a'}</span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{session.ip || session.ipAddress || '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
 

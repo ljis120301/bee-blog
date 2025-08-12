@@ -9,32 +9,31 @@ export default function MobileFirstOptimization() {
     // Core Web Vitals measurement and optimization
     const measureVitals = async () => {
       try {
-        // Import web-vitals dynamically for better performance
-        const { getCLS, getFID, getFCP, getLCP, getTTFB } = await import('web-vitals');
-        
-        // Measure and track Core Web Vitals
-        getCLS((metric) => {
+        // Import web-vitals v5 API (on* functions; FID replaced by INP)
+        const { onCLS, onINP, onFCP, onLCP, onTTFB } = await import('web-vitals');
+
+        onCLS((metric) => {
           setVitals(prev => ({ ...prev, cls: metric.value }));
-          // Send to analytics if needed
           sendToAnalytics('CLS', metric.value);
         });
 
-        getFID((metric) => {
-          setVitals(prev => ({ ...prev, fid: metric.value }));
-          sendToAnalytics('FID', metric.value);
+        onINP((metric) => {
+          // Map INP to fid key for backwards-compatible display
+          setVitals(prev => ({ ...prev, fid: metric.value, inp: metric.value }));
+          sendToAnalytics('INP', metric.value);
         });
 
-        getFCP((metric) => {
+        onFCP((metric) => {
           setVitals(prev => ({ ...prev, fcp: metric.value }));
           sendToAnalytics('FCP', metric.value);
         });
 
-        getLCP((metric) => {
+        onLCP((metric) => {
           setVitals(prev => ({ ...prev, lcp: metric.value }));
           sendToAnalytics('LCP', metric.value);
         });
 
-        getTTFB((metric) => {
+        onTTFB((metric) => {
           setVitals(prev => ({ ...prev, ttfb: metric.value }));
           sendToAnalytics('TTFB', metric.value);
         });
