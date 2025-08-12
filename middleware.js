@@ -9,14 +9,7 @@ export function middleware(request) {
   // we don't want to create redirects from domains we don't own
   // This would only help competitors if they registered those domains
   
-  // Only handle www redirect if you decide to set up www.bee.whoisjason.me
-  const correctDomain = 'bee.whoisjason.me';
-  if (host === 'bee.whoisjason.me') {
-    // Only redirect www if you own it and want to redirect to non-www
-    url.host = correctDomain;
-    url.protocol = 'https:';
-    return NextResponse.redirect(url, 301);
-  }
+  // No domain rewrites. Do not assume or redirect any host variants.
 
   // Handle common URL misspellings and variations
   const urlCorrections = {

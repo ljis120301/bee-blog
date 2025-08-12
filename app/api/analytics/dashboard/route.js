@@ -42,31 +42,25 @@ export async function GET(request) {
     }
     const startIso = startDate.toISOString();
 
-    // Admin REST auth (prefer service token, then admin creds, fallback to verified user bearer)
+    // Admin REST auth (prefer service token; else use verified incoming admin bearer; optionally try env creds but don't fail if they are wrong)
     const baseUrl = process.env.PB_BASE_URL?.replace(/\/$/, '') || 'https://api.whoisjason.me';
-    async function getAdminBearerToken() {
-      // 1) Service token if provided
-      const serviceToken = process.env.PB_SERVICE_TOKEN || process.env.PB_ADMIN_TOKEN || process.env.PB_TOKEN;
-      if (serviceToken) return serviceToken;
-
-      // 2) Admin email/password
+    let adminToken = process.env.PB_SERVICE_TOKEN || process.env.PB_ADMIN_TOKEN || process.env.PB_TOKEN || token;
+    // Best-effort: if env admin creds are provided, attempt them; on failure, keep existing token
+    try {
       const email = process.env.PB_ADMIN_EMAIL || process.env.PB_EMAIL;
       const password = process.env.PB_ADMIN_PASSWORD || process.env.PB_PASSWORD;
-      if (email && password) {
+      if (!process.env.PB_SERVICE_TOKEN && email && password) {
         const resp = await fetch(`${baseUrl}/api/admins/auth-with-password`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ identity: email, password })
         });
-        const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(json?.message || 'Admin auth failed');
-        return json?.token;
+        if (resp.ok) {
+          const json = await resp.json().catch(() => ({}));
+          if (json?.token) adminToken = json.token;
+        }
       }
-
-      // 3) Fallback to the verified user's bearer (role already checked == 'admin')
-      return token;
-    }
-    const adminToken = await getAdminBearerToken();
+    } catch { /* ignore and rely on existing token */ }
     const authHeaders = { authorization: `Bearer ${adminToken}` };
 
     async function pbGet(path, params) {
