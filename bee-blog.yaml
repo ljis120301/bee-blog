@@ -107,7 +107,8 @@ services:
 
         echo "PB_ADMIN_EMAIL=ljis120301@gmail.com" > .env
         echo "PB_ADMIN_PASSWORD=Ilikepie120301!" >> .env
-
+        echo "PB_BASE_URL=http://pocketbase:3069" >> .env
+        cat .env
         echo "✓ .env file created at /app/.env"
 
 
@@ -135,6 +136,19 @@ services:
         fi
 
         echo "Build completed successfully"
+
+        echo ""
+
+
+        echo "[STEP 6.9] Verifying .env contents (masked)..."
+
+        if [ -f .env ]; then
+          echo "--- /app/.env (masked) ---"
+          awk -F= '{ key=$1; val=$2; if (key ~ /(PASSWORD|TOKEN)/) { print key "=***" } else { print } }' .env
+          echo "---------------------------"
+        else
+          echo ".env not found at /app/.env"
+        fi
 
         echo ""
 
