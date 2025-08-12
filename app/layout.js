@@ -494,7 +494,7 @@ export default function RootLayout({ children }) {
         {/* Technical SEO */}
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="format-detection" content="telephone=no" />
-        <meta name="referrer" content="origin-when-cross-origin" />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
         
         {/* AI and Bot Directives */}
@@ -628,7 +628,7 @@ export default function RootLayout({ children }) {
         {/* Performance and security headers */}
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="format-detection" content="telephone=no" />
-        <meta name="referrer" content="origin-when-cross-origin" />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
       </head>
       <body className='bg-[#E9D4BA] dark:bg-cat-frappe-surface1 font-sans'>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
