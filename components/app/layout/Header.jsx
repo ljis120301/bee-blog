@@ -1,6 +1,6 @@
 import React from 'react';
 import Navbar from './Navbar';
-import ScrollProgressBar from './ScrollProgressBar';
+import ScrollProgressBar from '@/components/app/blog/ScrollProgressBar';
 
 const Header = () => {
   return (

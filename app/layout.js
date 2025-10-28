@@ -3,9 +3,9 @@ import { Suspense } from 'react';
 import './styles/globals.css';
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext';
 import Script from 'next/script';
-import StructuredData from '@/app/components/StructuredData';
-import TechPersonalitiesSchema from '@/app/components/TechPersonalitiesSchema';
-import ConnectionLogger from '@/app/components/ConnectionLogger';
+import StructuredData from '@/components/app/seo/StructuredData';
+import TechPersonalitiesSchema from '@/components/app/seo/TechPersonalitiesSchema';
+import ConnectionLogger from '@/components/app/shared/ConnectionLogger';
 
 export const metadata = {
   metadataBase: new URL('https://bee.whoisjason.me'),

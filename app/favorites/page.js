@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { useRouter } from 'next/navigation';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Header from '@/components/app/layout/Header';
+import Footer from '@/components/app/layout/Footer';
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import { IconSignature } from "@tabler/icons-react";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useFavorites } from '@/app/contexts/FavoritesContext';
-import FavoriteButton from '../components/FavoriteButton';
+import FavoriteButton from '@/components/app/shared/FavoriteButton';
 import { BackgroundBeamsWithCollision } from "@/components/ui/background-beams-with-collision"; // Ensure correct import
 import BackgroundBeamsWithCollisionDemo from '@/components/example/BackgroundBeamsWithCollisionDemo'; // Ensure correct import
 

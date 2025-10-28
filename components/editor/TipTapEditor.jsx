@@ -57,7 +57,7 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
     content: value || "",
     editorProps: {
       attributes: {
-        class: `prose dark:prose-invert text-base max-w-none ${minHeightClass} focus:outline-none`,
+        class: `prose dark:prose-invert text-base max-w-none ${minHeightClass} focus:outline-none text-cat-frappe-base dark:text-cat-frappe-text`,
       },
       handleDOMEvents: {
         // Ensure right-click inside table sets the selection under the cursor
@@ -159,9 +159,9 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
   if (!editor) return null;
 
   return (
-    <div className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-md overflow-hidden bg-white dark:bg-cat-frappe-base relative">
+    <div className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-md overflow-hidden bg-[#f8e8e0] dark:bg-cat-frappe-base relative">
       <Toolbar editor={editor} />
-      <div className="p-3 sm:p-4" onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}>
+      <div className="p-3 sm:p-4 bg-[#f8e8e0] dark:bg-cat-frappe-base" onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}>
         <ContextMenu>
           <ContextMenuTrigger>
             <EditorContent editor={editor}
@@ -238,7 +238,7 @@ function Toolbar({ editor }) {
     `px-2 py-1 text-sm rounded-md border transition-colors ${
       active
         ? "bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow"
-        : "bg-transparent text-cat-frappe-text dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0 hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50"
+        : "bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0 hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50"
     } ${extra}`;
 
   return (

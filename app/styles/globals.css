@@ -507,6 +507,56 @@
   /* Explicitly sets the color for paragraphs, list items, and spans in dark mode */
 }
 
+/* Prose code blocks - Light mode styling */
+.prose code {
+  background-color: #f5f5f5;
+  color: #d63384;
+  border: 1px solid #e1e4e8;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875em;
+  line-height: 1.4;
+  border-radius: 0.25rem;
+  padding: 0.125em 0.25em;
+}
+
+.prose pre {
+  background-color: #f8f9fa !important;
+  border: 1px solid #d1d5da;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  padding: 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background-color: transparent;
+  color: #24292e;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* Prose code blocks - Dark mode styling */
+.dark .prose code {
+  background-color: #51576d;
+  color: #f4b8e4;
+  border: 1px solid #626880;
+}
+
+.dark .prose pre {
+  background-color: #414559 !important;
+  border: 1px solid #626880;
+}
+
+.dark .prose pre code {
+  background-color: transparent;
+  color: #c6d0f5;
+  border: none;
+}
+
 /* TipTap / article table styles */
 /* Prose table restyle for clearer contrast */
 .prose table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 1rem 0; font-size: 0.95rem; line-height: 1.2; }
@@ -516,6 +566,56 @@
 .dark .prose td, .dark .prose th { border: 1px solid #475569; }
 .prose tbody tr:hover { background: rgba(59, 130, 246, 0.06); }
 .dark .prose tbody tr:hover { background: rgba(96, 165, 250, 0.10); }
+
+/* ProseMirror code blocks - Light mode styling (for editor) */
+.ProseMirror code {
+  background-color: #f5f5f5;
+  color: #d63384;
+  border: 1px solid #e1e4e8;
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875em;
+  line-height: 1.4;
+  border-radius: 0.25rem;
+  padding: 0.125em 0.25em;
+}
+
+.ProseMirror pre {
+  background-color: #f8f9fa;
+  border: 1px solid #d1d5da;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  padding: 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  color: #24292e;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* ProseMirror code blocks - Dark mode styling (for editor) */
+.dark .ProseMirror code {
+  background-color: #51576d;
+  color: #f4b8e4;
+  border: 1px solid #626880;
+}
+
+.dark .ProseMirror pre {
+  background-color: #414559;
+  border: 1px solid #626880;
+}
+
+.dark .ProseMirror pre code {
+  background-color: transparent;
+  color: #c6d0f5;
+  border: none;
+}
 
 /* ProseMirror table (editor) styles to match preview */
 .ProseMirror table { margin-top: 1rem; margin-bottom: 1rem; border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 0.95rem; line-height: 1.2; }

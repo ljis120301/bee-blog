@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
-import Header from "../../../components/Header";
-import Footer from "../../../components/Footer";
-import ScrollProgressBar from "../../../components/ScrollProgressBar";
+import Header from "@/components/app/layout/Header";
+import Footer from "@/components/app/layout/Footer";
+import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
 import dynamic from 'next/dynamic';
 import 'react-markdown-editor-lite/lib/index.css';
 import MarkdownIt from 'markdown-it';
@@ -14,7 +14,7 @@ import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import { uploadInChunks } from '@/lib/chunkUpload';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,7 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { IconSettings, IconSend, IconTrash } from "@tabler/icons-react";
 import { FileUpload } from "@/components/ui/file-upload";
-import ConfirmationDialog from "../../../components/ConfirmationDialog";
+import ConfirmationDialog from "@/components/app/shared/ConfirmationDialog";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -76,15 +76,23 @@ export default function EditPost() {
   const [tagToDelete, setTagToDelete] = useState(null);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const TAG_COLOR_PRESETS = [
+    // Core theme tones
     { name: 'Peach', bg: '#ef9f76', text: '#303446' },
     { name: 'Yellow', bg: '#e5c890', text: '#303446' },
     { name: 'Green', bg: '#a6d189', text: '#303446' },
     { name: 'Mauve', bg: '#ca9ee6', text: '#303446' },
     { name: 'Blue', bg: '#8caaee', text: '#303446' },
+    // Extended palette aligned with site theme
     { name: 'Red', bg: '#e78284', text: '#303446' },
-    { name: 'Teal', bg: '#81c8be', text: '#303446' },
+    { name: 'Maroon', bg: '#ea999c', text: '#303446' },
+    { name: 'Pink', bg: '#f4b8e4', text: '#303446' },
     { name: 'Sky', bg: '#99d1db', text: '#303446' },
+    { name: 'Teal', bg: '#81c8be', text: '#303446' },
+    { name: 'Sapphire', bg: '#85c1dc', text: '#303446' },
     { name: 'Lavender', bg: '#babbf1', text: '#303446' },
+    { name: 'Rosewater', bg: '#f2d5cf', text: '#303446' },
+    { name: 'Flamingo', bg: '#eebebe', text: '#303446' },
+    { name: 'Overlay', bg: '#e6e9ef', text: '#303446' },
   ];
 
   useEffect(() => {
@@ -199,44 +207,127 @@ export default function EditPost() {
     return () => { mounted = false; };
   }, []);
 
-  const toggleTag = (id) => {
+  // Add tag to current post's selection
+  const addTagToPost = (id) => {
+    setSelectedTagIds(prev => new Set(prev).add(id));
+  };
+
+  // Remove tag from current post's selection (does NOT delete globally)
+  const removeTagFromPost = (id) => {
     setSelectedTagIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      next.delete(id);
       return next;
     });
   };
 
-  const handleCreateTag = async () => {
-    const name = newTagName.trim();
-    if (!name) return;
-    try {
-      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
-      setAvailableTags(prev => [...prev, created]);
-      setSelectedTagIds(prev => new Set(prev).add(created.id));
-      setNewTagName('');
-    } catch (e) {
-      console.error('Tag create failed:', e);
+  // Legacy toggle function - now just calls add/remove
+  const toggleTag = (id) => {
+    if (selectedTagIds.has(id)) {
+      removeTagFromPost(id);
+    } else {
+      addTagToPost(id);
     }
   };
 
-  const requestDeleteTag = (tag) => {
-    setTagToDelete(tag);
-    setIsDeleteTagDialogOpen(true);
+  const handleCreateTag = async () => {
+    const name = newTagName.trim().toLowerCase();
+    if (!name) {
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: 'Tag name cannot be empty',
+        type: 'error'
+      }]);
+      return;
+    }
+    
+    // Check if tag already exists
+    const existing = availableTags.find(t => t.name.toLowerCase() === name);
+    if (existing) {
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: `Tag "${name}" already exists. Adding to post.`,
+        type: 'info'
+      }]);
+      addTagToPost(existing.id);
+      setNewTagName('');
+      return;
+    }
+    
+    try {
+      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
+      setAvailableTags(prev => [...prev, created]);
+      addTagToPost(created.id);
+      setNewTagName('');
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: `Created and added "${name}" tag`,
+        type: 'success'
+      }]);
+    } catch (e) {
+      console.error('Tag create failed:', e);
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: 'Failed to create tag',
+        type: 'error'
+      }]);
+    }
+  };
+
+  const requestDeleteTag = async (tag) => {
+    try {
+      // Fetch count of posts using this tag
+      const count = await pb.collection('posts').getList(1, 1, {
+        filter: `tags ~ "${tag.id}"`,
+      });
+      
+      setTagToDelete({ ...tag, postCount: count.totalItems });
+      setIsDeleteTagDialogOpen(true);
+    } catch (e) {
+      console.error('Failed to fetch tag usage count:', e);
+      setTagToDelete({ ...tag, postCount: 0 });
+      setIsDeleteTagDialogOpen(true);
+    }
   };
 
   const confirmDeleteTag = async () => {
     if (!tagToDelete) return;
     try {
+      // Step 1: Find all posts with this tag
+      const postsWithTag = await pb.collection('posts').getFullList({
+        filter: `tags ~ "${tagToDelete.id}"`,
+        fields: 'id,tags'
+      });
+      
+      // Step 2: Remove tag from each post
+      for (const post of postsWithTag) {
+        const updatedTags = (post.tags || []).filter(tid => tid !== tagToDelete.id);
+        await pb.collection('posts').update(post.id, { tags: updatedTags });
+      }
+      
+      // Step 3: Delete the tag itself
       await pb.collection('tags').delete(tagToDelete.id);
+      
+      // Step 4: Update UI
       setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
       setSelectedTagIds(prev => {
         const next = new Set(prev);
         next.delete(tagToDelete.id);
         return next;
       });
+      
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: `Tag deleted and removed from ${postsWithTag.length} post(s)`,
+        type: 'success'
+      }]);
     } catch (e) {
       console.error('Delete tag failed:', e);
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: 'Failed to delete tag',
+        type: 'error'
+      }]);
     } finally {
       setIsDeleteTagDialogOpen(false);
       setTagToDelete(null);
@@ -355,7 +446,7 @@ export default function EditPost() {
   };
 
   const renderPreview = () => {
-    if (!mdParser || !content) return <div>No content to preview</div>;
+    if (!mdParser || !content) return <div className="text-cat-frappe-subtext0">No content to preview</div>;
     
     const deviceClasses = {
       desktop: 'max-w-full',
@@ -364,11 +455,11 @@ export default function EditPost() {
     };
 
     return (
-      <div className={`bg-white dark:bg-gray-900 min-h-full ${deviceClasses[previewDevice]}`}>
+      <div className={`bg-[#eff1f5] dark:bg-cat-frappe-mantle min-h-full ${deviceClasses[previewDevice]}`}>
         <article className="p-6">
           <header className="mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
-            {dek && <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{dek}</p>}
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-text">{title}</h1>
+            {dek && <p className="text-lg text-cat-frappe-overlay1 dark:text-cat-frappe-subtext0 mb-4">{dek}</p>}
             {heroImageUrl && (
               <div className="mb-6">
                 <img src={heroImageUrl} alt="Hero" className="w-full h-64 object-cover rounded-lg" />
@@ -376,7 +467,7 @@ export default function EditPost() {
             )}
           </header>
           <div 
-            className="prose prose-lg max-w-none dark:prose-invert"
+            className="prose prose-lg max-w-none dark:prose-invert text-cat-frappe-base dark:text-cat-frappe-text"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </article>
@@ -405,17 +496,23 @@ export default function EditPost() {
     <>
       <ScrollProgressBar />
       <Header />
-      <main className="pt-[calc(64px+8px)] min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      {/* 
+        Main background uses Catppuccin Frappé colors:
+        - Light mode: #F6EEE5 (warm beige)
+        - Dark mode: cat-frappe-mantle (dark warm gray)
+        These match the author portal page design perfectly
+      */}
+      <main className="pt-[calc(64px+8px)] min-h-screen bg-[#F6EEE5] dark:bg-cat-frappe-mantle">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-3xl font-bold text-cat-frappe-base dark:text-cat-frappe-yellow">
                 Edit Post: {title}
               </h1>
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleUpdate}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-6 py-3 bg-cat-frappe-yellow hover:bg-cat-frappe-peach text-cat-frappe-base rounded-lg font-semibold transition-colors shadow-lg border border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
                 >
                   <IconSend size={20} />
                   Update Post
@@ -430,60 +527,60 @@ export default function EditPost() {
               </TabsList>
 
               <TabsContent value="edit" className="space-y-0">
-                <ResizablePanelGroup direction="horizontal" className="min-h-[calc(100vh-200px)] rounded-lg border bg-white dark:bg-gray-800">
+                <ResizablePanelGroup direction="horizontal" className="min-h-[calc(100vh-200px)] rounded-lg border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
                   <ResizablePanel defaultSize={70} minSize={50}>
-                    <div className="h-full p-6">
+                    <div className="h-full p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base">
                       <div className="space-y-6">
                         {/* Basic Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2">Title</label>
+                            <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Title</label>
                             <input
                               type="text"
                               value={title}
                               onChange={(e) => setTitle(e.target.value)}
-                              className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                              className="w-full p-3 border border-cat-frappe-surface1 rounded-lg bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                               placeholder="Enter post title"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-2">Slug (URL)</label>
+                            <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Slug (URL)</label>
                             <input
                               type="text"
                               value={slug}
                               onChange={(e) => setSlug(e.target.value)}
-                              className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                              className="w-full p-3 border border-cat-frappe-surface1 rounded-lg bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                               placeholder="Auto-generated from title"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2">Description</label>
+                          <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Description</label>
                           <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                            className="w-full p-3 border border-cat-frappe-surface1 rounded-lg bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                             rows="3"
                             placeholder="Brief description of the post"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2">Dek (Subtitle)</label>
+                          <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Dek (Subtitle)</label>
                           <input
                             type="text"
                             value={dek}
                             onChange={(e) => setDek(e.target.value)}
-                            className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                            className="w-full p-3 border border-cat-frappe-surface1 rounded-lg bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                             placeholder="Optional subtitle or summary"
                           />
                         </div>
 
                         {/* Content Editor */}
                         <div>
-                          <label className="block text-sm font-medium mb-2">Content</label>
-                          <div className="border rounded-lg overflow-hidden dark:border-gray-600">
+                          <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Content</label>
+                          <div className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-lg overflow-hidden">
                             {postData && mdParser ? (
                               <TipTapEditor
                                 key={params.id} // Force re-render when editing different posts
@@ -522,8 +619,8 @@ export default function EditPost() {
                                 placeholder="Write your post content..."
                               />
                             ) : (
-                              <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded">
-                                <p className="text-gray-500">Loading editor...</p>
+                              <div className="flex items-center justify-center h-64 bg-[#eff1f5] dark:bg-cat-frappe-surface0 rounded">
+                                <p className="text-cat-frappe-subtext0">Loading editor...</p>
                               </div>
                             )}
                           </div>
@@ -532,23 +629,23 @@ export default function EditPost() {
                     </div>
                   </ResizablePanel>
 
-                  <ResizableHandle withHandle />
+                  <ResizableHandle withHandle className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
 
                   <ResizablePanel defaultSize={30} minSize={25}>
-                    <div className="h-full bg-gray-50 dark:bg-gray-900">
+                    <div className="h-full bg-[#F6EEE5] dark:bg-cat-frappe-base">
                       <ScrollArea className="h-full">
                         <div className="p-6 space-y-6">
                           <div>
-                            <h3 className="text-lg font-semibold mb-4">Settings</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Settings</h3>
                             
                             <div className="space-y-4">
                               <div>
-                                <label className="block text-sm font-medium mb-2">Hero Image URL</label>
+                                <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Hero Image URL</label>
                                 <input
                                   type="url"
                                   value={heroImageUrl}
                                   onChange={(e) => setHeroImageUrl(e.target.value)}
-                                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
+                                  className="w-full p-2 border border-cat-frappe-surface1 rounded bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text text-sm"
                                   placeholder="https://example.com/image.jpg"
                                 />
                               </div>
@@ -558,35 +655,35 @@ export default function EditPost() {
                                   type="checkbox"
                                   checked={isSpanTwo}
                                   onChange={(e) => setIsSpanTwo(e.target.checked)}
-                                  className="rounded"
+                                  className="rounded accent-cat-frappe-yellow"
                                 />
-                                <label className="text-sm">Span Two Columns</label>
+                                <label className="text-sm text-cat-frappe-base dark:text-cat-frappe-text">Span Two Columns</label>
                               </div>
                             </div>
                           </div>
 
-                          <Separator />
+                          <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
 
                           <div>
-                            <h3 className="text-lg font-semibold mb-4">SEO Settings</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">SEO Settings</h3>
                             <div className="space-y-4">
                               <div>
-                                <label className="block text-sm font-medium mb-2">SEO Title</label>
+                                <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">SEO Title</label>
                                 <input
                                   type="text"
                                   value={seoTitle}
                                   onChange={(e) => setSeoTitle(e.target.value)}
-                                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
+                                  className="w-full p-2 border border-cat-frappe-surface1 rounded bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text text-sm"
                                   placeholder="Defaults to post title"
                                 />
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium mb-2">SEO Description</label>
+                                <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">SEO Description</label>
                                 <textarea
                                   value={seoDescription}
                                   onChange={(e) => setSeoDescription(e.target.value)}
-                                  className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
+                                  className="w-full p-2 border border-cat-frappe-surface1 rounded bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text text-sm"
                                   rows="3"
                                   placeholder="Defaults to post description"
                                 />
@@ -598,16 +695,16 @@ export default function EditPost() {
                                     type="checkbox"
                                     checked={seoAutoKeywords}
                                     onChange={(e) => setSeoAutoKeywords(e.target.checked)}
-                                    className="rounded"
+                                    className="rounded accent-cat-frappe-yellow"
                                   />
-                                  <label className="text-sm">Auto-generate keywords</label>
+                                  <label className="text-sm text-cat-frappe-base dark:text-cat-frappe-text">Auto-generate keywords</label>
                                 </div>
                                 {!seoAutoKeywords && (
                                   <input
                                     type="text"
                                     value={seoKeywords}
                                     onChange={(e) => setSeoKeywords(e.target.value)}
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
+                                    className="w-full p-2 border border-cat-frappe-surface1 rounded bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text text-sm"
                                     placeholder="keyword1, keyword2, keyword3"
                                   />
                                 )}
@@ -615,56 +712,94 @@ export default function EditPost() {
                             </div>
                           </div>
 
-                          <Separator />
+                          <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
 
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-lg font-semibold">Tags</h3>
+                              <h3 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow">Tags</h3>
                               <button
                                 type="button"
                                 onClick={() => setIsEditingTags(v => !v)}
-                                className="text-xs rounded-full border px-2 py-1 bg-white dark:bg-gray-800"
+                                className="text-xs rounded-full border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                               >
-                                {isEditingTags ? 'Done' : 'Edit tags'}
+                                {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                               </button>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              {availableTags.map(t => (
-                                <div key={t.id} className="relative inline-flex items-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleTag(t.id)}
-                                    className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
-                                    style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
-                                    title={`#${t.name}`}
-                                  >
-                                    #{t.name}
-                                  </button>
-                                  {isEditingTags && (
+                            
+                            {/* Selected tags for this post */}
+                            <div className="mb-3">
+                              <div className="text-xs text-cat-frappe-subtext0 mb-1">Currently tagged:</div>
+                              <div className="flex flex-wrap gap-2 min-h-[32px] p-2 rounded-md border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/40 dark:bg-cat-frappe-mantle/40">
+                                {selectedTagIds.size === 0 ? (
+                                  <span className="text-xs text-cat-frappe-subtext0 italic">No tags selected</span>
+                                ) : (
+                                  Array.from(selectedTagIds).map(id => {
+                                    const tag = availableTags.find(t => t.id === id);
+                                    if (!tag) return null;
+                                    return (
+                                      <div key={id} className="relative inline-flex items-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => removeTagFromPost(id)}
+                                          className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border hover:opacity-80 transition-opacity"
+                                          style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
+                                          title={`Remove #${tag.name} from this post`}
+                                        >
+                                          #{tag.name}
+                                          <span className="ml-1 text-[10px]">✕</span>
+                                        </button>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Available tags to add */}
+                            <div className="mb-3">
+                              <div className="text-xs text-cat-frappe-subtext0 mb-1">Add more tags:</div>
+                              <div className="flex flex-wrap gap-2">
+                                {availableTags.filter(t => !selectedTagIds.has(t.id)).map(t => (
+                                  <div key={t.id} className="relative inline-flex items-center">
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
-                                      className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
-                                      title="Delete tag"
+                                      onClick={() => addTagToPost(t.id)}
+                                      className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-surface0/60 hover:bg-white dark:hover:bg-cat-frappe-surface0 transition-colors"
+                                      style={{ color: t.color_text || '#303446' }}
+                                      title={`Add #${t.name} to this post`}
                                     >
-                                      <IconTrash size={14} />
+                                      #{t.name}
+                                      <span className="text-[10px]">+</span>
                                     </button>
-                                  )}
-                                </div>
-                              ))}
+                                    {isEditingTags && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                        className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                        title="Delete tag globally"
+                                      >
+                                        <IconTrash size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                {availableTags.filter(t => !selectedTagIds.has(t.id)).length === 0 && (
+                                  <span className="text-xs text-cat-frappe-subtext0 italic">All tags selected</span>
+                                )}
+                              </div>
                             </div>
                             <div className="mt-3 grid grid-cols-1 gap-2">
                               <div>
-                                <label className="block text-xs mb-1">New tag name</label>
-                                <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                                <label className="block text-xs mb-1 text-cat-frappe-base dark:text-cat-frappe-text">New tag name</label>
+                                <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text" />
                               </div>
                               <div>
-                                <label className="block text-xs mb-1">Color preset</label>
+                                <label className="block text-xs mb-1 text-cat-frappe-base dark:text-cat-frappe-text">Color preset</label>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-[#F6EEE5] dark:bg-cat-frappe-base text-sm"
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-[#F6EEE5] dark:bg-cat-frappe-base text-sm text-cat-frappe-base dark:text-cat-frappe-text"
                                     >
                                       <span className="inline-block w-4 h-4 rounded-full border" style={{ backgroundColor: newTagBg, borderColor: `${newTagFg}22` }} />
                                       {TAG_COLOR_PRESETS[selectedPreset]?.name || 'Choose color'}
@@ -689,11 +824,11 @@ export default function EditPost() {
                                         <div className="space-y-2">
                                           <div>
                                             <label className="block text-xs mb-1">Background</label>
-                                            <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-gray-800" placeholder="#hex" />
+                                            <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                           </div>
                                           <div>
                                             <label className="block text-xs mb-1">Text</label>
-                                            <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-gray-800" placeholder="#hex" />
+                                            <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                           </div>
                                         </div>
                                       </DropdownMenuSubContent>
@@ -702,7 +837,7 @@ export default function EditPost() {
                                 </DropdownMenu>
                               </div>
                               <div>
-                                <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border bg-white dark:bg-gray-800 text-sm">
+                                <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-white/60 dark:bg-cat-frappe-surface0 text-sm text-cat-frappe-base dark:text-cat-frappe-text">
                                   Create tag
                                 </button>
                               </div>
@@ -710,19 +845,19 @@ export default function EditPost() {
                           </div>
 
                           <div>
-                            <h3 className="text-lg font-semibold mb-4">File Upload</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">File Upload</h3>
                             <FileUpload onChange={handleFileUploads} />
                             
                             {uploadedImages.length > 0 && (
                               <div className="mt-4">
-                                <h4 className="text-sm font-medium mb-2">Uploaded Files</h4>
+                                <h4 className="text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Uploaded Files</h4>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                   {uploadedImages.map((item, index) => (
-                                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                                    <div key={index} className="flex items-center gap-2 p-2 bg-white/60 dark:bg-cat-frappe-surface0 rounded text-xs text-cat-frappe-base dark:text-cat-frappe-text border border-cat-frappe-surface1 dark:border-cat-frappe-surface0">
                                       <span className="truncate flex-1">{item.filename}</span>
                                       <button
                                         onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
-                                        className="text-red-500 hover:text-red-700"
+                                        className="text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
                                       >
                                         ×
                                       </button>
@@ -740,16 +875,16 @@ export default function EditPost() {
               </TabsContent>
 
               <TabsContent value="preview" className="space-y-0">
-                <div className="min-h-[calc(100vh-200px)] bg-white dark:bg-gray-800 rounded-lg border">
-                  <div className="p-6 border-b">
+                <div className="min-h-[calc(100vh-200px)] bg-[#F6EEE5] dark:bg-cat-frappe-base rounded-lg border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 shadow-lg">
+                  <div className="p-6 border-b border-cat-frappe-surface1 dark:border-cat-frappe-surface0">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Preview</h3>
+                      <h3 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow">Preview</h3>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Device:</span>
+                        <span className="text-sm text-cat-frappe-base dark:text-cat-frappe-subtext0">Device:</span>
                         <select
                           value={previewDevice}
                           onChange={(e) => setPreviewDevice(e.target.value)}
-                          className="text-sm border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600"
+                          className="text-sm border border-cat-frappe-surface1 rounded px-2 py-1 bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                         >
                           <option value="desktop">Desktop</option>
                           <option value="tablet">Tablet</option>
@@ -773,10 +908,14 @@ export default function EditPost() {
             {notifications.slice(-3).map((notification) => (
               <div
                 key={notification.id}
-                className={`px-4 py-2 rounded-lg shadow-lg ${
-                  notification.type === 'success' 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-red-500 text-white'
+                className={`px-4 py-2 rounded-lg shadow-lg border ${
+                  notification.type === 'error'
+                    ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red'
+                    : notification.type === 'success'
+                    ? 'bg-[#a6d189]/90 dark:bg-[#a6d189] text-cat-frappe-base dark:text-[#303446] border-[#a6d189]' // Catppuccin Frappé Green
+                    : notification.type === 'info'
+                    ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
+                    : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
                 }`}
               >
                 {notification.message}
@@ -789,7 +928,7 @@ export default function EditPost() {
         isOpen={isDeleteTagDialogOpen}
         onClose={() => setIsDeleteTagDialogOpen(false)}
         onConfirm={confirmDeleteTag}
-        message={`Delete the tag "${tagToDelete?.name ?? ''}"? This cannot be undone.`}
+        message={`Delete tag "${tagToDelete?.name ?? ''}"? This will remove it from ${tagToDelete?.postCount ?? 0} post(s) and cannot be undone.`}
       />
       <Footer />
     </>

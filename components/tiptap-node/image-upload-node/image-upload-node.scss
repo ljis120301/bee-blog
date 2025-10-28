@@ -1,37 +1,39 @@
 :root {
-  --tt-button-default-icon-color: var(--tt-gray-light-a-600);
+  // Light mode - Clean and professional upload component styling
+  --tt-button-default-icon-color: #6c757d; // Medium gray for icons
 
-  --tiptap-image-upload-active: var(--tt-brand-color-500);
-  --tiptap-image-upload-progress-bg: var(--tt-brand-color-50);
-  --tiptap-image-upload-icon-bg: var(--tt-brand-color-500);
+  --tiptap-image-upload-active: #0d6efd; // Bootstrap primary blue
+  --tiptap-image-upload-progress-bg: #e7f1ff; // Very light blue for progress background
+  --tiptap-image-upload-icon-bg: #0d6efd; // Bootstrap primary blue
 
-  --tiptap-image-upload-text-color: var(--tt-gray-light-a-700);
-  --tiptap-image-upload-subtext-color: var(--tt-gray-light-a-400);
-  --tiptap-image-upload-border: var(--tt-gray-light-a-300);
-  --tiptap-image-upload-border-hover: var(--tt-gray-light-a-400);
-  --tiptap-image-upload-border-active: var(--tt-brand-color-500);
+  --tiptap-image-upload-text-color: #212529; // Dark text for readability
+  --tiptap-image-upload-subtext-color: #6c757d; // Gray for secondary text
+  --tiptap-image-upload-border: #ced4da; // Light gray border
+  --tiptap-image-upload-border-hover: #adb5bd; // Darker gray on hover
+  --tiptap-image-upload-border-active: #0d6efd; // Blue when active
 
-  --tiptap-image-upload-icon-doc-bg: var(--tt-gray-light-a-200);
-  --tiptap-image-upload-icon-doc-border: var(--tt-gray-light-300);
-  --tiptap-image-upload-icon-color: var(--white);
+  --tiptap-image-upload-icon-doc-bg: #e9ecef; // Light background for document icon
+  --tiptap-image-upload-icon-doc-border: #dee2e6; // Subtle border
+  --tiptap-image-upload-icon-color: #ffffff; // White icon color
 }
 
 .dark {
-  --tt-button-default-icon-color: var(--tt-gray-dark-a-600);
+  // Dark mode - Using Catppuccin Frappe colors for consistency
+  --tt-button-default-icon-color: #a5adce; // Catppuccin subtext0
 
-  --tiptap-image-upload-active: var(--tt-brand-color-400);
-  --tiptap-image-upload-progress-bg: var(--tt-brand-color-900);
-  --tiptap-image-upload-icon-bg: var(--tt-brand-color-400);
+  --tiptap-image-upload-active: #8caaee; // Catppuccin blue
+  --tiptap-image-upload-progress-bg: #51576d; // Catppuccin surface1
+  --tiptap-image-upload-icon-bg: #8caaee; // Catppuccin blue
 
-  --tiptap-image-upload-text-color: var(--tt-gray-dark-a-700);
-  --tiptap-image-upload-subtext-color: var(--tt-gray-dark-a-400);
-  --tiptap-image-upload-border: var(--tt-gray-dark-a-300);
-  --tiptap-image-upload-border-hover: var(--tt-gray-dark-a-400);
-  --tiptap-image-upload-border-active: var(--tt-brand-color-400);
+  --tiptap-image-upload-text-color: #c6d0f5; // Catppuccin text
+  --tiptap-image-upload-subtext-color: #a5adce; // Catppuccin subtext0
+  --tiptap-image-upload-border: #626880; // Catppuccin surface2
+  --tiptap-image-upload-border-hover: #737994; // Slightly lighter surface
+  --tiptap-image-upload-border-active: #8caaee; // Catppuccin blue
 
-  --tiptap-image-upload-icon-doc-bg: var(--tt-gray-dark-a-200);
-  --tiptap-image-upload-icon-doc-border: var(--tt-gray-dark-300);
-  --tiptap-image-upload-icon-color: var(--black);
+  --tiptap-image-upload-icon-doc-bg: #51576d; // Catppuccin surface1
+  --tiptap-image-upload-icon-doc-border: #626880; // Catppuccin surface2
+  --tiptap-image-upload-icon-color: #303446; // Catppuccin base (dark for contrast)
 }
 
 .frappe {

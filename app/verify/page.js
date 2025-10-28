@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Header from '@/components/app/layout/Header';
+import Footer from '@/components/app/layout/Footer';
 
 const VerifyPage = () => {
   const [status, setStatus] = useState('Verifying your email...');
