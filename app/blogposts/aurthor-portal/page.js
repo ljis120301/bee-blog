@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import ScrollProgressBar from "../../components/ScrollProgressBar";
+import Header from "@/components/app/layout/Header";
+import Footer from "@/components/app/layout/Footer";
+import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
 import dynamic from 'next/dynamic';
 import 'react-markdown-editor-lite/lib/index.css';
 import MarkdownIt from 'markdown-it';
@@ -14,7 +14,7 @@ import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import { uploadInChunks } from '@/lib/chunkUpload';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,7 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { IconSettings, IconSend, IconTrash } from "@tabler/icons-react";
 import { FileUpload } from "@/components/ui/file-upload";
-import ConfirmationDialog from "../../components/ConfirmationDialog";
+import ConfirmationDialog from "@/components/app/shared/ConfirmationDialog";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -157,44 +157,103 @@ export default function AuthorPortal() {
     return () => { mounted = false; };
   }, []);
 
-  const toggleTag = (id) => {
+  // Add tag to current post's selection
+  const addTagToPost = (id) => {
+    setSelectedTagIds(prev => new Set(prev).add(id));
+  };
+
+  // Remove tag from current post's selection (does NOT delete globally)
+  const removeTagFromPost = (id) => {
     setSelectedTagIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      next.delete(id);
       return next;
     });
   };
 
-  const handleCreateTag = async () => {
-    const name = newTagName.trim();
-    if (!name) return;
-    try {
-      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
-      setAvailableTags(prev => [...prev, created]);
-      setSelectedTagIds(prev => new Set(prev).add(created.id));
-      setNewTagName('');
-    } catch (e) {
-      console.error('Tag create failed:', e);
+  // Legacy toggle function - now just calls add/remove
+  const toggleTag = (id) => {
+    if (selectedTagIds.has(id)) {
+      removeTagFromPost(id);
+    } else {
+      addTagToPost(id);
     }
   };
 
-  const requestDeleteTag = (tag) => {
-    setTagToDelete(tag);
-    setIsDeleteTagDialogOpen(true);
+  const handleCreateTag = async () => {
+    const name = newTagName.trim().toLowerCase();
+    if (!name) {
+      showNotification('Tag name cannot be empty', 'error');
+      return;
+    }
+    
+    // Check if tag already exists
+    const existing = availableTags.find(t => t.name.toLowerCase() === name);
+    if (existing) {
+      showNotification(`Tag "${name}" already exists. Adding to post.`, 'info');
+      addTagToPost(existing.id);
+      setNewTagName('');
+      return;
+    }
+    
+    try {
+      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
+      setAvailableTags(prev => [...prev, created]);
+      addTagToPost(created.id);
+      setNewTagName('');
+      showNotification(`Created and added "${name}" tag`, 'success');
+    } catch (e) {
+      console.error('Tag create failed:', e);
+      showNotification('Failed to create tag', 'error');
+    }
+  };
+
+  const requestDeleteTag = async (tag) => {
+    try {
+      // Fetch count of posts using this tag
+      const count = await pb.collection('posts').getList(1, 1, {
+        filter: `tags ~ "${tag.id}"`,
+      });
+      
+      setTagToDelete({ ...tag, postCount: count.totalItems });
+      setIsDeleteTagDialogOpen(true);
+    } catch (e) {
+      console.error('Failed to fetch tag usage count:', e);
+      setTagToDelete({ ...tag, postCount: 0 });
+      setIsDeleteTagDialogOpen(true);
+    }
   };
 
   const confirmDeleteTag = async () => {
     if (!tagToDelete) return;
     try {
+      // Step 1: Find all posts with this tag
+      const postsWithTag = await pb.collection('posts').getFullList({
+        filter: `tags ~ "${tagToDelete.id}"`,
+        fields: 'id,tags'
+      });
+      
+      // Step 2: Remove tag from each post
+      for (const post of postsWithTag) {
+        const updatedTags = (post.tags || []).filter(tid => tid !== tagToDelete.id);
+        await pb.collection('posts').update(post.id, { tags: updatedTags });
+      }
+      
+      // Step 3: Delete the tag itself
       await pb.collection('tags').delete(tagToDelete.id);
+      
+      // Step 4: Update UI
       setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
       setSelectedTagIds(prev => {
         const next = new Set(prev);
         next.delete(tagToDelete.id);
         return next;
       });
+      
+      showNotification(`Tag deleted and removed from ${postsWithTag.length} post(s)`, 'success');
     } catch (e) {
       console.error('Delete tag failed:', e);
+      showNotification('Failed to delete tag', 'error');
     } finally {
       setIsDeleteTagDialogOpen(false);
       setTagToDelete(null);
@@ -386,7 +445,7 @@ export default function AuthorPortal() {
       ? content
       : (mdParser ? mdParser.render(content) : content);
     return (
-      <div className="prose dark:prose-invert text-base max-w-none">
+      <div className="prose dark:prose-invert text-base max-w-none text-cat-frappe-base dark:text-cat-frappe-text">
         <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
       </div>
     );
@@ -418,7 +477,7 @@ export default function AuthorPortal() {
                 )}
               </span>
             </div>
-            <div className="w-full h-2 bg-gray-200 dark:bg-cat-frappe-surface0 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-cat-frappe-overlay2/30 dark:bg-cat-frappe-surface0 rounded-full overflow-hidden">
               <div 
                 className={`h-full rounded-full transition-all duration-300 ease-out ${
                   progress === 98 
@@ -445,12 +504,14 @@ export default function AuthorPortal() {
         {notifications.map(({ id, message, type }) => (
           <div
             key={id}
-            className={`px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 ${
+            className={`px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 border ${
               type === 'error' 
-                ? 'bg-cat-frappe-red text-white' 
+                ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red' 
                 : type === 'success'
-                ? 'bg-cat-frappe-green text-white'
-                : 'bg-cat-frappe-yellow text-cat-frappe-base'
+                ? 'bg-[#a6d189]/90 dark:bg-[#a6d189] text-cat-frappe-base dark:text-[#303446] border-[#a6d189]'
+                : type === 'info'
+                ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
+                : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
             }`}
           >
             {message}
@@ -476,7 +537,7 @@ export default function AuthorPortal() {
             <ResizablePanelGroup direction="horizontal" className="w-full h-[calc(100vh-140px)]">
               {/* Editor panel */}
               <ResizablePanel defaultSize={65} minSize={35}>
-                <div className="h-full rounded-lg bg-gray-300 dark:bg-cat-frappe-base shadow-lg flex flex-col">
+                <div className="h-full rounded-lg bg-[#f8e8e0] dark:bg-cat-frappe-base shadow-lg flex flex-col">
                   {/* Editor header */}
                   <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
                     <div className="text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">Editor</div>
@@ -583,47 +644,85 @@ export default function AuthorPortal() {
                                   onChange={() => setIsSpanTwo(!isSpanTwo)}
                                   className="sr-only peer"
                                 />
-                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                                <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Span Two Columns (home grid feature)</span>
+                                <div className="relative w-11 h-6 bg-cat-frappe-overlay2/30 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cat-frappe-yellow/30 dark:peer-focus:ring-cat-frappe-yellow/50 rounded-full peer dark:bg-cat-frappe-surface0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cat-frappe-surface1 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-cat-frappe-surface0 peer-checked:bg-cat-frappe-yellow"></div>
+                                <span className="ml-3 text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">Span Two Columns (home grid feature)</span>
                               </label>
                               <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
                             </div>
                             {/* Tags selection */}
                             <div className="mt-2">
                               <div className="flex items-center justify-between mb-1">
-                                <label className="block text-sm">Tags</label>
+                                <label className="block text-sm font-semibold">Tags</label>
                                 <button
                                   type="button"
                                   onClick={() => setIsEditingTags(v => !v)}
                                   className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
                                 >
-                                  {isEditingTags ? 'Done' : 'Edit tags'}
+                                  {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                                 </button>
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                {availableTags.map(t => (
-                                  <div key={t.id} className="relative inline-flex items-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleTag(t.id)}
-                                      className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
-                                      style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
-                                      title={`#${t.name}`}
-                                    >
-                                      #{t.name}
-                                    </button>
-                                    {isEditingTags && (
+                              
+                              {/* Selected tags for this post */}
+                              <div className="mb-3">
+                                <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
+                                <div className="flex flex-wrap gap-2 min-h-[32px] p-2 rounded-md border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/40 dark:bg-cat-frappe-mantle/40">
+                                  {selectedTagIds.size === 0 ? (
+                                    <span className="text-xs text-cat-frappe-subtext0 italic">No tags selected</span>
+                                  ) : (
+                                    Array.from(selectedTagIds).map(id => {
+                                      const tag = availableTags.find(t => t.id === id);
+                                      if (!tag) return null;
+                                      return (
+                                        <div key={id} className="relative inline-flex items-center">
+                                          <button
+                                            type="button"
+                                            onClick={() => removeTagFromPost(id)}
+                                            className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border hover:opacity-80 transition-opacity"
+                                            style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
+                                            title={`Remove #${tag.name} from this post`}
+                                          >
+                                            #{tag.name}
+                                            <span className="ml-1 text-[10px]">✕</span>
+                                          </button>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Available tags to add */}
+                              <div className="mb-3">
+                                <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {availableTags.filter(t => !selectedTagIds.has(t.id)).map(t => (
+                                    <div key={t.id} className="relative inline-flex items-center">
                                       <button
                                         type="button"
-                                        onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
-                                        className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
-                                        title="Delete tag"
+                                        onClick={() => addTagToPost(t.id)}
+                                        className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-surface0/60 hover:bg-white dark:hover:bg-cat-frappe-surface0 transition-colors"
+                                        style={{ color: t.color_text || '#303446' }}
+                                        title={`Add #${t.name} to this post`}
                                       >
-                                        <IconTrash size={14} />
+                                        #{t.name}
+                                        <span className="text-[10px]">+</span>
                                       </button>
-                                    )}
-                                  </div>
-                                ))}
+                                      {isEditingTags && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                          className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                          title="Delete tag globally"
+                                        >
+                                          <IconTrash size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {availableTags.filter(t => !selectedTagIds.has(t.id)).length === 0 && (
+                                    <span className="text-xs text-cat-frappe-subtext0 italic">All tags selected</span>
+                                  )}
+                                </div>
                               </div>
                               <div className="mt-3 grid grid-cols-1 gap-2">
                                 <div>
@@ -732,7 +831,7 @@ export default function AuthorPortal() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {uploadedImages.map((file, index) => (
                           <div key={index} className="relative group">
-                            <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-[#eff1f5] dark:bg-cat-frappe-surface0">
                               {loadingFiles.has(file.name) ? (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <span className="animate-pulse">Loading...</span>
@@ -844,7 +943,7 @@ export default function AuthorPortal() {
 
           {/* Mobile/Tablet: Tabs view */}
           <div className="xl:hidden mt-6">
-            <div className="rounded-lg p-4 lg:p-6 bg-gray-300 dark:bg-cat-frappe-base shadow-lg">
+            <div className="rounded-lg p-4 lg:p-6 bg-[#f8e8e0] dark:bg-cat-frappe-base shadow-lg">
               {/* Mobile/Tablet visible Settings button */}
               <div className="flex justify-end mb-3">
                 <Dialog>
@@ -915,46 +1014,85 @@ export default function AuthorPortal() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label className="flex items-center cursor-pointer">
                           <input type="checkbox" checked={isSpanTwo} onChange={() => setIsSpanTwo(!isSpanTwo)} className="sr-only peer" />
-                          <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">Span Two Columns</span>
+                          <div className="relative w-11 h-6 bg-cat-frappe-overlay2/30 rounded-full peer dark:bg-cat-frappe-surface0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cat-frappe-yellow"></div>
+                          <span className="ml-3 text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">Span Two Columns</span>
                         </label>
                         <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
                       </div>
                       {/* Tags selection + creation (mobile/tablet) */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block text-sm">Tags</label>
+                          <label className="block text-sm font-semibold">Tags</label>
                           <button
                             type="button"
                             onClick={() => setIsEditingTags(v => !v)}
                             className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
                           >
-                            {isEditingTags ? 'Done' : 'Edit tags'}
+                            {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                           </button>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {availableTags.map(t => (
-                            <div key={t.id} className="relative inline-flex items-center">
-                              <button
-                                type="button"
-                                onClick={() => toggleTag(t.id)}
-                                className={`inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border transition-transform ${selectedTagIds.has(t.id) ? 'scale-[1.02]' : ''}`}
-                                style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
-                              >
-                                #{t.name}
-                              </button>
-                              {isEditingTags && (
+                        
+                        {/* Selected tags for this post */}
+                        <div className="mb-3">
+                          <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
+                          <div className="flex flex-wrap gap-2 min-h-[32px] p-2 rounded-md border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/40 dark:bg-cat-frappe-mantle/40">
+                            {selectedTagIds.size === 0 ? (
+                              <span className="text-xs text-cat-frappe-subtext0 italic">No tags selected</span>
+                            ) : (
+                              Array.from(selectedTagIds).map(id => {
+                                const tag = availableTags.find(t => t.id === id);
+                                if (!tag) return null;
+                                return (
+                                  <div key={id} className="relative inline-flex items-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeTagFromPost(id)}
+                                      className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border hover:opacity-80 transition-opacity"
+                                      style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
+                                      title={`Remove #${tag.name} from this post`}
+                                    >
+                                      #{tag.name}
+                                      <span className="ml-1 text-[10px]">✕</span>
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Available tags to add */}
+                        <div className="mb-3">
+                          <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
+                          <div className="flex flex-wrap gap-2">
+                            {availableTags.filter(t => !selectedTagIds.has(t.id)).map(t => (
+                              <div key={t.id} className="relative inline-flex items-center">
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
-                                  className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
-                                  title="Delete tag"
+                                  onClick={() => addTagToPost(t.id)}
+                                  className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-surface0/60 hover:bg-white dark:hover:bg-cat-frappe-surface0 transition-colors"
+                                  style={{ color: t.color_text || '#303446' }}
+                                  title={`Add #${t.name} to this post`}
                                 >
-                                  <IconTrash size={14} />
+                                  #{t.name}
+                                  <span className="text-[10px]">+</span>
                                 </button>
-                              )}
-                            </div>
-                          ))}
+                                {isEditingTags && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
+                                    className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
+                                    title="Delete tag globally"
+                                  >
+                                    <IconTrash size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {availableTags.filter(t => !selectedTagIds.has(t.id)).length === 0 && (
+                              <span className="text-xs text-cat-frappe-subtext0 italic">All tags selected</span>
+                            )}
+                          </div>
                         </div>
                         <div className="mt-3 grid grid-cols-1 gap-2">
                           <div>
@@ -1006,7 +1144,7 @@ export default function AuthorPortal() {
                     <textarea
                       value={dek || description}
                       onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
-                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
+                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#F6EEE5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                       rows="3"
                       required
                     ></textarea>
@@ -1079,7 +1217,7 @@ export default function AuthorPortal() {
         isOpen={isDeleteTagDialogOpen}
         onClose={() => setIsDeleteTagDialogOpen(false)}
         onConfirm={confirmDeleteTag}
-        message={`Delete the tag "${tagToDelete?.name ?? ''}"? This cannot be undone.`}
+        message={`Delete tag "${tagToDelete?.name ?? ''}"? This will remove it from ${tagToDelete?.postCount ?? 0} post(s) and cannot be undone.`}
       />
       {/* Floating Publish FAB */}
       <button

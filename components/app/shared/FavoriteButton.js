@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { IconHeart, IconHeartFilled } from '@tabler/icons-react';
-import { useFavorites } from '../contexts/FavoritesContext';
+import { useFavorites } from '@/app/contexts/FavoritesContext';
 import LoadingSpinner from './LoadingSpinner';
 
 const FavoriteButton = ({ postId }) => {

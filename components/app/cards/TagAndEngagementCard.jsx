@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { pb } from '@/lib/pocketbase';
-import FavoriteButton from './FavoriteButton';
+import FavoriteButton from '@/components/app/shared/FavoriteButton';
 
 export default function TagAndEngagementCard({ postId, tagIds = [] }) {
   const [tags, setTags] = React.useState([]);

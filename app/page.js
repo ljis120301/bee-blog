@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import Header from "./components/Header";
-import PrefaceSection from "./components/PrefaceSection";
-import Footer from "./components/Footer";
+import Header from "@/components/app/layout/Header";
+import PrefaceSection from "@/components/app/blog/PrefaceSection";
+import Footer from "@/components/app/layout/Footer";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import {
   IconArrowLeft,
@@ -19,16 +19,16 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { pb } from '@/lib/pocketbase';
-import InformationComponent from "@/app/components/WelcomeSection";
-import MoreInformationComponent from "@/app/components/MoreInformation";
-import MostLikedCard from "@/app/components/MostLikedCard";
+import InformationComponent from "@/components/app/cards/WelcomeSection";
+import MoreInformationComponent from "@/components/app/cards/MoreInformation";
+import MostLikedCard from "@/components/app/cards/MostLikedCard";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useRouter } from 'next/navigation';
-import ConfirmationDialog from './components/ConfirmationDialog';
+import ConfirmationDialog from '@/components/app/shared/ConfirmationDialog';
 import ReactPaginate from "react-paginate";
-import FavoriteButton from './components/FavoriteButton';
+import FavoriteButton from '@/components/app/shared/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
-import LoadingSpinner from './components/LoadingSpinner';
+import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
 import { useDebounce } from "use-debounce";
 import {
   DropdownMenu,

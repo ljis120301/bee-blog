@@ -1,12 +1,12 @@
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import Information from "../components/WelcomeSection";
-import TagAndEngagementCard from "../components/TagAndEngagementCard";
-import MostLikedCard from "../components/MostLikedCard";
-import UserFavoritesCard from "../components/UserFavoritesCard";
-import ScrollProgressBar from "../components/ScrollProgressBar";
+import Header from "@/components/app/layout/Header";
+import Footer from "@/components/app/layout/Footer";
+import Information from "@/components/app/cards/WelcomeSection";
+import TagAndEngagementCard from "@/components/app/cards/TagAndEngagementCard";
+import MostLikedCard from "@/components/app/cards/MostLikedCard";
+import UserFavoritesCard from "@/components/app/cards/UserFavoritesCard";
+import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
 import { pb } from "@/lib/pocketbase";
-import BlogPostsList from "../components/BlogPostsList";
+import BlogPostsList from "@/components/app/blog/BlogPostsList";
 import Link from "next/link";
 import { IconFileText, IconHome } from "@tabler/icons-react";
 import {

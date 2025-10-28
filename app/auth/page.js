@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import { pb } from '@/lib/pocketbase';
 import { useRouter } from 'next/navigation';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import Information from '../components/WelcomeSection';
-import MoreInformation from '../components/MoreInformation';
-import ScrollProgressBar from '../components/ScrollProgressBar';
+import Header from '@/components/app/layout/Header';
+import Footer from '@/components/app/layout/Footer';
+import Information from '@/components/app/cards/WelcomeSection';
+import MoreInformation from '@/components/app/cards/MoreInformation';
+import ScrollProgressBar from '@/components/app/blog/ScrollProgressBar';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { IconBrandGithub, IconBrandGoogle, IconBrandOnlyfans } from "@tabler/icons-react";

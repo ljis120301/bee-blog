@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="text-center md:text-left">
             <h3 className="text-3xl font-bold mb-4">bee blog 🐝</h3>
             <p className="text-lg mb-2">Buzzing with ideas and content</p>
-            <p className="text-sm">© {new Date().getFullYear()} bee blog. some rights reserved i think idk but it looks professional.</p>
+            <p className="text-sm">© {new Date().getFullYear()} This blog is published under the GNU General Public License v3.0. Meaning you can copy my work without telling me. You can use whatever parts of this project you want in comercial and non-comercial use. Basically do whatever the fuck you want with my code</p>
           </div>
           <div className="text-center md:text-right">
             <h4 className="text-xl font-semibold mb-4">Connect with me</h4>
@@ -25,7 +25,7 @@ const Footer = () => {
               </a>
             </div>
             <div className="bg-[#f8e8e0] dark:bg-cat-frappe-surface0 p-4 rounded-lg shadow-md">
-              <h5 className="text-xl font-bold mb-2">spare change? 🐝</h5>
+              <h5 className="text-xl font-bold mb-2">spare change?</h5>
               <p className="text-sm mb-2">Your support helps us keep buzzing! Donate XMR:</p>
               <p className="text-xs font-mono bg-[#fff] dark:bg-cat-frappe-surface1 p-2 rounded break-all">
                 48xWV6Ej4qRPZdKVEX7xQgLyWvxrSmCVXZS5pLXGpuPbMH6GhtiBjXBcHqHLxMMmEW474dkWTdLEsR6nARhhgKGRBou6nSk

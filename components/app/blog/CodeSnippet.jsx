@@ -1,27 +1,36 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { prism } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python';
 
 const CodeSnippet = ({ title, code }) => {
   const [mounted, setMounted] = useState(false);
+  const { theme, resolvedTheme } = useTheme();
 
   useEffect(() => {
     SyntaxHighlighter.registerLanguage('python', python);
     setMounted(true);
   }, []);
 
+  // Determine if we're in dark mode - check both theme and resolvedTheme for system preference
+  const isDark = mounted && (theme === 'dark' || resolvedTheme === 'dark');
+
+  // Use light theme for light mode, dark theme for dark mode
+  const baseStyle = isDark ? tomorrow : prism;
+
   const customStyle = {
-    ...tomorrow,
+    ...baseStyle,
     'pre[class*="language-"]': {
-      ...tomorrow['pre[class*="language-"]'],
+      ...baseStyle['pre[class*="language-"]'],
       fontSize: '0.9rem',
       lineHeight: '1.5',
       background: 'transparent',
     },
     'code[class*="language-"]': {
-      ...tomorrow['code[class*="language-"]'],
+      ...baseStyle['code[class*="language-"]'],
       fontFamily: 'Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace',
     },
   };
