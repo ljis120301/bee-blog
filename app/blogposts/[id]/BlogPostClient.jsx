@@ -28,6 +28,7 @@ import BehavioralMetricsOptimization from "@/components/app/seo/BehavioralMetric
 import UniqueVisitorTracker from "@/components/app/shared/UniqueVisitorTracker";
 import TagAndEngagementCard from "@/components/app/cards/TagAndEngagementCard";
 import Comments from "@/components/app/blog/Comments";
+import RssButton from "@/components/app/shared/RssButton";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -262,6 +263,11 @@ export default function BlogPostClient({ post: initialPost, params }) {
                   </div>
                 )}
                 <div className="space-y-4">
+                  <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
+                    <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-3">Subscribe to Blog</h2>
+                    <p className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 mb-3">Get notified when new posts are published</p>
+                    <RssButton size="md" variant="default" className="w-full" />
+                  </div>
                   <TagAndEngagementCard postId={post.id} tagIds={Array.isArray(post.tags) ? post.tags : []} />
                   <MostLikedCard limit={5} />
                 </div>

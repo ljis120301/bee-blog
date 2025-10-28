@@ -43,4 +43,48 @@ hi
 information about our cool blog website 
 
 we made it using AI to give initial mockup with HTML CSS and JavaScript. 
-Transitioned to a next js 
+Transitioned to a next js
+
+## RSS Feed
+
+BeeBlog now supports RSS feed subscriptions! Users can add your blog to any RSS reader application.
+
+### How to Subscribe
+
+Users can subscribe to your blog using any of these methods:
+
+1. **Automatic Discovery**: Most RSS readers will automatically detect the feed when users enter `https://bee.whoisjason.me`
+
+2. **Direct Feed URL**: Users can manually add the feed URL:
+   ```
+   https://bee.whoisjason.me/feed.xml
+   ```
+
+3. **Popular RSS Readers**:
+   - Feedly
+   - Inoreader
+   - The Old Reader
+   - NewsBlur
+   - Feedbin
+   - NetNewsWire (Mac/iOS)
+   - Reeder (Mac/iOS)
+   - FeedReader
+   - And many more!
+
+### Technical Details
+
+The RSS feed:
+- Uses RSS 2.0 format (most compatible)
+- Includes the last 50 blog posts
+- Updates automatically when new posts are published
+- Uses the same PocketBase database connection as the rest of the site
+- Includes full post descriptions, publication dates, and featured images
+- Supports content:encoded for rich content
+- Implements proper caching for performance (1 hour cache, 30 min stale-while-revalidate)
+
+### Feed Discovery
+
+The RSS feed is automatically discoverable through:
+- `<link rel="alternate">` tag in the HTML head (autodiscovery)
+- Listed in `/robots.txt` for search engines and aggregators
+- Proper Content-Type headers for RSS readers 
