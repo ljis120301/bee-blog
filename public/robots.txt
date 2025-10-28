@@ -4,6 +4,9 @@ Allow: /
 # Main sitemap
 Sitemap: https://bee.whoisjason.me/sitemap.xml
 
+# RSS Feed for blog subscribers
+RSS-Feed: https://bee.whoisjason.me/feed.xml
+
 # AI-optimized content feeds
 Sitemap: https://bee.whoisjason.me/ai-sitemap.xml
 AI-Content-Feed: https://bee.whoisjason.me/ai-feed.json

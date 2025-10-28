@@ -5,6 +5,7 @@ import TagAndEngagementCard from "@/components/app/cards/TagAndEngagementCard";
 import MostLikedCard from "@/components/app/cards/MostLikedCard";
 import UserFavoritesCard from "@/components/app/cards/UserFavoritesCard";
 import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
+import RssButton from "@/components/app/shared/RssButton";
 import { pb } from "@/lib/pocketbase";
 import BlogPostsList from "@/components/app/blog/BlogPostsList";
 import Link from "next/link";
@@ -47,7 +48,7 @@ export default async function Blog() {
       <ScrollProgressBar />
       <Header />
       <main className="flex-grow pt-16 text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px]">
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Breadcrumb className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-[#F6EEE5]/70 dark:bg-cat-frappe-base/60 backdrop-blur-md ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
             <BreadcrumbList className="text-[#4c4f69] dark:text-cat-frappe-subtext0 text-sm sm:text-base md:text-lg">
               <BreadcrumbItem>
@@ -66,6 +67,7 @@ export default async function Blog() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <RssButton size="sm" variant="default" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mt-6">

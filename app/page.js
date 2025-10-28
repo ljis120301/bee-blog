@@ -12,6 +12,7 @@ import {
   IconEdit,
   IconHeart,
   IconEye,
+  IconRss,
 } from "@tabler/icons-react";
 import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components/ui/sidebar";
 import Link from "next/link";
@@ -30,6 +31,7 @@ import ReactPaginate from "react-paginate";
 import FavoriteButton from '@/components/app/shared/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
+import RssButton from '@/components/app/shared/RssButton';
 import { useDebounce } from "use-debounce";
 import {
   DropdownMenu,
@@ -155,6 +157,11 @@ export default function Home() {
               href: "/favorites",
               icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
             }] : []),
+            {
+              label: "RSS Feed",
+              href: "https://bee.whoisjason.me/feed.xml",
+              icon: <IconRss className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            },
             {
               label: "Profile",
               href: "/user-profile",
@@ -305,7 +312,14 @@ export default function Home() {
                   <section className="my-10">
                     <div className="flex flex-col xl:flex-row gap-8">
                       <div className="xl:w-1/5">
-                        <InformationComponent />
+                        <div className="space-y-4">
+                          <InformationComponent />
+                          <div className="bg-yellow-1 dark:bg-gradient-to-br dark:from-cat-frappe-base dark:to-cat-frappe-crust p-6 rounded-xl shadow-lg">
+                            <h2 className="text-xl font-bold mb-3 text-cat-frappe-base dark:text-cat-frappe-yellow">Subscribe to RSS</h2>
+                            <p className="mb-4 text-sm text-cat-frappe-surface1 dark:text-cat-frappe-text">Get updates delivered to your favorite RSS reader</p>
+                            <RssButton size="md" variant="default" className="w-full" />
+                          </div>
+                        </div>
                       </div>
                       <div className="xl:w-3/5">
                         {isLoading ? (
