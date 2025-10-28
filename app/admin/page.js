@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
+import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from '@/components/app/layout/Header';
 import Footer from '@/components/app/layout/Footer';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -186,6 +187,10 @@ export default function AdminDashboard() {
     if (window.confirm('Are you sure you want to delete this post?')) {
       try {
         await pb.collection('posts').delete(postId);
+        
+        // Revalidate cache to update the blog posts list
+        await revalidatePostsPage();
+        
         await loadDashboardData(); // Refresh data
       } catch (error) {
         console.error('Failed to delete post:', error);

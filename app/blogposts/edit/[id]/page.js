@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
+import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from "@/components/app/layout/Header";
 import Footer from "@/components/app/layout/Footer";
 import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
@@ -316,6 +317,9 @@ export default function EditPost() {
         return next;
       });
       
+      // Step 5: Revalidate cache since tag affects multiple posts
+      await revalidatePostsPage();
+      
       setNotifications(prev => [...prev, {
         id: Date.now(),
         message: `Tag deleted and removed from ${postsWithTag.length} post(s)`,
@@ -377,6 +381,10 @@ export default function EditPost() {
 
       console.log('Updating post with data:', data);
       const record = await pb.collection('posts').update(params.id, data);
+      
+      // Revalidate the cache to show updated tags immediately
+      await revalidatePostsPage();
+      
       router.push(`/blogposts/${record.id}`);
     } catch (error) {
       console.error('Error updating post:', error);
