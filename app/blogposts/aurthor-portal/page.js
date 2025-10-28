@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
+import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from "@/components/app/layout/Header";
 import Footer from "@/components/app/layout/Footer";
 import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
@@ -250,6 +251,9 @@ export default function AuthorPortal() {
         return next;
       });
       
+      // Step 5: Revalidate cache since tag affects multiple posts
+      await revalidatePostsPage();
+      
       showNotification(`Tag deleted and removed from ${postsWithTag.length} post(s)`, 'success');
     } catch (e) {
       console.error('Delete tag failed:', e);
@@ -429,6 +433,10 @@ export default function AuthorPortal() {
 
       console.log('Creating post with data:', data);
       const record = await pb.collection('posts').create(data);
+      
+      // Revalidate the cache to show the new post immediately
+      await revalidatePostsPage();
+      
       router.push(`/blogposts/${record.id}`);
     } catch (error) {
       console.error('Error creating post:', error);

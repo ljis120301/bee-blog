@@ -339,5 +339,60 @@
     "timezone": "America/Phoenix",
     "screen": "2119x1071",
     "timestamp": "2025-10-28T20:18:22.976Z"
+  },
+  {
+    "ip": "216.152.254.226",
+    "path": "/blogposts",
+    "query": {},
+    "referrer": "http://localhost:3000/blogposts/ehre8l05vucwzro",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-US",
+    "timezone": "America/Phoenix",
+    "screen": "2119x1071",
+    "timestamp": "2025-10-28T20:46:00.234Z"
+  },
+  {
+    "ip": "216.152.254.226",
+    "path": "/admin",
+    "query": {},
+    "referrer": "http://localhost:3000/blogposts/ehre8l05vucwzro",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-US",
+    "timezone": "America/Phoenix",
+    "screen": "2119x1071",
+    "timestamp": "2025-10-28T20:47:25.215Z"
+  },
+  {
+    "ip": "216.152.254.226",
+    "path": "/",
+    "query": {},
+    "referrer": "http://localhost:3000/blogposts/ehre8l05vucwzro",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-US",
+    "timezone": "America/Phoenix",
+    "screen": "2119x1071",
+    "timestamp": "2025-10-28T20:49:28.240Z"
+  },
+  {
+    "ip": "216.152.254.226",
+    "path": "/blogposts/fai078pil9hc251",
+    "query": {},
+    "referrer": "http://localhost:3000/blogposts/ehre8l05vucwzro",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-US",
+    "timezone": "America/Phoenix",
+    "screen": "2119x1071",
+    "timestamp": "2025-10-28T20:49:41.206Z"
+  },
+  {
+    "ip": "216.152.254.226",
+    "path": "/blogposts/edit/fai078pil9hc251",
+    "query": {},
+    "referrer": "http://localhost:3000/blogposts/ehre8l05vucwzro",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-US",
+    "timezone": "America/Phoenix",
+    "screen": "2119x1071",
+    "timestamp": "2025-10-28T20:49:57.700Z"
   }
 ]

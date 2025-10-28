@@ -19,6 +19,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { pb } from '@/lib/pocketbase';
+import { revalidatePostsPage } from '@/app/actions/revalidate';
 import InformationComponent from "@/components/app/cards/WelcomeSection";
 import MoreInformationComponent from "@/components/app/cards/MoreInformation";
 import MostLikedCard from "@/components/app/cards/MostLikedCard";
@@ -83,6 +84,10 @@ export default function Home() {
       try {
         await pb.collection('posts').delete(postToDelete);
         console.log(`Post ${postToDelete} deleted`);
+        
+        // Revalidate cache to update the blog posts list
+        await revalidatePostsPage();
+        
         await fetchFavorites(); // Update favorites after deletion
         setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
       } catch (error) {
