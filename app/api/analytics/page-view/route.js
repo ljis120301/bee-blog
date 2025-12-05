@@ -22,6 +22,14 @@ export async function POST(request) {
     // Record the page view with unique visitor tracking
     const result = await recordPageView(postId, visitorData || {}, request);
 
+    if (result?.reason === 'missing_credentials') {
+      // In dev without PB creds, skip counting but don't error
+      return NextResponse.json(
+        { success: true, counted: false, reason: 'missing_credentials' },
+        { status: 200 }
+      );
+    }
+
     if (!result?.counted && result?.error) {
       return NextResponse.json(
         { success: false, error: result.error, reason: result.reason || 'error' },
