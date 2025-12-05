@@ -14,7 +14,14 @@ export async function POST(request) {
     if (!postId || !sessionId) {
       return NextResponse.json({ success: false, error: 'postId and sessionId required' }, { status: 400 });
     }
+
     const result = await analyticsManager.recordPageMetrics(postId, sessionId, metrics || {});
+
+    if (result?.reason === 'missing_credentials') {
+      // Dev fallback: silently no-op
+      return NextResponse.json({ success: true, updated: false, reason: 'missing_credentials' });
+    }
+
     return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error('Error recording page metrics:', error);

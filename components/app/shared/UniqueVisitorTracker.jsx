@@ -36,6 +36,10 @@ export default function UniqueVisitorTracker({ postId, userId = null }) {
         const result = await response.json();
         
         if (result.success) {
+          if (result.reason === 'missing_credentials') {
+            console.warn('Page view skipped: PocketBase credentials missing (dev fallback).');
+            return;
+          }
           console.log('Page view tracked:', result.counted ? 'counted' : 'duplicate');
           // Store fingerprint in session for future reference
           sessionStorage.setItem('visitor_fingerprint', result.fingerprint || '');
