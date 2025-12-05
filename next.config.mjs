@@ -68,28 +68,9 @@ const nextConfig = {
       // Example: redirect old URLs to new ones
     ];
   },
-  
-  // Webpack configuration for optimization
-  webpack: (config, { dev, isServer }) => {
-    // Optimize bundle size
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          vendor: {
-            chunks: 'all',
-            test: /node_modules/,
-            name: 'vendor',
-            enforce: true,
-          },
-        },
-      };
-    }
-    
-    return config;
-  },
+
+  // Opt into Turbopack explicitly; remove webpack overrides to match Next 16 defaults
+  turbopack: {},
 };
 
 export default nextConfig;

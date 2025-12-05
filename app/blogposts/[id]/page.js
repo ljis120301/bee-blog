@@ -6,11 +6,12 @@ import BlogPostClient from './BlogPostClient';
 // Generate dynamic metadata for each blog post - Critical for SEO
 export async function generateMetadata({ params }) {
   try {
-    const post = await pb.collection('posts').getOne(params.id);
+    const resolvedParams = await params;
+    const post = await pb.collection('posts').getOne(resolvedParams.id);
     
     const title = post.seo_title || post.title;
     const description = post.seo_description || post.description || post.dek || `Read ${post.title} on BeeBlog - Your hive for coding insights and tech trends.`;
-    const url = `https://bee.whoisjason.me/blogposts/${params.id}`;
+    const url = `https://bee.whoisjason.me/blogposts/${resolvedParams.id}`;
     const imageUrl = post.hero_image_url || 'https://bee.whoisjason.me/og-default.jpg';
     
     // Generate extensive keywords for maximum SEO coverage
@@ -267,14 +268,15 @@ export async function generateMetadata({ params }) {
 
 export default async function BlogPost({ params }) {
   try {
-    const post = await pb.collection('posts').getOne(params.id);
+    const resolvedParams = await params;
+    const post = await pb.collection('posts').getOne(resolvedParams.id);
     
     // Increment view counter (this will happen on each page load)
-    await pb.collection('posts').update(params.id, {
+    await pb.collection('posts').update(resolvedParams.id, {
       views: (post.views || 0) + 1
     });
 
-    return <BlogPostClient post={post} params={params} />;
+    return <BlogPostClient post={post} params={resolvedParams} />;
   } catch (error) {
     console.error('Error fetching post:', error);
     return notFound();

@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {
-  const { pathname, search } = request.nextUrl;
-  const host = request.headers.get('host');
+// Proxy (formerly middleware) handles redirects, security headers, and caching.
+// Keep logic minimal; prefer route handlers when possible.
+export function proxy(request) {
+  const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
-
-  // Only handle domains you actually own - remove this section entirely since
-  // we don't want to create redirects from domains we don't own
-  // This would only help competitors if they registered those domains
-  
-  // No domain rewrites. Do not assume or redirect any host variants.
 
   // Handle common URL misspellings and variations
   const urlCorrections = {
@@ -19,53 +14,53 @@ export function middleware(request) {
     '/articles': '/blogposts',
     '/posts': '/blogposts',
     '/post': '/blogposts',
-    
+
     // Common misspellings
     '/blogpost': '/blogposts',
     '/blogposts/': '/blogposts',
     '/blgposts': '/blogposts',
     '/blogpsts': '/blogposts',
     '/blogpost/': '/blogposts',
-    
+
     // About variations
     '/about-me': '/about',
     '/aboutme': '/about',
     '/who-is-jason': '/about',
     '/whoisjason': '/about',
     '/jason': '/about',
-    
+
     // Profile variations
     '/profile': '/user-profile',
     '/user': '/user-profile',
     '/account': '/user-profile',
     '/me': '/user-profile',
-    
+
     // Authentication variations
     '/login': '/auth',
     '/signin': '/auth',
     '/sign-in': '/auth',
     '/authenticate': '/auth',
     '/authentication': '/auth',
-    
+
     // Password variations
     '/password': '/change-password',
     '/change-pwd': '/change-password',
     '/pwd': '/change-password',
     '/reset-password': '/change-password',
-    
+
     // Favorites variations
     '/favorite': '/favorites',
     '/favs': '/favorites',
     '/bookmarks': '/favorites',
     '/saved': '/favorites',
     '/liked': '/favorites',
-    
+
     // Contact variations
     '/contact': '/about',
     '/contact-me': '/about',
     '/get-in-touch': '/about',
     '/reach-out': '/about',
-    
+
     // Tech-specific redirects
     '/javascript': '/blogposts',
     '/js': '/blogposts',
@@ -87,7 +82,7 @@ export function middleware(request) {
     '/tricks': '/blogposts',
     '/howto': '/blogposts',
     '/how-to': '/blogposts',
-    
+
     // SEO-friendly redirects for common searches
     '/learn': '/blogposts',
     '/learning': '/blogposts',
@@ -101,7 +96,7 @@ export function middleware(request) {
     '/design-patterns': '/blogposts',
     '/algorithms': '/blogposts',
     '/data-structures': '/blogposts',
-    
+
     // Common typos in URLs
     '/blogpsots': '/blogposts',
     '/blgposts': '/blogposts',
@@ -132,23 +127,25 @@ export function middleware(request) {
 
   // Add security headers for better SEO and security
   const response = NextResponse.next();
-  
+
   // Security headers
   response.headers.set('X-DNS-Prefetch-Control', 'on');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  // Use strict referrer policy to avoid browser warnings and reduce leakage
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
+
   // SEO-friendly headers (override for admin and sensitive areas)
   if (pathname.startsWith('/admin') || pathname.startsWith('/api')) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   } else {
-    response.headers.set('X-Robots-Tag', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+    response.headers.set(
+      'X-Robots-Tag',
+      'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    );
   }
-  
+
   // Cache control for better performance (never cache admin)
   if (pathname.startsWith('/api/') || pathname.startsWith('/admin')) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -191,29 +188,23 @@ export function middleware(request) {
     response.headers.set('X-Context-Rich', 'true');
     response.headers.set('X-Topic-Authority', 'technology,programming,web-development');
     response.headers.set('X-Industry-Expertise', 'software-engineering,ai-ml,cloud-computing');
-    response.headers.set('X-Tech-Personalities', 'linus-torvalds,brendan-eich,marques-brownlee,dan-abramov');
+    response.headers.set(
+      'X-Tech-Personalities',
+      'linus-torvalds,brendan-eich,marques-brownlee,dan-abramov'
+    );
     response.headers.set('X-Knowledge-Graph-Ready', 'true');
     response.headers.set('X-User-Intent-Optimized', 'learn,implement,understand,discover');
     response.headers.set('X-Content-Comprehensiveness', 'high');
     response.headers.set('X-AI-Model-Compatibility', 'gpt,claude,bard,gemini,llama');
     response.headers.set('X-Content-Freshness', '2025-current');
     response.headers.set('X-Expertise-Level', 'industry-veteran,thought-leader');
-    response.headers.set('X-Content-Depth', 'comprehensive,practical,actionable');
-    response.headers.set('X-Learning-Outcomes', 'skill-building,career-advancement,practical-implementation');
   }
 
   return response;
 }
 
+// Match all paths by default.
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (public folder)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$).*)',
-  ],
+  matcher: '/:path*',
 };
+
