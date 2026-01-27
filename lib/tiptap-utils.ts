@@ -114,14 +114,39 @@ export function isEmptyNode(node: unknown): boolean {
 /**
  * Find the position of a node in the editor
  */
+/**
+ * Find the position of a node in the editor
+ */
+export function findNodePosition(editor: import('@tiptap/react').Editor | null, nodeType: string): number | null;
+export function findNodePosition(args: { editor: import('@tiptap/react').Editor | null; node: import('@tiptap/pm/model').Node }): { pos: number } | null;
 export function findNodePosition(
-    editor: import('@tiptap/react').Editor | null,
-    nodeType: string
-): number | null {
-    if (!editor) return null;
+    editorOrArgs: import('@tiptap/react').Editor | null | { editor: import('@tiptap/react').Editor | null; node: import('@tiptap/pm/model').Node },
+    nodeType?: string
+): number | { pos: number } | null {
+    if (!editorOrArgs) return null;
+
+    // Handle object argument style
+    if ('node' in editorOrArgs) {
+        const { editor, node } = editorOrArgs;
+        if (!editor || !node) return null;
+
+        let found: { pos: number } | null = null;
+        editor.state.doc.descendants((descendant, pos) => {
+            if (found) return false;
+            if (descendant === node) {
+                found = { pos };
+                return false;
+            }
+            return true;
+        });
+        return found;
+    }
+
+    // Handle standard style
+    const editor = editorOrArgs as import('@tiptap/react').Editor;
+    if (!editor || !nodeType) return null;
 
     let foundPos: number | null = null;
-
     editor.state.doc.descendants((node, pos) => {
         if (foundPos !== null) return false;
         if (node.type.name === nodeType) {

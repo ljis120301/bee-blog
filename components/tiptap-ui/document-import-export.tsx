@@ -22,14 +22,14 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
-import { cn } from "@/lib/tiptap-utils"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { 
-  Download, 
-  Upload, 
-  FileText, 
-  FileImage, 
-  File, 
+import {
+  Download,
+  Upload,
+  FileText,
+  FileImage,
+  File,
   CheckCircle,
   ChevronDown,
   FolderOpen
@@ -76,49 +76,49 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
     }
 
     console.log(`🔄 Starting export for format: ${format}`)
-    
+
     // Set immediate loading states
     setIsExporting(true)
     setExportingFormat(format)
     setExportProgress(0)
-    
+
     // Create unique toast ID for this export
     const toastId = `export-${format}-${Date.now()}`
-    
+
     try {
       // Show initial loading toast
       toast.loading(`Exporting to ${format.toUpperCase()}...`, {
         id: toastId,
         description: 'Preparing document...'
       })
-      
+
       // Start with immediate feedback
       setExportProgress(5)
-      
+
       console.log(`🔄 Calling editor.commands.exportDocument(${format})`)
-      
+
       // Call the export command (this will trigger the actual PDF generation)
       const success = editor.commands.exportDocument(format)
-      
+
       if (!success) {
         throw new Error(`Export command failed for ${format}`)
       }
-      
+
       // Set up realistic progress tracking for PDF generation
       let currentProgress = 10
       setExportProgress(10)
-      
+
       const progressInterval = setInterval(() => {
         // Increment progress gradually, but don't complete until we're sure
         currentProgress += Math.random() * 8 + 2 // 2-10% increments
-        
+
         // Cap progress at 90% until we're ready to complete
         if (currentProgress > 90) {
           currentProgress = 90
         }
-        
+
         setExportProgress(currentProgress)
-        
+
         // Update toast descriptions based on progress
         let description = 'Processing content...'
         if (currentProgress >= 25 && currentProgress < 50) {
@@ -128,32 +128,32 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
         } else if (currentProgress >= 75) {
           description = 'Finalizing export...'
         }
-        
+
         // Only update description, don't recreate the toast
         toast.loading(`Exporting to ${format.toUpperCase()}... ${currentProgress.toFixed(0)}%`, {
           id: toastId,
           description
         })
       }, 400) // Slower updates for more realistic feel
-      
+
       // For PDF, give it more time as it involves Puppeteer
       const expectedDuration = format === 'pdf' ? 6000 : 3000
-      
+
       console.log(`⏱️ Setting expected duration for ${format}: ${expectedDuration}ms`)
-      
+
       // Wait for expected duration, then complete
       setTimeout(() => {
         console.log(`🏁 Completing export for ${format}`)
-        
+
         // CRITICAL: Clear interval first to stop toast updates
         clearInterval(progressInterval)
-        
+
         // CRITICAL: Dismiss the loading toast explicitly before showing success
         toast.dismiss(toastId)
-        
+
         // Complete the progress
         setExportProgress(100)
-        
+
         // Small delay to ensure the loading toast is dismissed, then show success
         setTimeout(() => {
           toast.success(`Document exported as ${format.toUpperCase()}`, {
@@ -161,10 +161,10 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
             description: 'Download should start automatically',
             duration: 3000 // Explicit duration to ensure it dismisses
           })
-          
+
           console.log(`✅ Export completed successfully for ${format}`)
         }, 100)
-        
+
         // Reset states after a brief delay to show completion
         setTimeout(() => {
           console.log(`🧹 Cleaning up states for ${format} export`)
@@ -174,14 +174,14 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
           setIsExportDropdownOpen(false)
         }, 1500)
       }, expectedDuration)
-      
+
     } catch (error) {
       console.error('Export failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      
+
       // CRITICAL: Dismiss the loading toast first
       toast.dismiss(toastId)
-      
+
       // Small delay then show error toast
       setTimeout(() => {
         toast.error(`Export failed: ${errorMessage}`, {
@@ -190,7 +190,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
           duration: 5000 // Explicit duration
         })
       }, 100)
-      
+
       // Reset states immediately on error
       setIsExporting(false)
       setExportingFormat(null)
@@ -238,7 +238,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
 
       // Call the extension's import command
       const success = editor.commands.importDocument(file)
-      
+
       if (!success) {
         throw new Error('Import command failed')
       }
@@ -246,16 +246,16 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
       // Set up progress tracking
       let currentProgress = 20
       setImportProgress(20)
-      
+
       const progressInterval = setInterval(() => {
         currentProgress += Math.random() * 15 + 5 // 5-20% increments
-        
+
         if (currentProgress > 90) {
           currentProgress = 90
         }
-        
+
         setImportProgress(currentProgress)
-        
+
         // Update toast descriptions
         let description = 'Reading file content...'
         if (currentProgress >= 40 && currentProgress < 70) {
@@ -263,7 +263,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
         } else if (currentProgress >= 70) {
           description = 'Applying content...'
         }
-        
+
         toast.loading(`Importing ${file.name}... ${currentProgress.toFixed(0)}%`, {
           id: toastId,
           description
@@ -274,12 +274,12 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
       setTimeout(() => {
         // Clear interval first
         clearInterval(progressInterval)
-        
+
         // Dismiss loading toast
         toast.dismiss(toastId)
-        
+
         setImportProgress(100)
-        
+
         // Show success toast after small delay
         setTimeout(() => {
           toast.success('Document imported successfully', {
@@ -288,7 +288,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
             duration: 3000
           })
         }, 100)
-        
+
         // Reset states
         setTimeout(() => {
           setIsImporting(false)
@@ -301,10 +301,10 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
       setIsImporting(false)
       setImportProgress(0)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      
+
       // Dismiss loading toast first
       toast.dismiss(toastId)
-      
+
       // Show error toast after delay
       setTimeout(() => {
         toast.error(`Import failed: ${errorMessage}`, {
@@ -313,7 +313,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
           duration: 5000
         })
       }, 100)
-      
+
       console.error('Import failed:', error)
     }
   }, [editor])
@@ -339,7 +339,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    
+
     const files = e.dataTransfer.files
     handleFileSelect(files)
   }, [handleFileSelect])
@@ -356,8 +356,8 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
   return (
     <div className={cn("flex gap-1", className)}>
       {/* Export Dropdown */}
-      <DropdownMenu 
-        open={isExportDropdownOpen} 
+      <DropdownMenu
+        open={isExportDropdownOpen}
         onOpenChange={(open) => {
           // Don't allow closing dropdown during export
           if (isExporting && !open) return
@@ -376,7 +376,7 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
             onClick={() => !isExporting && setIsExportDropdownOpen(true)}
           >
             <Download className={cn(
-              "h-4 w-4", 
+              "h-4 w-4",
               isExporting && "animate-pulse"
             )} />
             <span className="tiptap-button-text">
@@ -450,14 +450,14 @@ export function DocumentImportExport({ className }: DocumentImportExportProps) {
               Select a file to import into the editor
             </DialogDescription>
           </DialogHeader>
-          
+
           {!isImporting ? (
             <div className="space-y-4">
               <div
                 className={cn(
                   "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-                  dragActive 
-                    ? "border-primary bg-primary/5" 
+                  dragActive
+                    ? "border-primary bg-primary/5"
                     : "border-muted-foreground/25 hover:border-muted-foreground/50"
                 )}
                 onDragEnter={handleDragEnter}
