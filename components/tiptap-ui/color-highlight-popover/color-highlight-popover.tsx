@@ -123,7 +123,7 @@ export function ColorHighlightPopoverContent({
     [colors]
   )
 
-  const { selectedIndex } = useMenuNavigation({
+  const { selectedIndex } = useMenuNavigation<ColorHighlightPopoverColor>({
     containerRef,
     items: menuItems,
     orientation: "both",
