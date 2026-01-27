@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features for better performance
+  // Enable Next.js 16 experimental features for maximum performance
   experimental: {
     optimizePackageImports: ['@tabler/icons-react'],
+    // Note: cacheComponents (PPR) disabled for now - incompatible with existing route segment configs
+    // Can be enabled after migrating all dynamic/revalidate route configs
   },
-  
+
   // Optimize images
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -12,10 +14,10 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // 1 year
   },
-  
+
   // Compress responses
   compress: true,
-  
+
   // Security headers for better SEO and security
   async headers() {
     return [
@@ -60,7 +62,7 @@ const nextConfig = {
       },
     ];
   },
-  
+
   // Redirect configuration for SEO
   async redirects() {
     return [

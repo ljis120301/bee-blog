@@ -125,6 +125,41 @@ export function proxy(request) {
     return NextResponse.redirect(url, 301);
   }
 
+  // ============================================================================
+  // ROUTE PROTECTION - Session-based authentication
+  // ============================================================================
+
+  const PROTECTED_ROUTES = [
+    '/admin',
+    '/blogposts/aurthor-portal',
+    '/blogposts/edit',
+    '/user-profile',
+    '/change-password',
+    '/favorites',
+  ];
+
+  const isProtectedRoute = PROTECTED_ROUTES.some(route =>
+    pathname.startsWith(route)
+  );
+
+  const sessionToken = request.cookies.get('better-auth.session_token')?.value ||
+    request.cookies.get('__Secure-better-auth.session_token')?.value;
+
+  // Redirect unauthenticated users to login for protected routes
+  if (!sessionToken && isProtectedRoute) {
+    const loginUrl = new URL('/auth', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // For protected API routes without session, return 401
+  if (!sessionToken && pathname.startsWith('/api/admin')) {
+    return NextResponse.json(
+      { success: false, error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
   // Add security headers for better SEO and security
   const response = NextResponse.next();
 

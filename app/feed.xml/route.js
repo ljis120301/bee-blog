@@ -1,15 +1,27 @@
-import { pb } from '@/lib/pocketbase';
+import { db } from '@/lib/db';
 
 // RSS 2.0 Feed Generator for BeeBlog
-// This route generates a standard RSS feed that can be consumed by any RSS reader
-// Uses the same PocketBase connection as the rest of the application
+// This route generates a standard RSS feed using Prisma/SQLite
 
 export async function GET() {
   try {
-    // Fetch recent blog posts from PocketBase (same database connection as existing routes)
-    const posts = await pb.collection('posts').getList(1, 50, {
-      sort: '-created',
-      fields: 'id,created,updated,title,description,dek,seo_title,seo_description,content,author,hero_image_url',
+    // Fetch recent blog posts from Prisma
+    const posts = await db.post.findMany({
+      where: { published: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        title: true,
+        description: true,
+        dek: true,
+        seoTitle: true,
+        seoDescription: true,
+        content: true,
+        heroImageUrl: true,
+      },
     });
 
     // Helper function to escape XML special characters
@@ -33,24 +45,23 @@ export async function GET() {
     };
 
     // Helper function to format dates in RFC 822 format (required by RSS 2.0)
-    const formatRssDate = (dateString) => {
-      const date = new Date(dateString);
-      return date.toUTCString();
+    const formatRssDate = (date) => {
+      return new Date(date).toUTCString();
     };
 
     // Generate RSS items from posts
-    const rssItems = posts.items.map(post => {
+    const rssItems = posts.map(post => {
       const postUrl = `https://bee.whoisjason.me/blogposts/${post.id}`;
-      const title = escapeXml(post.seo_title || post.title);
+      const title = escapeXml(post.seoTitle || post.title);
       const description = escapeXml(
-        post.seo_description || 
-        post.description || 
-        post.dek || 
+        post.seoDescription ||
+        post.description ||
+        post.dek ||
         stripHtml(post.content).substring(0, 300) + '...'
       );
-      const pubDate = formatRssDate(post.created);
-      const imageUrl = post.hero_image_url ? escapeXml(post.hero_image_url) : '';
-      
+      const pubDate = formatRssDate(post.createdAt);
+      const imageUrl = post.heroImageUrl ? escapeXml(post.heroImageUrl) : '';
+
       // Create content with description and optional image
       let contentHtml = `<p>${description}</p>`;
       if (imageUrl) {
@@ -85,8 +96,8 @@ export async function GET() {
     <link>https://bee.whoisjason.me</link>
     <description>Your hive for coding insights, tech trends, and sweet development tips. Expert tutorials, programming guides, and cutting-edge technology insights.</description>
     <language>en-US</language>
-    <lastBuildDate>${formatRssDate(new Date().toISOString())}</lastBuildDate>
-    <generator>BeeBlog Next.js RSS Generator</generator>
+    <lastBuildDate>${formatRssDate(new Date())}</lastBuildDate>
+    <generator>BeeBlog Next.js RSS Generator (Prisma)</generator>
     <copyright>© 2024 BeeBlog. All rights reserved.</copyright>
     <managingEditor>contact@bee.whoisjason.me (Jason)</managingEditor>
     <webMaster>contact@bee.whoisjason.me (Jason)</webMaster>
@@ -120,7 +131,7 @@ ${rssItems}
     });
   } catch (error) {
     console.error('Error generating RSS feed:', error);
-    
+
     // Return error response in XML format
     const errorFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -130,14 +141,13 @@ ${rssItems}
     <description>Unable to generate feed. Please try again later.</description>
   </channel>
 </rss>`;
-    
-    return new Response(errorFeed, { 
+
+    return new Response(errorFeed, {
       status: 500,
-      headers: { 
+      headers: {
         'Content-Type': 'application/xml; charset=utf-8',
         'Cache-Control': 'no-cache',
       }
     });
   }
 }
-

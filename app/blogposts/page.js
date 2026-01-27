@@ -6,7 +6,7 @@ import MostLikedCard from "@/components/app/cards/MostLikedCard";
 import UserFavoritesCard from "@/components/app/cards/UserFavoritesCard";
 import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
 import RssButton from "@/components/app/shared/RssButton";
-import { pb } from "@/lib/pocketbase";
+import { db } from "@/lib/db";
 import BlogPostsList from "@/components/app/blog/BlogPostsList";
 import Link from "next/link";
 import { IconFileText, IconHome } from "@tabler/icons-react";
@@ -18,6 +18,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
+// Force dynamic rendering to ensure fresh data on every request
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Blog Posts',
@@ -34,11 +37,38 @@ export const metadata = {
 };
 
 export default async function Blog() {
-  // Fetch a reasonable number of recent posts on the server for initial render
+  // Fetch posts from Prisma
   let posts = [];
   try {
-    const result = await pb.collection("posts").getList(1, 50, { sort: "-created", expand: 'tags' });
-    posts = result?.items ?? [];
+    const result = await db.post.findMany({
+      where: { published: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        tags: { include: { tag: true } },
+      },
+    });
+
+    // Transform to match expected structure for BlogPostsList
+    posts = result.map(post => ({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      dek: post.dek,
+      description: post.description,
+      seo_keywords: post.seoKeywords ? JSON.parse(post.seoKeywords) : [],
+      reading_time_minutes: post.readingTimeMinutes,
+      views: post.views,
+      created: post.createdAt.toISOString(),
+      updated: post.updatedAt.toISOString(),
+      hero_image_url: post.heroImageUrl,
+      tags: post.tags.map(pt => ({
+        id: pt.tag.id,
+        name: pt.tag.name,
+        color_bg: pt.tag.colorBg,
+        color_text: pt.tag.colorText,
+      })),
+    }));
   } catch (error) {
     console.error("Error fetching posts list:", error);
   }

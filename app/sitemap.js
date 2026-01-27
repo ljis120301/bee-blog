@@ -1,8 +1,8 @@
-import { pb } from '@/lib/pocketbase';
+import { db } from '@/lib/db';
 
 export default async function sitemap() {
   const baseUrl = 'https://bee.whoisjason.me';
-  
+
   // Static pages with optimized priorities and change frequencies
   const staticPages = [
     {
@@ -50,15 +50,22 @@ export default async function sitemap() {
   ];
 
   try {
-    // Fetch all published blog posts
-    const posts = await pb.collection('posts').getFullList({
-      sort: '-created',
-      fields: 'id,created,updated,title,slug',
+    // Fetch all published blog posts from Prisma
+    const posts = await db.post.findMany({
+      where: { published: true },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        title: true,
+        slug: true,
+      },
     });
 
     const blogPosts = posts.map((post) => ({
       url: `${baseUrl}/blogposts/${post.id}`,
-      lastModified: new Date(post.updated || post.created),
+      lastModified: new Date(post.updatedAt || post.createdAt),
       changeFrequency: 'weekly',
       priority: 0.8,
     }));

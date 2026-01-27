@@ -1,7 +1,11 @@
 "use client";
 
+/**
+ * User Profile Page - Prisma Version
+ * ===================================
+ */
 import React, { useState, useEffect } from 'react';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/app/layout/Header';
 import Footer from '@/components/app/layout/Footer';
@@ -16,54 +20,64 @@ import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components
 import Image from 'next/image';
 
 const UserProfilePage = () => {
-  const [user, setUser] = useState(null);
+  const { user, isAuthenticated, loading, refreshAuth } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    const loadUserData = async () => {
-      if (pb.authStore.isValid) {
-        const userData = pb.authStore.model;
-        setUser(userData);
-        setUsername(userData.username);
-        setFirstName(userData.name);
-        setLastName(userData.last_name);
-        setEmail(userData.email);
-      } else {
-        router.push('/auth');
-      }
-    };
-    loadUserData();
-  }, [router]);
+    if (!loading && !isAuthenticated) {
+      router.push('/auth');
+      return;
+    }
+
+    if (user) {
+      setUsername(user.username || '');
+      setName(user.name || '');
+      setEmail(user.email || '');
+    }
+  }, [user, isAuthenticated, loading, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     try {
-      const data = {
-        username: username,
-        email: email,
-        name: firstName,
-        last_name: lastName,
-      };
-      await pb.collection('users').update(user.id, data);
-      setIsEditing(false);
-      // Refresh user data
-      const updatedUser = await pb.collection('users').getOne(user.id);
-      setUser(updatedUser);
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, name, email }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSuccess('Profile updated successfully!');
+        setIsEditing(false);
+        await refreshAuth(); // Refresh user data in context
+      } else {
+        setError(data.error || 'Failed to update profile');
+      }
     } catch (err) {
-      setError(err.message);
+      setError('Failed to update profile');
     }
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (loading || !user) {
+    return (
+      <>
+        <ScrollProgressBar />
+        <Header />
+        <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px] min-h-screen flex items-center justify-center">
+          <div className="text-cat-frappe-subtext0">Loading...</div>
+        </main>
+        <Footer />
+      </>
+    );
   }
 
   return (
@@ -81,11 +95,11 @@ const UserProfilePage = () => {
                 <div className="mt-auto pt-4">
                   <SidebarLink
                     link={{
-                      label: user ? user.username : "Guest",
+                      label: user.username || "User",
                       href: "/user-profile",
                       icon: (
                         <Image
-                          src={user?.avatar || "/bee-icon.ico"}
+                          src="/bee-icon.ico"
                           className="rounded-full"
                           width={28}
                           height={28}
@@ -110,6 +124,7 @@ const UserProfilePage = () => {
                           account overview 🐝
                         </h1>
                         {error && <p className="text-red-500 mt-4">{error}</p>}
+                        {success && <p className="text-green-500 mt-4">{success}</p>}
                         <div className="mt-8">
                           <h2 className="text-2xl font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Profile Information</h2>
                           <div className="bg-white dark:bg-cat-frappe-surface0 rounded-lg shadow-md overflow-hidden">
@@ -119,38 +134,26 @@ const UserProfilePage = () => {
                                   <div className="space-y-4">
                                     <LabelInputContainer>
                                       <Label htmlFor="username">Username</Label>
-                                      <Input 
-                                        id="username" 
+                                      <Input
+                                        id="username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         required
                                       />
                                     </LabelInputContainer>
-                                    <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                                      <LabelInputContainer className="flex-1">
-                                        <Label htmlFor="firstname">First name</Label>
-                                        <Input 
-                                          id="firstname" 
-                                          value={firstName}
-                                          onChange={(e) => setFirstName(e.target.value)}
-                                          required
-                                        />
-                                      </LabelInputContainer>
-                                      <LabelInputContainer className="flex-1">
-                                        <Label htmlFor="lastname">Last name</Label>
-                                        <Input 
-                                          id="lastname" 
-                                          value={lastName}
-                                          onChange={(e) => setLastName(e.target.value)}
-                                          required
-                                        />
-                                      </LabelInputContainer>
-                                    </div>
+                                    <LabelInputContainer>
+                                      <Label htmlFor="name">Name</Label>
+                                      <Input
+                                        id="name"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                      />
+                                    </LabelInputContainer>
                                     <LabelInputContainer>
                                       <Label htmlFor="email">Email Address</Label>
-                                      <Input 
-                                        id="email" 
-                                        type="email" 
+                                      <Input
+                                        id="email"
+                                        type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
@@ -167,7 +170,7 @@ const UserProfilePage = () => {
                                     </tr>
                                     <tr className="border-b border-cat-frappe-surface1">
                                       <td className="py-4 pr-4 font-semibold text-cat-frappe-subtext0 w-1/3">Name</td>
-                                      <td className="py-4 text-cat-frappe-text">{user.name} {user.last_name}</td>
+                                      <td className="py-4 text-cat-frappe-text">{user.name || '-'}</td>
                                     </tr>
                                     <tr>
                                       <td className="py-4 pr-4 font-semibold text-cat-frappe-subtext0 w-1/3">Email</td>
@@ -207,8 +210,8 @@ const UserProfilePage = () => {
                           </div>
                           <div className="mt-8">
                             <h2 className="text-2xl font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Account Activity</h2>
-                            <p><strong>Account Created:</strong> {new Date(user.created).toLocaleDateString()}</p>
-                            <p><strong>Last Updated:</strong> {new Date(user.updated).toLocaleDateString()}</p>
+                            <p><strong>Account Created:</strong> {new Date(user.createdAt).toLocaleDateString()}</p>
+                            <p><strong>Last Updated:</strong> {new Date(user.updatedAt).toLocaleDateString()}</p>
                           </div>
                           <div className="mt-8">
                             <h2 className="text-2xl font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Account Actions</h2>

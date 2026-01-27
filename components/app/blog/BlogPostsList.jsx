@@ -1,6 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
-import { pb } from '@/lib/pocketbase';
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useDebounce } from "use-debounce";
 
@@ -11,14 +10,22 @@ export default function BlogPostsList({ initialPosts }) {
   const [selectedTagIds, setSelectedTagIds] = useState(new Set());
   const [sortKey, setSortKey] = useState('newest');
 
-  React.useEffect(() => {
+  useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const tags = await pb.collection('tags').getFullList({ sort: 'name' });
-        if (mounted) setAllTags(tags.map(t => ({ id: t.id, name: t.name, color_bg: t.color_bg, color_text: t.color_text })));
+        const res = await fetch('/api/tags');
+        const data = await res.json();
+        if (mounted && data.success) {
+          setAllTags(data.tags.map(t => ({
+            id: t.id,
+            name: t.name,
+            color_bg: t.colorBg,
+            color_text: t.colorText
+          })));
+        }
       } catch (e) {
-        console.warn('Tags load failed (ensure schema exists):', e?.message || e);
+        console.warn('Tags load failed:', e?.message || e);
       }
     })();
     return () => { mounted = false; };
@@ -30,7 +37,8 @@ export default function BlogPostsList({ initialPosts }) {
     let result = initialPosts.filter((p) => {
       const hay = `${p.title ?? ""} ${p.dek ?? ""} ${p.description ?? ""} ${(p.seo_keywords ?? []).join(" ")}`.toLowerCase();
       const matchesQ = q ? hay.includes(q) : true;
-      const postTagIds = new Set((p?.expand?.tags || []).map(t => t.id));
+      // Tags are now stored as an array of tag objects or names
+      const postTagIds = new Set((p?.tags || []).map(t => typeof t === 'object' ? t.id : t));
       const matchesTags = selectedTagIds.size === 0 || Array.from(selectedTagIds).every(id => postTagIds.has(id));
       return matchesQ && matchesTags;
     });
@@ -126,17 +134,20 @@ export default function BlogPostsList({ initialPosts }) {
                 ) : null}
                 {post.views ? <span> • {post.views} views</span> : null}
               </div>
-              {Array.isArray(post?.expand?.tags) && post.expand.tags.length > 0 && (
+              {Array.isArray(post?.tags) && post.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {post.expand.tags.map((t) => (
-                    <span
-                      key={t.id}
-                      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border"
-                      style={{ backgroundColor: t.color_bg || '#ef9f76', color: t.color_text || '#303446', borderColor: `${(t.color_text || '#303446')}22` }}
-                    >
-                      #{t.name}
-                    </span>
-                  ))}
+                  {post.tags.map((t, idx) => {
+                    const tag = typeof t === 'object' ? t : { id: idx, name: t };
+                    return (
+                      <span
+                        key={tag.id || idx}
+                        className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border"
+                        style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
+                      >
+                        #{tag.name}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </Link>
@@ -152,5 +163,3 @@ export default function BlogPostsList({ initialPosts }) {
     </section>
   );
 }
-
-

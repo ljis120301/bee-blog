@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import Header from "@/components/app/layout/Header";
 import Footer from "@/components/app/layout/Footer";
 import MostLikedCard from "@/components/app/cards/MostLikedCard";
@@ -42,16 +42,13 @@ export default function BlogPostClient({ post: initialPost, params }) {
   const [post, setPost] = useState(initialPost);
   const router = useRouter();
   const [mdParser, setMdParser] = useState(null);
-  const [isAuthor, setIsAuthor] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user, isAdmin, isAuthor: isAuthorRole } = useAuth();
+
+  // Compute author status from AuthContext
+  const isAuthor = isAdmin || isAuthorRole;
+  const currentUser = user;
 
   useEffect(() => {
-    // Check current user for auth context
-    if (pb.authStore.isValid) {
-      setCurrentUser(pb.authStore.model);
-      setIsAuthor(pb.authStore.model.role === "admin" || pb.authStore.model.role === "author");
-    }
-
     const initializeMdParser = () => {
       const mdInstance = new MarkdownIt({
         html: true,
@@ -59,11 +56,11 @@ export default function BlogPostClient({ post: initialPost, params }) {
         typographer: true,
         breaks: true,
       })
-      .use(sub)
-      .use(sup)
-      .use(ins)
-      .use(mark)
-      .use(taskLists);
+        .use(sub)
+        .use(sup)
+        .use(ins)
+        .use(mark)
+        .use(taskLists);
 
       // Enable all header levels
       mdInstance.enable('heading');
@@ -71,16 +68,7 @@ export default function BlogPostClient({ post: initialPost, params }) {
       setMdParser(mdInstance);
     };
 
-    const checkAuthorStatus = () => {
-      if (pb.authStore.isValid) {
-        const user = pb.authStore.model;
-        const authorStatus = user.role === "admin" || user.role === "author";
-        setIsAuthor(authorStatus);
-      }
-    };
-
     initializeMdParser();
-    checkAuthorStatus();
   }, []);
 
   const getBodyAndToc = () => {
@@ -193,88 +181,90 @@ export default function BlogPostClient({ post: initialPost, params }) {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          {(() => { const { elements, toc } = getBodyAndToc(); return (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-            <div className="lg:col-span-8">
-                                <AIContentMarkers post={post}>
+          {(() => {
+            const { elements, toc } = getBodyAndToc(); return (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+                <div className="lg:col-span-8">
+                  <AIContentMarkers post={post}>
                     <AIOptimizedContent post={post}>
                       <SEOOptimizedContent post={post}>
                         <article className="rounded-lg p-4 sm:p-6 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
-                <header className="mb-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight flex-1">{post.title}</h1>
-                    {isAuthor && (
-                      <button
-                        onClick={() => router.push(`/blogposts/edit/${params.id}`)}
-                        className="ml-4 p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        title="Edit this post"
-                      >
-                        <IconEdit size={24} />
-                      </button>
-                    )}
-                  </div>
-                  {post.dek && (
-                    <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{post.dek}</p>
-                  )}
-                  <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
-                    <span>{new Date(post.created).toLocaleDateString()}</span>
-                    {post.reading_time_minutes ? <span>• {post.reading_time_minutes} min read</span> : null}
-                    {post.views ? <span>• {post.views} views</span> : null}
-                  </div>
-                </header>
-                <section className="mt-6">
-                  {elements}
-                </section>
-                
-                {/* Social sharing section */}
-                <div className="mt-8 pt-6 border-t border-[#ccd0da] dark:border-cat-frappe-surface2">
-                  <ShareButtons 
-                    url={`https://bee.whoisjason.me/blogposts/${params.id}`}
-                    title={post.title}
-                    description={post.description || post.dek}
-                    imageUrl={post.hero_image_url || 'https://bee.whoisjason.me/og-default.jpg'}
-                    tags={Array.isArray(post.seo_keywords) ? post.seo_keywords.join(',') : 'coding,programming,tech,beeblog'}
-                  />
-                </div>
-                <div className="mt-10">
-                  <Comments postId={post.id} />
-                </div>
-                                      </article>
+                          <header className="mb-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight flex-1">{post.title}</h1>
+                              {isAuthor && (
+                                <button
+                                  onClick={() => router.push(`/blogposts/edit/${params.id}`)}
+                                  className="ml-4 p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  title="Edit this post"
+                                >
+                                  <IconEdit size={24} />
+                                </button>
+                              )}
+                            </div>
+                            {post.dek && (
+                              <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{post.dek}</p>
+                            )}
+                            <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
+                              <span>{new Date(post.created).toLocaleDateString()}</span>
+                              {post.reading_time_minutes ? <span>• {post.reading_time_minutes} min read</span> : null}
+                              {post.views ? <span>• {post.views} views</span> : null}
+                            </div>
+                          </header>
+                          <section className="mt-6">
+                            {elements}
+                          </section>
+
+                          {/* Social sharing section */}
+                          <div className="mt-8 pt-6 border-t border-[#ccd0da] dark:border-cat-frappe-surface2">
+                            <ShareButtons
+                              url={`https://bee.whoisjason.me/blogposts/${params.id}`}
+                              title={post.title}
+                              description={post.description || post.dek}
+                              imageUrl={post.hero_image_url || 'https://bee.whoisjason.me/og-default.jpg'}
+                              tags={Array.isArray(post.seo_keywords) ? post.seo_keywords.join(',') : 'coding,programming,tech,beeblog'}
+                            />
+                          </div>
+                          <div className="mt-10">
+                            <Comments postId={post.id} />
+                          </div>
+                        </article>
                       </SEOOptimizedContent>
                     </AIOptimizedContent>
                   </AIContentMarkers>
-            </div>
-            <aside className="lg:col-span-4">
-              <div className="sticky top-[88px]">
-                {post.toc_enabled && toc.length > 0 && (
-                  <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg mb-4">
-                    <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">On this page</h2>
-                    <nav>
-                      <ul className="space-y-1">
-                        {toc.map((item, i) => (
-                          <li key={i} className={item.level === 3 ? 'ml-3' : item.level === 4 ? 'ml-6' : ''}>
-                            <a href={`#${item.id}`} className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 hover:text-cat-frappe-peach">
-                              {item.text}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </nav>
-                  </div>
-                )}
-                <div className="space-y-4">
-                  <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
-                    <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-3">Subscribe to Blog</h2>
-                    <p className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 mb-3">Get notified when new posts are published</p>
-                    <RssButton size="md" variant="default" className="w-full" />
-                  </div>
-                  <TagAndEngagementCard postId={post.id} tagIds={Array.isArray(post.tags) ? post.tags : []} />
-                  <MostLikedCard limit={5} />
                 </div>
+                <aside className="lg:col-span-4">
+                  <div className="sticky top-[88px]">
+                    {post.toc_enabled && toc.length > 0 && (
+                      <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg mb-4">
+                        <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">On this page</h2>
+                        <nav>
+                          <ul className="space-y-1">
+                            {toc.map((item, i) => (
+                              <li key={i} className={item.level === 3 ? 'ml-3' : item.level === 4 ? 'ml-6' : ''}>
+                                <a href={`#${item.id}`} className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 hover:text-cat-frappe-peach">
+                                  {item.text}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </nav>
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
+                        <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-yellow mb-3">Subscribe to Blog</h2>
+                        <p className="text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 mb-3">Get notified when new posts are published</p>
+                        <RssButton size="md" variant="default" className="w-full" />
+                      </div>
+                      <TagAndEngagementCard postId={post.id} tagIds={Array.isArray(post.tags) ? post.tags : []} />
+                      <MostLikedCard limit={5} />
+                    </div>
+                  </div>
+                </aside>
               </div>
-            </aside>
-          </div>
-          ) })()}
+            )
+          })()}
         </div>
       </main>
       <Footer />

@@ -1,6 +1,11 @@
 "use client";
+
+/**
+ * Comments Component - Prisma Version
+ * ====================================
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { pb } from "@/lib/pocketbase";
+import { useAuth } from "@/app/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -24,35 +29,27 @@ export default function Comments({ postId }) {
   const mountedRef = useRef(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportTarget, setReportTarget] = useState(null);
-  const [reportReason, setReportReason] = useState("");
-  const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  const isLoggedIn = pb.authStore.isValid;
-  const currentUser = pb.authStore.model;
-  const isModerator = useMemo(() => {
-    const role = currentUser?.role;
-    return role === "admin" || role === "author";
-  }, [currentUser]);
+  const { user, isAuthenticated, isAdmin, isAuthor } = useAuth();
+  const isModerator = isAdmin || isAuthor;
 
   const loadComments = useCallback(async (pageNum = 1) => {
     if (!postId) return;
     setIsLoading(true);
     setError("");
     try {
-      const user = pb.authStore.model;
-      const authorPart = user?.id ? ` || author = "${user.id}"` : "";
-      const res = await pb.collection("comments").getList(pageNum, pageSize, {
-        sort: "created",
-        filter: `post = "${postId}" && (status = "published"${authorPart})`,
-        expand: "author",
-        $autoCancel: false,
-      });
+      const res = await fetch(`/api/comments?postId=${postId}&page=${pageNum}&limit=${pageSize}`);
+      const data = await res.json();
+
       if (!mountedRef.current) return;
-      setComments(res?.items || []);
-      setTotalPages(Math.max(1, res?.totalPages || 1));
-      setPage(res?.page || 1);
+
+      if (data.success) {
+        setComments(data.comments || []);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+        setPage(data.page || 1);
+      } else {
+        setError("Failed to load comments.");
+      }
     } catch (e) {
       if (!mountedRef.current) return;
       setError("Failed to load comments.");
@@ -69,7 +66,7 @@ export default function Comments({ postId }) {
 
   const submitComment = async (e) => {
     e.preventDefault();
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       setError("Please log in to comment.");
       return;
     }
@@ -82,55 +79,30 @@ export default function Comments({ postId }) {
     setError("");
     setSuccess("");
     try {
-      const created = await pb.collection("comments").create({
-        post: postId,
-        author: currentUser.id,
-        content: trimmed,
-        status: "published",
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId, content: trimmed }),
       });
-      setContent("");
-      setSuccess("Comment submitted.");
-      // Optimistic refresh: include own pending comment
-      await loadComments(1);
+      const data = await res.json();
+
+      if (data.success) {
+        setContent("");
+        setSuccess("Comment submitted.");
+        await loadComments(1);
+      } else {
+        setError(data.error || "Failed to submit comment.");
+      }
     } catch (e) {
-      setError(e?.message || "Failed to submit comment.");
+      setError("Failed to submit comment.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openReportDialog = (comment) => {
-    if (!isLoggedIn) {
-      setError("Please log in to report comments.");
-      return;
-    }
-    setReportTarget(comment);
-    setReportReason("");
-    setReportDialogOpen(true);
-  };
-
-  const submitReport = async () => {
-    if (!reportTarget) return;
-    setReportSubmitting(true);
-    try {
-      await pb.collection("comment_flags").create({
-        comment: reportTarget.id,
-        user: currentUser.id,
-        reason: (reportReason || "").slice(0, 500),
-      });
-      setSuccess("Report submitted.");
-      setReportDialogOpen(false);
-      setReportTarget(null);
-    } catch (e) {
-      setError(e?.message || "Failed to submit report.");
-    } finally {
-      setReportSubmitting(false);
-    }
-  };
-
   const openDeleteDialog = (comment) => {
-    if (!isLoggedIn) return;
-    const isOwner = comment?.author === currentUser?.id || comment?.expand?.author?.id === currentUser?.id;
+    if (!isAuthenticated) return;
+    const isOwner = comment?.authorId === user?.id;
     if (!(isOwner || isModerator)) return;
     setDeleteTarget(comment);
     setDeleteDialogOpen(true);
@@ -139,17 +111,22 @@ export default function Comments({ postId }) {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      // Try hard delete first (owner allowed by PB rules). Fallback to soft delete if denied.
-      try {
-        await pb.collection("comments").delete(deleteTarget.id);
-      } catch {
-        await pb.collection("comments").update(deleteTarget.id, { status: "deleted" });
+      const res = await fetch('/api/comments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId: deleteTarget.id }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setDeleteDialogOpen(false);
+        setDeleteTarget(null);
+        await loadComments(page);
+      } else {
+        setError(data.error || "Failed to delete comment.");
       }
-      setDeleteDialogOpen(false);
-      setDeleteTarget(null);
-      await loadComments(page);
     } catch (e) {
-      setError(e?.message || "Failed to delete comment.");
+      setError("Failed to delete comment.");
     }
   };
 
@@ -159,7 +136,7 @@ export default function Comments({ postId }) {
 
       {/* Write comment */}
       <div className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base/70 border border-cat-frappe-overlay0/20 mb-6">
-        {isLoggedIn ? (
+        {isAuthenticated ? (
           <form onSubmit={submitComment} className="space-y-3">
             <textarea
               value={content}
@@ -169,7 +146,7 @@ export default function Comments({ postId }) {
             />
             <div className="flex items-center justify-between">
               <div className="text-sm text-cat-frappe-subtext0">
-                Signed in as {currentUser?.username || currentUser?.email}
+                Signed in as {user?.username || user?.email}
               </div>
               <button
                 type="submit"
@@ -197,19 +174,19 @@ export default function Comments({ postId }) {
           <div className="text-cat-frappe-subtext0">No comments yet.</div>
         ) : (
           comments.map((c) => {
-            const author = c.expand?.author;
+            const author = c.author;
+            const isOwner = author?.id === user?.id;
             return (
               <div key={c.id} className="rounded-lg p-4 bg-[#F6EEE5] dark:bg-cat-frappe-base border border-cat-frappe-overlay0/20">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-sm text-cat-frappe-subtext0">
                       <span className="font-medium text-cat-frappe-base dark:text-cat-frappe-text">{author?.username || author?.email || "User"}</span>
-                      <span className="ml-2">{new Date(c.created).toLocaleString()}</span>
+                      <span className="ml-2">{new Date(c.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button onClick={() => openReportDialog(c)} className="text-xs text-cat-frappe-mauve hover:underline">Report</button>
-                    {(isModerator || (isLoggedIn && (author?.id === currentUser?.id))) && (
+                    {(isModerator || isOwner) && (
                       <button onClick={() => openDeleteDialog(c)} className="text-xs text-cat-frappe-red hover:underline">Delete</button>
                     )}
                   </div>
@@ -217,7 +194,7 @@ export default function Comments({ postId }) {
                 <div className="mt-2 text-cat-frappe-base dark:text-cat-frappe-text whitespace-pre-wrap break-words">
                   {c.content}
                 </div>
-                {c.status !== 'published' && (c.author === currentUser?.id || c.expand?.author?.id === currentUser?.id) && (
+                {c.status !== 'published' && isOwner && (
                   <div className="mt-2 text-xs text-cat-frappe-yellow">Pending moderation</div>
                 )}
               </div>
@@ -262,32 +239,6 @@ export default function Comments({ postId }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Report dialog */}
-      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report comment</DialogTitle>
-            <DialogDescription>Tell us briefly what’s wrong with this comment.</DialogDescription>
-          </DialogHeader>
-          <textarea
-            value={reportReason}
-            onChange={(e) => setReportReason(e.target.value)}
-            placeholder="Reason (optional)"
-            className="w-full min-h-[90px] rounded-md border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 bg-white dark:bg-cat-frappe-surface1 p-3 text-cat-frappe-base dark:text-cat-frappe-text"
-          />
-          <DialogFooter>
-            <DialogClose asChild>
-              <button className="px-3 py-2 rounded border">Cancel</button>
-            </DialogClose>
-            <button disabled={reportSubmitting} onClick={submitReport} className="px-3 py-2 rounded bg-cat-frappe-peach text-cat-frappe-base">
-              {reportSubmitting ? "Submitting..." : "Submit"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
-
-

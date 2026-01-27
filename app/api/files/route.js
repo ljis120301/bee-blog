@@ -1,38 +1,52 @@
+/**
+ * Files API - Local Storage Version
+ * ==================================
+ * Handles file uploads and serving from local filesystem
+ */
 import { NextResponse } from 'next/server';
-import { pb } from '@/lib/pocketbase';
+import { getCurrentUser } from '@/lib/auth';
+import { writeFile, mkdir, readFile, stat } from 'fs/promises';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
+// Ensure upload directory exists
+async function ensureUploadDir() {
+  try {
+    await mkdir(UPLOAD_DIR, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
 
 export async function POST(request) {
   try {
-    // AuthN: require bearer token and validate with PocketBase
-    const authHeader = request.headers.get('authorization') || '';
-    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!bearer) {
+    // Check authentication via session cookie
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    // Temporarily set token and verify
-    pb.authStore.save(bearer, null);
-    try {
-      await pb.collection('users').authRefresh();
-    } catch (e) {
-      pb.authStore.clear();
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+
+    // Only authors and admins can upload
+    if (user.role !== 'ADMIN' && user.role !== 'AUTHOR') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
     console.log('API: Starting file upload process');
-    
+
     const formData = await request.formData();
     const file = formData.get('file');
-    const token = formData.get('token');
 
     console.log('API: Received file:', file?.name);
     console.log('API: File size:', file?.size);
-    console.log('API: Token present:', !!token);
 
     if (!file) {
       console.error('API: No file provided');
-      return NextResponse.json({ 
-        success: false, 
-        error: 'No file provided' 
+      return NextResponse.json({
+        success: false,
+        error: 'No file provided'
       }, { status: 400 });
     }
 
@@ -43,150 +57,124 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Unsupported file type' }, { status: 415 });
     }
 
-    console.log('API: Creating PocketBase form data');
-    const pbFormData = new FormData();
-    pbFormData.append('file', file);
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { success: false, error: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` },
+        { status: 413 }
+      );
+    }
 
-    console.log('API: Attempting to create record in PocketBase');
-    const record = await pb.collection('files').create(pbFormData, {
-      $autoCancel: false,
-      $cancelKey: `upload_${Date.now()}`
-    });
-    console.log('API: Record created:', record.id);
+    // Sanitize filename - remove path components and dangerous characters
+    const sanitizedName = path.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
 
-    console.log('API: Generating file URL');
-    const fileUrl = pb.files.getUrl(record, record.file, { 
-      token: token 
-    });
-    console.log('API: File URL generated:', fileUrl);
+    // Ensure upload directory exists
+    await ensureUploadDir();
 
-    const response = NextResponse.json({
+    // Generate unique filename with sanitized extension
+    const ext = path.extname(sanitizedName) || '';
+    const uniqueId = uuidv4();
+    const filename = `${uniqueId}${ext}`;
+    const filepath = path.join(UPLOAD_DIR, filename);
+
+    // Write file to disk
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await writeFile(filepath, buffer);
+
+    console.log('API: File saved to:', filepath);
+
+    // Generate public URL
+    const fileUrl = `/uploads/${filename}`;
+
+    return NextResponse.json({
       success: true,
       url: fileUrl,
       type: file.type,
-      token: token,
-      id: record.id
+      id: uniqueId,
+      filename: filename
     });
-
-    // Clear server auth store after request completes
-    pb.authStore.clear();
-    return response;
 
   } catch (error) {
     console.error('API: Upload error:', error);
-    console.error('API: Error details:', error.data);
-    console.error('API: Error stack:', error.stack);
-    pb.authStore.clear();
     return NextResponse.json({
       success: false,
-      error: error.message || 'Upload failed',
-      details: error.data || {}
+      error: error.message || 'Upload failed'
     }, { status: 500 });
   }
 }
 
 export async function GET(request) {
   try {
-    console.log('GET: Starting video stream request');
     const url = new URL(request.url);
     const fileId = url.searchParams.get('id');
-    const inlineToken = url.searchParams.get('token');
-    
-    console.log('GET: File ID:', fileId);
-    
-    if (!fileId) {
-      console.error('GET: No file ID provided');
-      return new NextResponse('File ID is required', { status: 400 });
+    const filename = url.searchParams.get('filename');
+
+    if (!fileId && !filename) {
+      return new NextResponse('File ID or filename is required', { status: 400 });
     }
 
-    console.log('GET: Fetching file record from PocketBase');
-    const record = await pb.collection('files').getOne(fileId);
-    console.log('GET: Record found:', {
-      id: record.id,
-      filename: record.file,
-      type: record.type
-    });
+    // Try to find file
+    const searchPattern = filename || fileId;
+    const filepath = path.join(UPLOAD_DIR, searchPattern);
 
-    // Prefer inline token if provided from upload response
-    let fileToken = inlineToken || null;
-    if (!fileToken) {
-      console.log('GET: Generating file token');
-      try {
-        fileToken = await pb.files.getToken();
-      } catch (e) {
-        console.warn('GET: File token failed, continuing without token (public file?)');
+    try {
+      await stat(filepath);
+    } catch {
+      return new NextResponse('File not found', { status: 404 });
+    }
+
+    const fileData = await readFile(filepath);
+
+    // Determine content type from extension
+    const ext = path.extname(searchPattern).toLowerCase();
+    const contentTypes = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.mp4': 'video/mp4',
+      '.webm': 'video/webm',
+      '.mov': 'video/quicktime',
+    };
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+
+    return new NextResponse(fileData, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': fileData.length.toString(),
+        'Cache-Control': 'public, max-age=31536000',
       }
-    }
-    console.log('GET: Using token:', !!fileToken);
-
-    console.log('GET: Generating PocketBase file URL');
-    const fileUrl = pb.files.getUrl(record, record.file, fileToken ? { token: fileToken } : {});
-    console.log('GET: PocketBase URL generated:', fileUrl);
-
-    console.log('GET: Attempting to fetch file from PocketBase');
-    // Forward range header if provided for streaming/seek
-    const range = request.headers.get('range');
-    let response = await fetch(fileUrl, {
-      headers: range ? { range } : undefined
     });
-    console.log('GET: PocketBase response status:', response.status);
-    
-    if (!response.ok) {
-      console.error('GET: PocketBase fetch failed:', {
-        status: response.status,
-        statusText: response.statusText
-      });
-      // Fallback: try without range if partial request was denied
-      if (range) {
-        const fallbackRes = await fetch(fileUrl);
-        if (fallbackRes.ok) {
-          response = fallbackRes;
-        } else {
-          throw new Error(`Failed to fetch file from PocketBase: ${response.statusText}`);
-        }
-      } else {
-        throw new Error(`Failed to fetch file from PocketBase: ${response.statusText}`);
-      }
-    }
-
-    const contentType = response.headers.get('content-type') || record.type || 'application/octet-stream';
-    const isPartial = response.status === 206 || !!range;
-    const headers = new Headers({
-      'Content-Type': contentType,
-      ...(response.headers.get('content-length') ? { 'Content-Length': response.headers.get('content-length') } : {}),
-      'Accept-Ranges': 'bytes',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Range, Content-Type, Authorization',
-      'Cross-Origin-Resource-Policy': 'cross-origin',
-      'Cache-Control': 'public, max-age=31536000'
-    });
-    const status = isPartial ? 206 : 200;
-
-    console.log('GET: Returning file stream with headers:', Object.fromEntries(headers.entries()), 'status:', status);
-    return new NextResponse(response.body, { headers, status });
 
   } catch (error) {
-    console.error('GET: Error details:', {
-      message: error.message,
-      data: error.data,
-      stack: error.stack
-    });
+    console.error('GET: Error:', error);
     return NextResponse.json({
-      error: 'Error serving video',
-      details: error.message,
-      stack: error.stack
+      error: 'Error serving file',
+      details: error.message
     }, { status: 500 });
   }
-} 
+}
 
-export async function OPTIONS() {
+export async function OPTIONS(request) {
+  // Get origin from request for CORS
+  const origin = request.headers.get('origin') || '';
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://bee.whoisjason.me',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ];
+
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Range, Content-Type, Authorization',
+      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
     },
   });

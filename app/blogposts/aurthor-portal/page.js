@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from "@/components/app/layout/Header";
 import Footer from "@/components/app/layout/Footer";
@@ -94,23 +94,17 @@ export default function AuthorPortal() {
   const [tagToDelete, setTagToDelete] = useState(null);
   const [isEditingTags, setIsEditingTags] = useState(false);
 
+  const { user: authUser, isAdmin: isAdminRole, isAuthor: isAuthorRole, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    console.log('Auth status:', pb.authStore.isValid);
-    console.log('Auth model:', pb.authStore.model);
-    const checkAdminStatus = async () => {
-      if (pb.authStore.isValid) {
-        const user = pb.authStore.model;
-        if (user.role === "admin") {
-          setIsAdmin(true);
-        } else {
-          router.push('/auth');
-        }
+    if (!authLoading) {
+      if (isAdminRole || isAuthorRole) {
+        setIsAdmin(true);
       } else {
         router.push('/auth');
       }
-    };
-    checkAdminStatus();
-  }, [router]);
+    }
+  }, [router, authLoading, isAdminRole, isAuthorRole]);
 
   useEffect(() => {
     const initializeMdParser = () => {
@@ -120,14 +114,14 @@ export default function AuthorPortal() {
         typographer: true,
         breaks: true
       })
-      .use(sub)
-      .use(sup)
-      .use(ins)
-      .use(mark)
-      .use(taskLists);
+        .use(sub)
+        .use(sup)
+        .use(ins)
+        .use(mark)
+        .use(taskLists);
 
       // Add custom rendering rules for videos
-      const defaultRender = mdInstance.renderer.rules.html_block || 
+      const defaultRender = mdInstance.renderer.rules.html_block ||
         ((tokens, idx) => tokens[idx].content);
 
       mdInstance.renderer.rules.html_block = (tokens, idx, options, env, self) => {
@@ -144,15 +138,16 @@ export default function AuthorPortal() {
     initializeMdParser();
   }, []);
 
-  // Load existing tags
+  // Load existing tags via API
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const tags = await pb.collection('tags').getFullList({ sort: 'name' });
-        if (mounted) setAvailableTags(tags);
+        const res = await fetch('/api/tags');
+        const data = await res.json();
+        if (data.success && mounted) setAvailableTags(data.tags);
       } catch (e) {
-        console.warn('Tags not available (create schema):', e?.message || e);
+        console.warn('Tags not available:', e?.message || e);
       }
     })();
     return () => { mounted = false; };
@@ -187,7 +182,7 @@ export default function AuthorPortal() {
       showNotification('Tag name cannot be empty', 'error');
       return;
     }
-    
+
     // Check if tag already exists
     const existing = availableTags.find(t => t.name.toLowerCase() === name);
     if (existing) {
@@ -196,13 +191,22 @@ export default function AuthorPortal() {
       setNewTagName('');
       return;
     }
-    
+
     try {
-      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
-      setAvailableTags(prev => [...prev, created]);
-      addTagToPost(created.id);
-      setNewTagName('');
-      showNotification(`Created and added "${name}" tag`, 'success');
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, colorBg: newTagBg, colorText: newTagFg }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAvailableTags(prev => [...prev, data.tag]);
+        addTagToPost(data.tag.id);
+        setNewTagName('');
+        showNotification(`Created and added "${name}" tag`, 'success');
+      } else {
+        showNotification(data.error || 'Failed to create tag', 'error');
+      }
     } catch (e) {
       console.error('Tag create failed:', e);
       showNotification('Failed to create tag', 'error');
@@ -210,51 +214,37 @@ export default function AuthorPortal() {
   };
 
   const requestDeleteTag = async (tag) => {
-    try {
-      // Fetch count of posts using this tag
-      const count = await pb.collection('posts').getList(1, 1, {
-        filter: `tags ~ "${tag.id}"`,
-      });
-      
-      setTagToDelete({ ...tag, postCount: count.totalItems });
-      setIsDeleteTagDialogOpen(true);
-    } catch (e) {
-      console.error('Failed to fetch tag usage count:', e);
-      setTagToDelete({ ...tag, postCount: 0 });
-      setIsDeleteTagDialogOpen(true);
-    }
+    // Simplified - just show the dialog, we'll delete via API
+    setTagToDelete({ ...tag, postCount: 0 });
+    setIsDeleteTagDialogOpen(true);
   };
 
   const confirmDeleteTag = async () => {
     if (!tagToDelete) return;
     try {
-      // Step 1: Find all posts with this tag
-      const postsWithTag = await pb.collection('posts').getFullList({
-        filter: `tags ~ "${tagToDelete.id}"`,
-        fields: 'id,tags'
+      const res = await fetch('/api/tags', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagId: tagToDelete.id }),
       });
-      
-      // Step 2: Remove tag from each post
-      for (const post of postsWithTag) {
-        const updatedTags = (post.tags || []).filter(tid => tid !== tagToDelete.id);
-        await pb.collection('posts').update(post.id, { tags: updatedTags });
+      const data = await res.json();
+
+      if (data.success) {
+        // Update UI
+        setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
+        setSelectedTagIds(prev => {
+          const next = new Set(prev);
+          next.delete(tagToDelete.id);
+          return next;
+        });
+
+        // Revalidate cache since tag affects multiple posts
+        await revalidatePostsPage();
+
+        showNotification('Tag deleted successfully', 'success');
+      } else {
+        showNotification(data.error || 'Failed to delete tag', 'error');
       }
-      
-      // Step 3: Delete the tag itself
-      await pb.collection('tags').delete(tagToDelete.id);
-      
-      // Step 4: Update UI
-      setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
-      setSelectedTagIds(prev => {
-        const next = new Set(prev);
-        next.delete(tagToDelete.id);
-        return next;
-      });
-      
-      // Step 5: Revalidate cache since tag affects multiple posts
-      await revalidatePostsPage();
-      
-      showNotification(`Tag deleted and removed from ${postsWithTag.length} post(s)`, 'success');
     } catch (e) {
       console.error('Delete tag failed:', e);
       showNotification('Failed to delete tag', 'error');
@@ -271,7 +261,7 @@ export default function AuthorPortal() {
   const showNotification = (message, type = 'info') => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message, type }]);
-    
+
     // Auto remove after 3 seconds
     setTimeout(() => {
       setNotifications(prev => prev.filter(notification => notification.id !== id));
@@ -287,13 +277,13 @@ export default function AuthorPortal() {
         newLoadingFiles.add(file.name);
         setLoadingFiles(newLoadingFiles);
         setActiveUploads(prev => new Set(prev).add(file.name));
-        
+
         setUploadProgress(prev => ({
           ...prev,
           [file.name]: 0
         }));
 
-        const result = await uploadInChunks(pb, file, (progress) => {
+        const result = await uploadInChunks(file, (progress) => {
           console.log(`Upload progress for ${file.name}: ${Math.round(progress)}%`);
           setUploadProgress(prev => ({
             ...prev,
@@ -309,7 +299,7 @@ export default function AuthorPortal() {
             id: result.id,
             token: result.token
           });
-          
+
           // Immediately update UI after successful upload
           setUploadedImages(prev => [...prev, {
             name: file.name,
@@ -318,7 +308,7 @@ export default function AuthorPortal() {
             id: result.id,
             token: result.token
           }]);
-          
+
           showNotification(`Successfully uploaded ${file.name}`, 'success');
         }
 
@@ -370,7 +360,7 @@ export default function AuthorPortal() {
   const handleHeroImageFile = async (file) => {
     if (!file) return;
     try {
-      const result = await uploadInChunks(pb, file, (progress) => {
+      const result = await uploadInChunks(file, (progress) => {
         // no-op for hero image
       });
       if (result?.success) {
@@ -398,7 +388,7 @@ export default function AuthorPortal() {
     if (e && e.preventDefault) e.preventDefault();
     try {
       // Remove any duplicate media items
-      const uniqueMedia = Array.from(new Map(uploadedImages.map(item => 
+      const uniqueMedia = Array.from(new Map(uploadedImages.map(item =>
         [item.url, item]
       )).values());
 
@@ -407,7 +397,7 @@ export default function AuthorPortal() {
         (titleText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3).slice(0, 8).forEach(w => base.add(w));
         (descriptionText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4).slice(0, 6).forEach(w => base.add(w));
         ['beeblog', 'blog', 'article'].forEach(w => base.add(w));
-        const user = (userKeywords ? userKeywords.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : []);
+        const user = (userKeywords ? userKeywords.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
         user.forEach(k => base.add(k));
         return Array.from(base).slice(0, 15);
       };
@@ -416,33 +406,39 @@ export default function AuthorPortal() {
         title,
         content, // TipTap HTML string
         description,
-        author: pb.authStore.model.id,
+        author: authUser?.id,
         isSpanTwo,
         media: uniqueMedia,
         images: uniqueMedia.filter(item => item.type === 'image'),
         dek,
-        slug: (slug || title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')),
-        hero_image_url: heroImageUrl || null,
-        seo_title: seoTitle || title,
-        seo_description: seoDescription || description,
-        seo_keywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
-        toc_enabled: false,
-        reading_time_minutes: estimateReadingTime(content),
+        slug: (slug || title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')),
+        heroImageUrl: heroImageUrl || null,
+        seoTitle: seoTitle || title,
+        seoDescription: seoDescription || description,
+        seoKeywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
+        tocEnabled: false,
+        readingTimeMinutes: estimateReadingTime(content),
         tags: Array.from(selectedTagIds)
       };
 
       console.log('Creating post with data:', data);
-      const record = await pb.collection('posts').create(data);
-      
-      // Revalidate the cache to show the new post immediately
-      await revalidatePostsPage();
-      
-      router.push(`/blogposts/${record.id}`);
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        // Revalidate the cache to show the new post immediately
+        await revalidatePostsPage();
+        router.push(`/blogposts/${result.post.id}`);
+      } else {
+        console.error('Error creating post:', result.error);
+        showNotification(result.error || 'Failed to create post', 'error');
+      }
     } catch (error) {
       console.error('Error creating post:', error);
-      if (error.data) {
-        console.error('Validation errors:', error.data);
-      }
     }
   };
 
@@ -461,7 +457,7 @@ export default function AuthorPortal() {
 
   const UploadProgress = () => {
     const hasActiveUploads = Object.keys(uploadProgress).length > 0;
-    
+
     if (!hasActiveUploads) return null;
 
     return (
@@ -486,13 +482,12 @@ export default function AuthorPortal() {
               </span>
             </div>
             <div className="w-full h-2 bg-cat-frappe-overlay2/30 dark:bg-cat-frappe-surface0 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-300 ease-out ${
-                  progress === 98 
-                    ? 'bg-gradient-to-r from-cat-frappe-peach via-cat-frappe-yellow to-cat-frappe-peach animate-[shimmer_2s_linear_infinite]'
-                    : 'bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow'
-                }`}
-                style={{ 
+              <div
+                className={`h-full rounded-full transition-all duration-300 ease-out ${progress === 98
+                  ? 'bg-gradient-to-r from-cat-frappe-peach via-cat-frappe-yellow to-cat-frappe-peach animate-[shimmer_2s_linear_infinite]'
+                  : 'bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow'
+                  }`}
+                style={{
                   width: progress === 98 ? '100%' : `${progress}%`,
                   transition: 'width 0.3s ease-out',
                   backgroundSize: progress === 98 ? '200% 100%' : '100% 100%',
@@ -512,15 +507,14 @@ export default function AuthorPortal() {
         {notifications.map(({ id, message, type }) => (
           <div
             key={id}
-            className={`px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 border ${
-              type === 'error' 
-                ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red' 
-                : type === 'success'
+            className={`px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 border ${type === 'error'
+              ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red'
+              : type === 'success'
                 ? 'bg-[#a6d189]/90 dark:bg-[#a6d189] text-cat-frappe-base dark:text-[#303446] border-[#a6d189]'
                 : type === 'info'
-                ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
-                : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
-            }`}
+                  ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
+                  : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
+              }`}
           >
             {message}
           </div>
@@ -572,7 +566,7 @@ export default function AuthorPortal() {
                               <label className="block text-sm mb-1">Title</label>
                               <input
                                 value={title}
-                                onChange={(e)=>setTitle(e.target.value)}
+                                onChange={(e) => setTitle(e.target.value)}
                                 className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                               />
                               <p className="text-xs mt-1 text-cat-frappe-subtext0">Main headline for your post. Keep it clear and compelling.</p>
@@ -581,7 +575,7 @@ export default function AuthorPortal() {
                               <label className="block text-sm mb-1">Summary</label>
                               <textarea
                                 value={dek || description}
-                                onChange={(e)=>{ setDek(e.target.value); setDescription(e.target.value); }}
+                                onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
                                 rows={3}
                                 className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                               />
@@ -590,8 +584,8 @@ export default function AuthorPortal() {
                             <div>
                               <label className="block text-sm mb-1">Slug</label>
                               <input
-                                value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') : '')}
-                                onChange={() => {}}
+                                value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '')}
+                                onChange={() => { }}
                                 disabled
                                 className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
                               />
@@ -599,7 +593,7 @@ export default function AuthorPortal() {
                             </div>
                             <div>
                               <label className="block text-sm mb-1">Hero Image</label>
-                              <FileUpload onChange={(files)=>{ const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
+                              <FileUpload onChange={(files) => { const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
                               {heroImageUrl && (
                                 <div className="mt-2">
                                   <img src={heroImageUrl} alt="Hero preview" className="h-16 w-28 object-cover rounded" />
@@ -612,7 +606,7 @@ export default function AuthorPortal() {
                                 <label className="block text-sm mb-1">SEO Title</label>
                                 <input
                                   value={seoTitle}
-                                  onChange={(e)=>setSeoTitle(e.target.value)}
+                                  onChange={(e) => setSeoTitle(e.target.value)}
                                   className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                                 />
                                 <p className="text-xs mt-1 text-cat-frappe-subtext0">Appears in search results. Defaults to your Title.</p>
@@ -621,7 +615,7 @@ export default function AuthorPortal() {
                                 <label className="block text-sm mb-1">SEO Description</label>
                                 <input
                                   value={seoDescription}
-                                  onChange={(e)=>setSeoDescription(e.target.value)}
+                                  onChange={(e) => setSeoDescription(e.target.value)}
                                   className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                                 />
                                 <p className="text-xs mt-1 text-cat-frappe-subtext0">Short snippet for search engines. Defaults to Description.</p>
@@ -631,13 +625,13 @@ export default function AuthorPortal() {
                                 <div className="w-full max-w-full overflow-hidden flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                   <input
                                     value={seoKeywords}
-                                    onChange={(e)=>{ setSeoAutoKeywords(false); setSeoKeywords(e.target.value)} }
+                                    onChange={(e) => { setSeoAutoKeywords(false); setSeoKeywords(e.target.value) }}
                                     placeholder="auto-generated unless overridden"
                                     className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                                     disabled={seoAutoKeywords}
                                   />
                                   <label className="inline-flex items-center gap-1 text-xs shrink-0 px-2 py-1 rounded border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-mantle/60 self-start">
-                                    <input type="checkbox" className="accent-cat-frappe-yellow" checked={seoAutoKeywords} onChange={(e)=>setSeoAutoKeywords(e.target.checked)} />
+                                    <input type="checkbox" className="accent-cat-frappe-yellow" checked={seoAutoKeywords} onChange={(e) => setSeoAutoKeywords(e.target.checked)} />
                                     Auto
                                   </label>
                                 </div>
@@ -669,7 +663,7 @@ export default function AuthorPortal() {
                                   {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                                 </button>
                               </div>
-                              
+
                               {/* Selected tags for this post */}
                               <div className="mb-3">
                                 <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
@@ -698,7 +692,7 @@ export default function AuthorPortal() {
                                   )}
                                 </div>
                               </div>
-                              
+
                               {/* Available tags to add */}
                               <div className="mb-3">
                                 <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
@@ -735,7 +729,7 @@ export default function AuthorPortal() {
                               <div className="mt-3 grid grid-cols-1 gap-2">
                                 <div>
                                   <label className="block text-xs mb-1">New tag name</label>
-                                  <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                                  <input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
                                 </div>
                                 <div>
                                   <label className="block text-xs mb-1">Color preset</label>
@@ -771,11 +765,11 @@ export default function AuthorPortal() {
                                           <div className="space-y-2">
                                             <div>
                                               <label className="block text-xs mb-1">Background</label>
-                                              <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                              <input type="text" value={newTagBg} onChange={(e) => setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                             </div>
                                             <div>
                                               <label className="block text-xs mb-1">Text</label>
-                                              <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                              <input type="text" value={newTagFg} onChange={(e) => setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                             </div>
                                           </div>
                                         </DropdownMenuSubContent>
@@ -806,12 +800,12 @@ export default function AuthorPortal() {
                     {/* Editor */}
                     <div className="mb-6">
                       <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                      <TipTapEditor 
+                      <TipTapEditor
                         value={content}
                         minHeightClass="min-h-[55vh]"
                         onChange={handleEditorChange}
                         onRequestUpload={async (file) => {
-                          const result = await uploadInChunks(pb, file, (progress) => {
+                          const result = await uploadInChunks(file, (progress) => {
                             setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
                           });
                           if (result?.success) {
@@ -824,65 +818,65 @@ export default function AuthorPortal() {
                       />
                     </div>
                     {/* Settings moved to Settings dialog */}
-                   {uploadedImages.length > 0 && (
+                    {uploadedImages.length > 0 && (
                       <div className="mb-6">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
-                        <button
-                          type="button"
-                          onClick={() => setUploadedImages([])}
-                          className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {uploadedImages.map((file, index) => (
-                          <div key={index} className="relative group">
-                            <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-[#eff1f5] dark:bg-cat-frappe-surface0">
-                              {loadingFiles.has(file.name) ? (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <span className="animate-pulse">Loading...</span>
-                                </div>
-                              ) : file.type.startsWith('video/') ? (
-                                <video 
-                                  className="w-full h-full object-cover"
-                                  controls
-                                  preload="metadata"
-                                  playsInline
-                                  src={`/api/files?id=${file.id}`}
-                                />
-                              ) : (
-                                <img 
-                                  src={file.url} 
-                                  alt={file.name} 
-                                  className="w-full h-full object-cover"
-                                />
-                              )}
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-2 px-[5%]">
-                                  <button
-                                    type="button"
-                                    onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
-                                    className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-yellow text-cat-frappe-base px-1 py-0.5 rounded text-xs font-medium hover:bg-cat-frappe-peach transition-colors"
-                                  >
-                                    Insert
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
-                                    className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-red text-white px-1 py-0.5 rounded text-xs font-medium hover:bg-red-600 transition-colors"
-                                  >
-                                    Remove
-                                  </button>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
+                          <button
+                            type="button"
+                            onClick={() => setUploadedImages([])}
+                            className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {uploadedImages.map((file, index) => (
+                            <div key={index} className="relative group">
+                              <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-[#eff1f5] dark:bg-cat-frappe-surface0">
+                                {loadingFiles.has(file.name) ? (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <span className="animate-pulse">Loading...</span>
+                                  </div>
+                                ) : file.type.startsWith('video/') ? (
+                                  <video
+                                    className="w-full h-full object-cover"
+                                    controls
+                                    preload="metadata"
+                                    playsInline
+                                    src={`/api/files?id=${file.id}`}
+                                  />
+                                ) : (
+                                  <img
+                                    src={file.url}
+                                    alt={file.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-2 px-[5%]">
+                                    <button
+                                      type="button"
+                                      onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
+                                      className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-yellow text-cat-frappe-base px-1 py-0.5 rounded text-xs font-medium hover:bg-cat-frappe-peach transition-colors"
+                                    >
+                                      Insert
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
+                                      className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-red text-white px-1 py-0.5 rounded text-xs font-medium hover:bg-red-600 transition-colors"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                     {/* Document settings moved into Settings dialog */}
                   </ScrollArea>
                 </div>
@@ -973,7 +967,7 @@ export default function AuthorPortal() {
                         <label className="block text-sm mb-1">Title</label>
                         <input
                           value={title}
-                          onChange={(e)=>setTitle(e.target.value)}
+                          onChange={(e) => setTitle(e.target.value)}
                           className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                         />
                       </div>
@@ -981,7 +975,7 @@ export default function AuthorPortal() {
                         <label className="block text-sm mb-1">Summary</label>
                         <textarea
                           value={dek || description}
-                          onChange={(e)=>{ setDek(e.target.value); setDescription(e.target.value); }}
+                          onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
                           rows={3}
                           className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                         />
@@ -989,30 +983,30 @@ export default function AuthorPortal() {
                       <div>
                         <label className="block text-sm mb-1">Slug</label>
                         <input
-                          value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') : '')}
-                          onChange={() => {}}
+                          value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '')}
+                          onChange={() => { }}
                           disabled
                           className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
                         />
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Hero Image</label>
-                        <FileUpload onChange={(files)=>{ const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
+                        <FileUpload onChange={(files) => { const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-sm mb-1">SEO Title</label>
-                          <input value={seoTitle} onChange={(e)=>setSeoTitle(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                          <input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
                         </div>
                         <div>
                           <label className="block text-sm mb-1">SEO Description</label>
-                          <input value={seoDescription} onChange={(e)=>setSeoDescription(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                          <input value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
                         </div>
                         <div className="max-w-full">
                           <label className="block text-sm mb-1">SEO Keywords</label>
                           <input
                             value={seoKeywords}
-                            onChange={(e)=>{ setSeoAutoKeywords(false); setSeoKeywords(e.target.value)} }
+                            onChange={(e) => { setSeoAutoKeywords(false); setSeoKeywords(e.target.value) }}
                             placeholder="auto-generated unless overridden"
                             className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0"
                             disabled={seoAutoKeywords}
@@ -1039,7 +1033,7 @@ export default function AuthorPortal() {
                             {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                           </button>
                         </div>
-                        
+
                         {/* Selected tags for this post */}
                         <div className="mb-3">
                           <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
@@ -1068,7 +1062,7 @@ export default function AuthorPortal() {
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Available tags to add */}
                         <div className="mb-3">
                           <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
@@ -1105,7 +1099,7 @@ export default function AuthorPortal() {
                         <div className="mt-3 grid grid-cols-1 gap-2">
                           <div>
                             <label className="block text-xs mb-1">New tag name</label>
-                            <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
+                            <input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
                           </div>
                           <div>
                             <label className="block text-xs mb-1">Color preset</label>
@@ -1115,7 +1109,7 @@ export default function AuthorPortal() {
                                   key={p.name}
                                   type="button"
                                   onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}
-                                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${selectedPreset===idx ? 'ring-2 ring-cat-frappe-yellow' : ''}`}
+                                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${selectedPreset === idx ? 'ring-2 ring-cat-frappe-yellow' : ''}`}
                                   style={{ backgroundColor: p.bg, color: p.text, borderColor: `${p.text}22` }}
                                   title={p.name}
                                 >
@@ -1161,18 +1155,18 @@ export default function AuthorPortal() {
                     <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Hero Image URL</label>
                     <input
                       value={heroImageUrl}
-                      onChange={(e)=>setHeroImageUrl(e.target.value)}
+                      onChange={(e) => setHeroImageUrl(e.target.value)}
                       placeholder="https://..."
                       className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
                     />
                   </div>
                   <div className="mb-6">
                     <label htmlFor="content-m" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                    <TipTapEditor 
-                      value={content} 
+                    <TipTapEditor
+                      value={content}
                       onChange={handleEditorChange}
                       onRequestUpload={async (file) => {
-                        const result = await uploadInChunks(pb, file, (progress) => {
+                        const result = await uploadInChunks(file, (progress) => {
                           setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
                         });
                         if (result?.success) {
@@ -1208,11 +1202,11 @@ export default function AuthorPortal() {
                       </header>
                       <section className="mt-6">
                         <div className="prose dark:prose-invert text-base max-w-3xl lg:max-w-4xl mx-auto">
-                    {renderPreview()}
-                  </div>
+                          {renderPreview()}
+                        </div>
                       </section>
-                </div>
-              </div>
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from '@/components/app/layout/Header';
 import Footer from '@/components/app/layout/Footer';
@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { user: authUser, isAdmin: isAdminAuth, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
@@ -34,44 +35,26 @@ export default function AdminDashboard() {
   const [flags, setFlags] = useState([]);
 
   useEffect(() => {
-    checkAdminStatusAndLoadData();
-  }, [router, timeRange]);
-
-  // Near real-time refresh so new page_views appear promptly
-  useEffect(() => {
-    if (!isAdmin) return;
-    const intervalId = setInterval(() => {
-      loadDashboardData();
-    }, 5000);
-    return () => clearInterval(intervalId);
-  }, [isAdmin, timeRange]);
-
-  const checkAdminStatusAndLoadData = async () => {
-    if (pb.authStore.isValid) {
-      const user = pb.authStore.model;
-      if (user.role === "admin") {
-        setIsAdmin(true);
-        await loadDashboardData();
-      } else {
+    if (!authLoading) {
+      if (!isAdminAuth) {
         router.push('/auth');
+      } else {
+        setIsAdmin(true);
+        loadDashboardData();
       }
-    } else {
-      router.push('/auth');
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, [authLoading, isAdminAuth, router, timeRange]);
 
   const loadDashboardData = async () => {
     try {
       // Fetch analytics data from our new API
-      const analyticsResponse = await fetch(`/api/analytics/dashboard?timeRange=${timeRange}` , {
-        headers: pb.authStore.isValid ? { 'Authorization': `Bearer ${pb.authStore.token}` } : {}
-      });
+      const analyticsResponse = await fetch(`/api/analytics/dashboard?timeRange=${timeRange}`);
       const analyticsData = await analyticsResponse.json();
 
-          if (analyticsData.success) {
+      if (analyticsData.success) {
         const data = analyticsData.data;
-        
+
         setMetrics({
           totalPageViews: data.totalPageViews,
           totalUniqueVisitors: data.totalUniqueVisitors,
@@ -95,42 +78,36 @@ export default function AdminDashboard() {
             ttfb: 650
           },
           recentSessions: Array.isArray(data.recentSessions) ? data.recentSessions : [],
-            monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
+          monthlyGrowth: Math.floor((data.totalUniqueVisitors / Math.max(data.periodDays, 1)) * 30)
         });
-          // Attach recentConnections to state for rendering below
-          try {
-            if (Array.isArray(data.recentConnections)) {
-              setRecentConnections(data.recentConnections);
-            }
-          } catch {}
+        // Attach recentConnections to state for rendering below
+        try {
+          if (Array.isArray(data.recentConnections)) {
+            setRecentConnections(data.recentConnections);
+          }
+        } catch { }
       }
 
-      // Still fetch users data for user management
-      const usersData = await pb.collection('users').getList(1, 50, {
-        sort: '-created',
-        fields: 'id,username,email,role,created'
-      });
-
-      setUsers(usersData.items);
+      // Fetch users data for user management via admin API
+      try {
+        const usersResponse = await fetch('/api/admin/users');
+        const usersData = await usersResponse.json();
+        if (usersData.success) {
+          setUsers(usersData.users);
+        }
+      } catch { }
 
       // Comments moderation queue (pending or hidden)
       try {
-        const pending = await pb.collection('comments').getList(1, 50, {
-          sort: '-created',
-          filter: 'status = "pending" || status = "hidden"',
-          expand: 'author,post',
-        });
-        setPendingComments(pending.items || []);
-      } catch {}
+        const commentsResponse = await fetch('/api/admin/comments');
+        const commentsData = await commentsResponse.json();
+        if (commentsData.success) {
+          setPendingComments(commentsData.comments || []);
+        }
+      } catch { }
 
-      // Comment flags/reports
-      try {
-        const flagged = await pb.collection('comment_flags').getList(1, 100, {
-          sort: '-created',
-          expand: 'comment,user',
-        });
-        setFlags(flagged.items || []);
-      } catch {}
+      // Comment flags/reports - skipping for now as not migrated
+      setFlags([]);
 
 
     } catch (error) {
@@ -186,12 +163,16 @@ export default function AdminDashboard() {
   const deletePost = async (postId) => {
     if (window.confirm('Are you sure you want to delete this post?')) {
       try {
-        await pb.collection('posts').delete(postId);
-        
-        // Revalidate cache to update the blog posts list
-        await revalidatePostsPage();
-        
-        await loadDashboardData(); // Refresh data
+        const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (data.success) {
+          // Revalidate cache to update the blog posts list
+          await revalidatePostsPage();
+          await loadDashboardData(); // Refresh data
+        } else {
+          alert('Failed to delete post: ' + (data.error || 'Unknown error'));
+        }
       } catch (error) {
         console.error('Failed to delete post:', error);
         alert('Failed to delete post');
@@ -201,8 +182,18 @@ export default function AdminDashboard() {
 
   const updateUserRole = async (userId, newRole) => {
     try {
-      await pb.collection('users').update(userId, { role: newRole });
-      await loadDashboardData(); // Refresh data
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        await loadDashboardData(); // Refresh data
+      } else {
+        alert('Failed to update user role: ' + (data.error || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to update user role:', error);
       alert('Failed to update user role');
@@ -211,20 +202,26 @@ export default function AdminDashboard() {
 
   const setCommentStatus = async (commentId, status) => {
     try {
-      await pb.collection('comments').update(commentId, { status });
-      await loadDashboardData();
+      const res = await fetch('/api/admin/comments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId, status }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        await loadDashboardData();
+      } else {
+        alert('Failed to update comment status');
+      }
     } catch (e) {
       alert('Failed to update comment status');
     }
   };
 
   const resolveFlag = async (flagId) => {
-    try {
-      await pb.collection('comment_flags').update(flagId, { resolved: true });
-      await loadDashboardData();
-    } catch (e) {
-      alert('Failed to resolve flag');
-    }
+    // Comment flags not yet migrated - show message
+    alert('Comment flags feature not yet migrated to Prisma');
   };
 
   if (loading) {
@@ -256,7 +253,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-yellow-1 dark:bg-cat-frappe-base">
       <Header />
-      
+
       {/* Main Content */}
       <div className="pt-[calc(64px+8px)]">
         {/* Page Header */}
@@ -268,8 +265,8 @@ export default function AdminDashboard() {
                 <p className="text-sm text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0 mt-1">Behavioral Metrics, Analytics & Site Management</p>
               </div>
               <div className="flex items-center space-x-4">
-                <select 
-                  value={timeRange} 
+                <select
+                  value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
                   className="border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 rounded-lg px-3 py-2 text-sm bg-white dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-text"
                 >
@@ -364,293 +361,293 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
-            <div className="flex items-center">
-              <div className="text-3xl text-cat-frappe-blue">👁️</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Unique Visitors</p>
-                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUniqueVisitors?.toLocaleString() || 0}</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+              <div className="flex items-center">
+                <div className="text-3xl text-cat-frappe-blue">👁️</div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Unique Visitors</p>
+                  <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUniqueVisitors?.toLocaleString() || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+              <div className="flex items-center">
+                <div className="text-3xl text-cat-frappe-green">⏱️</div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Avg. Time on Page</p>
+                  <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{formatTime(metrics.averageTimeOnPage)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+              <div className="flex items-center">
+                <div className="text-3xl text-cat-frappe-mauve">📊</div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Bounce Rate</p>
+                  <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.averageBounceRate}%</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+              <div className="flex items-center">
+                <div className="text-3xl text-cat-frappe-peach">👥</div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Users</p>
+                  <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUsers}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
+              <div className="flex items-center">
+                <div className="text-3xl text-cat-frappe-yellow">📝</div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Posts</p>
+                  <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalPosts}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
-            <div className="flex items-center">
-              <div className="text-3xl text-cat-frappe-green">⏱️</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Avg. Time on Page</p>
-                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{formatTime(metrics.averageTimeOnPage)}</p>
+          <div className="grid grid-cols-1 gap-8 mb-8">
+            {/* Core Web Vitals */}
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
+              <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+                <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Core Web Vitals</h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-cat-frappe-subtext0">Largest Contentful Paint (LCP)</span>
+                    <span className={`font-bold ${getVitalStatus('lcp', metrics.coreWebVitals.lcp)}`}>
+                      {metrics.coreWebVitals.lcp}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-cat-frappe-subtext0">First Input Delay (FID)</span>
+                    <span className={`font-bold ${getVitalStatus('fid', metrics.coreWebVitals.fid)}`}>
+                      {metrics.coreWebVitals.fid}ms
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-cat-frappe-subtext0">Cumulative Layout Shift (CLS)</span>
+                    <span className={`font-bold ${getVitalStatus('cls', metrics.coreWebVitals.cls)}`}>
+                      {metrics.coreWebVitals.cls}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-cat-frappe-subtext0">First Contentful Paint (FCP)</span>
+                    <span className={`font-bold ${getVitalStatus('fcp', metrics.coreWebVitals.fcp)}`}>
+                      {metrics.coreWebVitals.fcp}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-cat-frappe-subtext0">Time to First Byte (TTFB)</span>
+                    <span className={`font-bold ${getVitalStatus('ttfb', metrics.coreWebVitals.ttfb)}`}>
+                      {metrics.coreWebVitals.ttfb}ms
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
-            <div className="flex items-center">
-              <div className="text-3xl text-cat-frappe-mauve">📊</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Bounce Rate</p>
-                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.averageBounceRate}%</p>
+          {/* Trends & Breakdown */}
+          {/* Charts - display only those with data via Tabs */}
+          {(metrics.topPosts?.length || metrics.viewsByDay?.length || (metrics.engagementBreakdown || []).some(e => e.value > 0)) && (
+            <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20 mb-8">
+              <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+                <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Analytics</h2>
               </div>
+              <div className="p-6">
+                <Tabs defaultValue={metrics.topPosts?.length ? 'top' : (metrics.viewsByDay?.length ? 'views' : 'engagement')}>
+                  <TabsList className="mb-4">
+                    {metrics.topPosts?.length ? <TabsTrigger value="top">Top Posts</TabsTrigger> : null}
+                    {metrics.viewsByDay?.length ? <TabsTrigger value="views">Views by Day</TabsTrigger> : null}
+                    {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? <TabsTrigger value="engagement">Engagement</TabsTrigger> : null}
+                  </TabsList>
+
+                  {metrics.topPosts?.length ? (
+                    <TabsContent value="top">
+                      <ChartContainer id="top-posts" config={{ views: { label: 'Views', color: 'hsl(25 95% 53%)' } }}>
+                        <BarChart data={metrics.topPosts.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="title" hide />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={<ChartTooltipContent />} />
+                          <Bar dataKey="views" fill="var(--color-views)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ChartContainer>
+                    </TabsContent>
+                  ) : null}
+
+                  {metrics.viewsByDay?.length ? (
+                    <TabsContent value="views">
+                      <ChartContainer id="views-by-day" config={{ views: { label: 'Views', color: 'hsl(221 83% 53%)' } }}>
+                        <LineChart data={metrics.viewsByDay}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip content={<ChartTooltipContent />} />
+                          <Line type="monotone" dataKey="views" stroke="var(--color-views)" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ChartContainer>
+                    </TabsContent>
+                  ) : null}
+
+                  {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? (
+                    <TabsContent value="engagement">
+                      <ChartContainer id="engagement" config={{ high: { label: 'High', color: 'hsl(142 76% 36%)' }, medium: { label: 'Medium', color: 'hsl(38 92% 50%)' }, low: { label: 'Low', color: 'hsl(0 84% 60%)' } }}>
+                        <PieChart>
+                          <Tooltip content={<ChartTooltipContent />} />
+                          <Pie data={metrics.engagementBreakdown} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90}>
+                            {metrics.engagementBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={`var(--color-${entry.name})`} />
+                            ))}
+                          </Pie>
+                          <ChartLegend content={<ChartLegendContent />} />
+                        </PieChart>
+                      </ChartContainer>
+                    </TabsContent>
+                  ) : null}
+                </Tabs>
+              </div>
+            </div>
+          )}
+
+          {/* Recent User Sessions */}
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
+            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent User Sessions</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Session</TableHead>
+                    <TableHead>Post</TableHead>
+                    <TableHead>Time on Page</TableHead>
+                    <TableHead>Scroll Depth</TableHead>
+                    <TableHead>Interactions</TableHead>
+                    <TableHead>Engagement</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {metrics.recentSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell className="whitespace-nowrap">#{session.id || session.sessionId || 'n/a'}</TableCell>
+                      <TableCell className="max-w-[360px] truncate">{session.postTitle || session.postId || '—'}</TableCell>
+                      <TableCell>{session.timeOnPage ? formatTime(session.timeOnPage) : '-'}</TableCell>
+                      <TableCell>{typeof session.scrollDepth === 'number' ? `${session.scrollDepth}%` : '-'}</TableCell>
+                      <TableCell>{typeof session.interactions === 'number' ? session.interactions : '-'}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>{session.engagement || 'n/a'}</span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{session.ip || session.ipAddress || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">{session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
-            <div className="flex items-center">
-              <div className="text-3xl text-cat-frappe-peach">👥</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Users</p>
-                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalUsers}</p>
-              </div>
+          {/* Recent Connections (IP Log) */}
+          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
+            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent Connections (JSON Log)</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>IP</TableHead>
+                    <TableHead>Path</TableHead>
+                    <TableHead>Referrer</TableHead>
+                    <TableHead>User Agent</TableHead>
+                    <TableHead>Country</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentConnections.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-cat-frappe-subtext0">No connections logged yet.</TableCell>
+                    </TableRow>
+                  ) : recentConnections.map((c, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="whitespace-nowrap">{c.timestamp ? new Date(c.timestamp).toLocaleString() : '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">{c.ip || '-'}</TableCell>
+                      <TableCell className="max-w-[360px] truncate">{c.path || c.url || '-'}</TableCell>
+                      <TableCell className="max-w-[360px] truncate">{c.referrer || '-'}</TableCell>
+                      <TableCell className="max-w-[360px] truncate">{c.userAgent || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">{c.country || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg p-6 border border-cat-frappe-overlay0/20">
-            <div className="flex items-center">
-              <div className="text-3xl text-cat-frappe-yellow">📝</div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-cat-frappe-subtext0 dark:text-cat-frappe-subtext0">Total Posts</p>
-                <p className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-text">{metrics.totalPosts}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 mb-8">
-          {/* Core Web Vitals */}
+          {/* User Management */}
           <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
             <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Core Web Vitals</h2>
+              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">User Management</h2>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-cat-frappe-subtext0">Largest Contentful Paint (LCP)</span>
-                  <span className={`font-bold ${getVitalStatus('lcp', metrics.coreWebVitals.lcp)}`}>
-                    {metrics.coreWebVitals.lcp}s
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-cat-frappe-subtext0">First Input Delay (FID)</span>
-                  <span className={`font-bold ${getVitalStatus('fid', metrics.coreWebVitals.fid)}`}>
-                    {metrics.coreWebVitals.fid}ms
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-cat-frappe-subtext0">Cumulative Layout Shift (CLS)</span>
-                  <span className={`font-bold ${getVitalStatus('cls', metrics.coreWebVitals.cls)}`}>
-                    {metrics.coreWebVitals.cls}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-cat-frappe-subtext0">First Contentful Paint (FCP)</span>
-                  <span className={`font-bold ${getVitalStatus('fcp', metrics.coreWebVitals.fcp)}`}>
-                    {metrics.coreWebVitals.fcp}s
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-cat-frappe-subtext0">Time to First Byte (TTFB)</span>
-                  <span className={`font-bold ${getVitalStatus('ttfb', metrics.coreWebVitals.ttfb)}`}>
-                    {metrics.coreWebVitals.ttfb}ms
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Trends & Breakdown */}
-        {/* Charts - display only those with data via Tabs */}
-        {(metrics.topPosts?.length || metrics.viewsByDay?.length || (metrics.engagementBreakdown || []).some(e => e.value > 0)) && (
-          <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20 mb-8">
-            <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-              <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Analytics</h2>
-            </div>
-            <div className="p-6">
-              <Tabs defaultValue={metrics.topPosts?.length ? 'top' : (metrics.viewsByDay?.length ? 'views' : 'engagement')}>
-                <TabsList className="mb-4">
-                  {metrics.topPosts?.length ? <TabsTrigger value="top">Top Posts</TabsTrigger> : null}
-                  {metrics.viewsByDay?.length ? <TabsTrigger value="views">Views by Day</TabsTrigger> : null}
-                  {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? <TabsTrigger value="engagement">Engagement</TabsTrigger> : null}
-                </TabsList>
-
-                {metrics.topPosts?.length ? (
-                  <TabsContent value="top">
-                    <ChartContainer id="top-posts" config={{ views: { label: 'Views', color: 'hsl(25 95% 53%)' } }}>
-                      <BarChart data={metrics.topPosts.slice(0, 10)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="title" hide />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="views" fill="var(--color-views)" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ChartContainer>
-                  </TabsContent>
-                ) : null}
-
-                {metrics.viewsByDay?.length ? (
-                  <TabsContent value="views">
-                    <ChartContainer id="views-by-day" config={{ views: { label: 'Views', color: 'hsl(221 83% 53%)' } }}>
-                      <LineChart data={metrics.viewsByDay}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="views" stroke="var(--color-views)" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ChartContainer>
-                  </TabsContent>
-                ) : null}
-
-                {(metrics.engagementBreakdown || []).some(e => e.value > 0) ? (
-                  <TabsContent value="engagement">
-                    <ChartContainer id="engagement" config={{ high: { label: 'High', color: 'hsl(142 76% 36%)' }, medium: { label: 'Medium', color: 'hsl(38 92% 50%)' }, low: { label: 'Low', color: 'hsl(0 84% 60%)' } }}>
-                      <PieChart>
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <Pie data={metrics.engagementBreakdown} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90}>
-                          {metrics.engagementBreakdown.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={`var(--color-${entry.name})`} />
-                          ))}
-                        </Pie>
-                        <ChartLegend content={<ChartLegendContent />} />
-                      </PieChart>
-                    </ChartContainer>
-                  </TabsContent>
-                ) : null}
-              </Tabs>
-            </div>
-          </div>
-        )}
-
-        {/* Recent User Sessions */}
-        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
-          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent User Sessions</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Session</TableHead>
-                  <TableHead>Post</TableHead>
-                  <TableHead>Time on Page</TableHead>
-                  <TableHead>Scroll Depth</TableHead>
-                  <TableHead>Interactions</TableHead>
-                  <TableHead>Engagement</TableHead>
-                  <TableHead>IP Address</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {metrics.recentSessions.map((session) => (
-                  <TableRow key={session.id}>
-                    <TableCell className="whitespace-nowrap">#{session.id || session.sessionId || 'n/a'}</TableCell>
-                    <TableCell className="max-w-[360px] truncate">{session.postTitle || session.postId || '—'}</TableCell>
-                    <TableCell>{session.timeOnPage ? formatTime(session.timeOnPage) : '-'}</TableCell>
-                    <TableCell>{typeof session.scrollDepth === 'number' ? `${session.scrollDepth}%` : '-'}</TableCell>
-                    <TableCell>{typeof session.interactions === 'number' ? session.interactions : '-'}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEngagementColor(session.engagement)}`}>{session.engagement || 'n/a'}</span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{session.ip || session.ipAddress || '-'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{session.timestamp ? new Date(session.timestamp).toLocaleTimeString() : '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        {/* Recent Connections (IP Log) */}
-        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg mb-8 border border-cat-frappe-overlay0/20">
-          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">Recent Connections (JSON Log)</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>IP</TableHead>
-                  <TableHead>Path</TableHead>
-                  <TableHead>Referrer</TableHead>
-                  <TableHead>User Agent</TableHead>
-                  <TableHead>Country</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentConnections.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-cat-frappe-subtext0">No connections logged yet.</TableCell>
-                  </TableRow>
-                ) : recentConnections.map((c, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="whitespace-nowrap">{c.timestamp ? new Date(c.timestamp).toLocaleString() : '-'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{c.ip || '-'}</TableCell>
-                    <TableCell className="max-w-[360px] truncate">{c.path || c.url || '-'}</TableCell>
-                    <TableCell className="max-w-[360px] truncate">{c.referrer || '-'}</TableCell>
-                    <TableCell className="max-w-[360px] truncate">{c.userAgent || '-'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{c.country || '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        {/* User Management */}
-        <div className="bg-[#F6EEE5] dark:bg-cat-frappe-surface0 rounded-lg shadow-lg border border-cat-frappe-overlay0/20">
-          <div className="px-6 py-4 border-b border-cat-frappe-overlay0/20">
-            <h2 className="text-lg font-semibold text-cat-frappe-base dark:text-cat-frappe-text">User Management</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white dark:bg-cat-frappe-surface1">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Username</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
-                      {user.username}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
-                      <select 
-                        value={user.role || 'user'} 
-                        onChange={(e) => updateUserRole(user.id, e.target.value)}
-                        className="border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 rounded px-2 py-1 text-sm bg-white dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-text"
-                      >
-                        <option value="user">User</option>
-                        <option value="author">Author</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
-                      {new Date(user.created).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
-                      <button className="text-cat-frappe-blue hover:text-cat-frappe-sapphire mr-2 transition-colors duration-200">Edit</button>
-                      <button className="text-cat-frappe-red hover:text-cat-frappe-maroon transition-colors duration-200">Delete</button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white dark:bg-cat-frappe-surface1">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Username</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-cat-frappe-subtext0 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white dark:bg-cat-frappe-surface0 divide-y divide-cat-frappe-overlay0/20">
+                  {users.map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">
+                        {user.username}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                        {user.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-base dark:text-cat-frappe-text">
+                        <select
+                          value={user.role || 'user'}
+                          onChange={(e) => updateUserRole(user.id, e.target.value)}
+                          className="border border-cat-frappe-overlay0/30 dark:border-cat-frappe-overlay0 rounded px-2 py-1 text-sm bg-white dark:bg-cat-frappe-surface1 text-cat-frappe-base dark:text-cat-frappe-text"
+                        >
+                          <option value="user">User</option>
+                          <option value="author">Author</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
+                        {new Date(user.created).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-cat-frappe-subtext0">
+                        <button className="text-cat-frappe-blue hover:text-cat-frappe-sapphire mr-2 transition-colors duration-200">Edit</button>
+                        <button className="text-cat-frappe-red hover:text-cat-frappe-maroon transition-colors duration-200">Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-      </div>
+        </div>
       </div>
       <Footer />
     </div>
