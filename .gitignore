@@ -73,3 +73,8 @@ cypress/screenshots/
 /pocketbase/
 /pocketbase
 /lib/generated/prisma
+
+# SQLite Database
+*.db
+*.db-shm
+*.db-wal
