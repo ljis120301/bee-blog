@@ -5,6 +5,11 @@
  * Helper functions for the TipTap editor.
  */
 
+import '@tiptap/extension-color'
+import '@tiptap/extension-text-style'
+import '@tiptap/extension-font-family'
+import '@tiptap/extension-highlight'
+
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 interface UploadProgress {
