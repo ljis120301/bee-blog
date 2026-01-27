@@ -1,25 +1,30 @@
 "use client";
+
+/**
+ * UserFavoritesCard - Prisma Version
+ * ====================================
+ */
 import React from 'react';
 import Link from 'next/link';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 
 export default function UserFavoritesCard({ limit = 5 }) {
   const { favorites, loading, fetchFavorites } = useFavorites();
-  const isSignedIn = !!(pb?.authStore?.isValid);
+  const { isAuthenticated } = useAuth();
 
   React.useEffect(() => {
-    if (isSignedIn) {
-      fetchFavorites().catch(() => {});
+    if (isAuthenticated) {
+      fetchFavorites().catch(() => { });
     }
-  }, [isSignedIn, fetchFavorites]);
+  }, [isAuthenticated, fetchFavorites]);
 
-  if (!isSignedIn) return null;
+  if (!isAuthenticated) return null;
 
   const items = (favorites || []).slice(0, limit).map((fav) => {
-    const post = fav.expand?.posts || fav.posts;
-    const postId = typeof post === 'string' ? post : post?.id;
-    const title = typeof post === 'object' ? (post?.title || 'Untitled') : `Post ${postId}`;
+    const post = fav.post;
+    const postId = fav.postId || post?.id;
+    const title = post?.title || 'Untitled';
     return { id: postId, title };
   }).filter((x) => !!x.id);
 
@@ -55,5 +60,3 @@ export default function UserFavoritesCard({ limit = 5 }) {
     </div>
   );
 }
-
-

@@ -134,7 +134,7 @@ BeeBlog is a comprehensive technology blog authored by Jason, focusing on cuttin
 - Built with Next.js 14+ and React 18+
 - TypeScript for type safety
 - Tailwind CSS for styling
-- PocketBase for content management
+- Prisma/SQLite for content management
 - Markdown with syntax highlighting for code examples
 - Progressive Web App (PWA) capabilities
 - SEO optimized with comprehensive meta tags and structured data

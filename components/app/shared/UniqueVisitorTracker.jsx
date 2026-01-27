@@ -13,7 +13,7 @@ export default function UniqueVisitorTracker({ postId, userId = null }) {
       try {
         // Generate browser fingerprint data
         const visitorData = await generateVisitorFingerprint();
-        
+
         // Add user context
         visitorData.isAuthenticated = !!userId;
         visitorData.userId = userId;
@@ -34,10 +34,10 @@ export default function UniqueVisitorTracker({ postId, userId = null }) {
         });
 
         const result = await response.json();
-        
+
         if (result.success) {
           if (result.reason === 'missing_credentials') {
-            console.warn('Page view skipped: PocketBase credentials missing (dev fallback).');
+            console.warn('Page view skipped: analytics in development mode.');
             return;
           }
           console.log('Page view tracked:', result.counted ? 'counted' : 'duplicate');
@@ -73,37 +73,37 @@ async function generateVisitorFingerprint() {
     screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     language: navigator.language || navigator.userLanguage,
-    
+
     // Browser capabilities
     cookieEnabled: navigator.cookieEnabled,
     doNotTrack: navigator.doNotTrack,
     onLine: navigator.onLine,
-    
+
     // Platform info
     platform: navigator.platform,
-    
+
     // Additional fingerprinting data
     pixelRatio: window.devicePixelRatio || 1,
-    
+
     // Viewport size
     viewport: `${window.innerWidth}x${window.innerHeight}`,
-    
+
     // Touch support
     touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-    
+
     // Canvas fingerprinting (basic)
     canvas: generateCanvasFingerprint(),
-    
+
     // WebGL fingerprinting (basic)
     webgl: generateWebGLFingerprint(),
-    
+
     // Available fonts (basic detection)
     fonts: await detectAvailableFonts(),
-    
+
     // Local storage support
     localStorage: typeof Storage !== 'undefined',
     sessionStorage: typeof sessionStorage !== 'undefined',
-    
+
     // Timestamp for tracking
     timestamp: new Date().toISOString()
   };
@@ -121,15 +121,15 @@ function generateCanvasFingerprint() {
   try {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     // Draw some text and shapes
     ctx.textBaseline = 'top';
     ctx.font = '14px Arial';
     ctx.fillText('UniqueVisitor Fingerprint 🐝', 2, 2);
-    
+
     ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
     ctx.fillRect(100, 5, 80, 20);
-    
+
     return canvas.toDataURL().slice(-100); // Last 100 chars for brevity
   } catch (error) {
     return 'canvas_error';
@@ -141,13 +141,13 @@ function generateWebGLFingerprint() {
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    
+
     if (!gl) return 'no_webgl';
-    
+
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
     const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unknown';
     const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unknown';
-    
+
     return `${vendor}_${renderer}`.slice(0, 50);
   } catch (error) {
     return 'webgl_error';
@@ -205,7 +205,7 @@ function startMetricsCollection(postId, sessionId) {
             }
           })
         });
-      } catch (_) {}
+      } catch (_) { }
       inFlight = false;
       if (pendingReason) {
         const reason = pendingReason; pendingReason = null;
@@ -247,7 +247,7 @@ function startMetricsCollection(postId, sessionId) {
           }
         };
         navigator.sendBeacon('/api/analytics/page-metrics', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch (_) {}
+      } catch (_) { }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
 
@@ -308,7 +308,7 @@ async function detectAvailableFonts() {
   ];
 
   const availableFonts = [];
-  
+
   // Create a test element
   const testElement = document.createElement('div');
   testElement.style.position = 'absolute';
@@ -336,18 +336,18 @@ async function detectAvailableFonts() {
 // Get or create session ID
 function getOrCreateSessionId() {
   let sessionId = sessionStorage.getItem('visitor_session_id');
-  
+
   if (!sessionId) {
     sessionId = generateUUID();
     sessionStorage.setItem('visitor_session_id', sessionId);
   }
-  
+
   return sessionId;
 }
 
 // Generate UUID v4
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0;
     const v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);

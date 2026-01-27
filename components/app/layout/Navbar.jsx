@@ -1,28 +1,21 @@
 'use client';
+// Uses AuthContext for auth - 2026-01-16T18:55:00
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ThemeToggle from '@/components/app/shared/ThemeToggle';
 import { ButtonNeobrutalist } from '@/components/ui/button-neobrutalist';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 const NavbarSunnyDay = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, isAdmin, isAuthor, logout } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    setUser(pb.authStore.model);
-
-    pb.authStore.onChange((auth) => {
-      setUser(auth?.model);
-    });
-  }, []);
-
-  const handleLogout = () => {
-    pb.authStore.clear();
+  const handleLogout = async () => {
+    await logout();
     router.push('/');
   };
 
@@ -41,7 +34,7 @@ const NavbarSunnyDay = () => {
             <ThemeToggle />
             {user ? (
               <>
-                {user.role === "admin" && (
+                {isAdmin && (
                   <>
                     <Link href="/admin">
                       <ButtonNeobrutalist variant="blue" size="default">
@@ -55,7 +48,7 @@ const NavbarSunnyDay = () => {
                     </Link>
                   </>
                 )}
-                {user.role === "author" && (
+                {isAuthor && !isAdmin && (
                   <Link href="/blogposts/aurthor-portal">
                     <ButtonNeobrutalist variant="peach" size="default">
                       Author Portal 🐝✍️
@@ -67,7 +60,7 @@ const NavbarSunnyDay = () => {
                 </ButtonNeobrutalist>
                 <Link href="/user-profile">
                   <ButtonNeobrutalist variant="default" size="default">
-                    ✨ {user.username}
+                    ✨ {user.username || user.name}
                   </ButtonNeobrutalist>
                 </Link>
               </>
@@ -96,9 +89,9 @@ const NavbarSunnyDay = () => {
             {user ? (
               <>
                 <ButtonNeobrutalist variant="default" size="default" className="mb-2 w-full">
-                  ✨ {user.username}
+                  ✨ {user.username || user.name}
                 </ButtonNeobrutalist>
-                {user.role === "admin" && (
+                {isAdmin && (
                   <>
                     <Link href="/admin">
                       <ButtonNeobrutalist variant="blue" size="default" className="mb-2 w-full">
@@ -112,7 +105,7 @@ const NavbarSunnyDay = () => {
                     </Link>
                   </>
                 )}
-                {user.role === "author" && (
+                {isAuthor && !isAdmin && (
                   <Link href="/blogposts/aurthor-portal">
                     <ButtonNeobrutalist variant="peach" size="default" className="mb-2 w-full">
                       Author Portal 🐝✍️

@@ -72,3 +72,4 @@ cypress/screenshots/
 
 /pocketbase/
 /pocketbase
+/lib/generated/prisma

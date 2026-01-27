@@ -1,0 +1,275 @@
+// This is your Prisma schema file for BeeBlog
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER & AUTH
+// ============================================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  name          String?
+  lastName      String?
+  passwordHash  String?
+  role          String   @default("USER") // USER, AUTHOR, ADMIN
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts     Post[]
+  comments  Comment[]
+  sessions  Session[]
+  favorites Favorite[]
+
+  image           String?
+  displayUsername String?
+  accounts        Account[]
+
+  @@index([email])
+  @@index([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("session")
+}
+
+// ============================================================================
+// BLOG POSTS
+// ============================================================================
+
+model Post {
+  id                 String   @id @default(cuid())
+  title              String
+  slug               String   @unique
+  content            String // HTML from TipTap editor
+  description        String?
+  dek                String? // Subheadline/summary
+  heroImageUrl       String?
+  seoTitle           String?
+  seoDescription     String?
+  seoKeywords        String? // JSON array stored as string
+  isSpanTwo          Boolean  @default(false)
+  readingTimeMinutes Int?
+  views              Int      @default(0)
+  published          Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  tags      PostTag[]
+  comments  Comment[]
+  favorites Favorite[]
+  media     Media[]
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([published])
+}
+
+// ============================================================================
+// TAGS (Many-to-Many with Posts)
+// ============================================================================
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  colorBg   String   @default("#ef9f76")
+  colorText String   @default("#303446")
+  createdAt DateTime @default(now())
+
+  posts PostTag[]
+
+  @@index([name])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+// ============================================================================
+// COMMENTS
+// ============================================================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  status    String   @default("PENDING") // PENDING, PUBLISHED, HIDDEN, DELETED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId String
+  postId   String
+  parentId String?
+
+  author  User          @relation(fields: [authorId], references: [id])
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[]     @relation("CommentReplies")
+  flags   CommentFlag[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([status])
+}
+
+model CommentFlag {
+  id        String   @id @default(cuid())
+  reason    String?
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  commentId String
+  userId    String
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+  @@index([resolved])
+}
+
+// ============================================================================
+// USER FAVORITES
+// ============================================================================
+
+model Favorite {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+// ============================================================================
+// MEDIA FILES
+// ============================================================================
+
+model Media {
+  id        String   @id @default(cuid())
+  filename  String
+  path      String // Local file path
+  url       String // Public URL
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  postId String?
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// ANALYTICS
+// ============================================================================
+
+model PageView {
+  id                 String   @id @default(cuid())
+  path               String
+  postId             String?
+  sessionId          String?
+  ipAddress          String?
+  userAgent          String?
+  referrer           String?
+  country            String?
+  timeOnPage         Int? // seconds
+  scrollDepth        Int? // percentage
+  visitorFingerprint String?
+  language           String?
+  screenResolution   String?
+  timezone           String?
+  isAuthenticated    Boolean  @default(false)
+  userId             String?
+  interactions       Int?
+  engagement         String?
+  createdAt          DateTime @default(now())
+
+  @@index([postId])
+  @@index([createdAt])
+  @@index([path])
+  @@index([visitorFingerprint])
+}
+
+// ============================================================================
+// TEMPLATES (Editor templates for quick content insertion)
+// ============================================================================
+
+model Template {
+  id        String   @id @default(cuid())
+  name      String
+  content   String // HTML content from TipTap
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}

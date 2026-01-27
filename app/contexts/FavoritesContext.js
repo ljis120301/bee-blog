@@ -1,71 +1,101 @@
 "use client";
 
+/**
+ * Favorites Context - Prisma Version
+ * ===================================
+ * Manages user's favorite posts using the new API routes
+ */
+
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { pb } from '@/lib/pocketbase';
-import { useRouter } from 'next/navigation';
+import { useAuth } from './AuthContext';
 
 export const FavoritesContext = createContext();
 
 export const FavoritesProvider = ({ children }) => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
   const fetchFavorites = useCallback(async () => {
-    if (!pb.authStore.isValid) {
+    if (!isAuthenticated) {
       setFavorites([]);
       setLoading(false);
       return;
     }
 
     try {
-      const userId = pb.authStore.model.id;
-      const resultList = await pb.collection('favorites').getList(
-        1,
-        50,
-        { filter: `user="${userId}"`, expand: 'posts' },
-        { $autoCancel: false }
-      );
-      setFavorites(resultList.items);
+      const res = await fetch('/api/favorites');
+      const data = await res.json();
+
+      if (data.success) {
+        setFavorites(data.favorites || []);
+      } else {
+        setFavorites([]);
+      }
     } catch (error) {
       console.error("Error fetching favorites:", error);
+      setFavorites([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchFavorites();
-  }, [fetchFavorites]);
+  }, [fetchFavorites, user]);
 
   const isFavorite = useCallback((postId) => {
-    return favorites.some(fav => fav.posts === postId || fav.posts.id === postId);
+    return favorites.some(fav => fav.postId === postId);
   }, [favorites]);
 
   const addFavorite = useCallback(async (postId) => {
+    if (!isAuthenticated) {
+      console.warn('Must be logged in to favorite');
+      return false;
+    }
+
     try {
-      const userId = pb.authStore.model.id;
-      const data = { user: userId, posts: postId };
-      await pb.collection('favorites').create(data);
-      console.log(`Favorite added for post ${postId}`);
-      await fetchFavorites();
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        await fetchFavorites();
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error("Error adding favorite:", error);
+      return false;
     }
-  }, [fetchFavorites]);
+  }, [isAuthenticated, fetchFavorites]);
 
   const removeFavorite = useCallback(async (postId) => {
+    if (!isAuthenticated) {
+      return false;
+    }
+
     try {
-      const favoriteToRemove = favorites.find(fav => fav.posts === postId || fav.posts.id === postId);
-      if (favoriteToRemove) {
-        await pb.collection('favorites').delete(favoriteToRemove.id);
-        console.log(`Favorite removed for post ${postId}`);
+      const res = await fetch('/api/favorites', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
         await fetchFavorites();
+        return true;
       }
+      return false;
     } catch (error) {
       console.error("Error removing favorite:", error);
+      return false;
     }
-  }, [favorites, fetchFavorites]);
+  }, [isAuthenticated, fetchFavorites]);
 
   const value = {
     favorites,

@@ -1,35 +1,48 @@
 "use client";
+
+/**
+ * Tag and Engagement Card - Prisma Version
+ * =========================================
+ */
 import React from 'react';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import FavoriteButton from '@/components/app/shared/FavoriteButton';
 
-export default function TagAndEngagementCard({ postId, tagIds = [] }) {
-  const [tags, setTags] = React.useState([]);
-  const isSignedIn = pb?.authStore?.isValid;
-  const username = isSignedIn ? pb.authStore?.model?.username : null;
+export default function TagAndEngagementCard({ postId, tagIds = [], tags: preFetchedTags = [] }) {
+  const [tags, setTags] = React.useState(preFetchedTags);
+  const { user, isAuthenticated } = useAuth();
+  const username = user?.username || user?.name;
 
   React.useEffect(() => {
+    // If tags were pre-fetched, use those
+    if (preFetchedTags.length > 0) {
+      setTags(preFetchedTags);
+      return;
+    }
+
+    // Otherwise fetch tags from API
+    if (!Array.isArray(tagIds) || tagIds.length === 0) {
+      setTags([]);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
-      if (!Array.isArray(tagIds) || tagIds.length === 0) {
-        setTags([]);
-        return;
-      }
       try {
-        const results = [];
-        for (const id of tagIds) {
-          try {
-            const t = await pb.collection('tags').getOne(id, { '$autoCancel': false });
-            results.push(t);
-          } catch {}
+        const res = await fetch('/api/tags');
+        const data = await res.json();
+
+        if (data.success && !cancelled) {
+          const filtered = data.tags.filter(t => tagIds.includes(t.id));
+          setTags(filtered);
         }
-        if (!cancelled) setTags(results);
       } catch {
         if (!cancelled) setTags([]);
       }
     })();
+
     return () => { cancelled = true; };
-  }, [JSON.stringify(tagIds)]);
+  }, [JSON.stringify(tagIds), JSON.stringify(preFetchedTags)]);
 
   return (
     <div className="bg-yellow-1 dark:bg-gradient-to-br dark:from-cat-frappe-base dark:to-cat-frappe-crust p-4 rounded-xl shadow-lg">
@@ -43,9 +56,9 @@ export default function TagAndEngagementCard({ postId, tagIds = [] }) {
                 key={t.id}
                 className="inline-flex items-center h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border"
                 style={{
-                  backgroundColor: t.color_bg || '#ef9f76',
-                  color: t.color_text || '#303446',
-                  borderColor: `${(t.color_text || '#303446')}22`,
+                  backgroundColor: t.colorBg || t.color_bg || '#ef9f76',
+                  color: t.colorText || t.color_text || '#303446',
+                  borderColor: `${(t.colorText || t.color_text || '#303446')}22`,
                 }}
               >
                 #{t.name}
@@ -56,7 +69,7 @@ export default function TagAndEngagementCard({ postId, tagIds = [] }) {
       )}
 
       <div className="rounded-lg p-3 bg-white/70 dark:bg-cat-frappe-base/60 ring-1 ring-black/5 dark:ring-white/10">
-        {!isSignedIn ? (
+        {!isAuthenticated ? (
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-cat-frappe-base dark:text-cat-frappe-yellow font-semibold">Enjoying the content?</p>
@@ -84,5 +97,3 @@ export default function TagAndEngagementCard({ postId, tagIds = [] }) {
     </div>
   );
 }
-
-

@@ -1,11 +1,20 @@
-import { pb } from '@/lib/pocketbase';
+import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    // Fetch all published blog posts
-    const posts = await pb.collection('posts').getFullList({
-      sort: '-created',
-      fields: 'id,created,updated,title,seo_keywords,content,reading_time_minutes',
+    // Fetch all published blog posts from Prisma
+    const posts = await db.post.findMany({
+      where: { published: true },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        title: true,
+        seoKeywords: true,
+        content: true,
+        readingTimeMinutes: true,
+      },
     });
 
     // Generate AI-optimized sitemap
@@ -37,83 +46,30 @@ export async function GET() {
 
   <!-- Blog Posts with AI Metadata -->
   ${posts.map((post) => {
-    const keywords = Array.isArray(post.seo_keywords) ? post.seo_keywords : [];
-    const content = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
-    const allTechEntities = [
-      // Programming Languages
-      'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'C', 'Go', 'Rust', 'Swift', 'Kotlin',
-      'PHP', 'Ruby', 'Scala', 'Perl', 'R', 'MATLAB', 'Objective-C', 'Dart', 'Elixir', 'Haskell',
-      'Clojure', 'F#', 'VB.NET', 'COBOL', 'Fortran', 'Assembly', 'Shell', 'Bash', 'PowerShell',
-      
-      // Web Technologies
-      'HTML', 'HTML5', 'CSS', 'CSS3', 'SCSS', 'SASS', 'React', 'Vue', 'Angular', 'Svelte',
-      'Next.js', 'Nuxt.js', 'Express.js', 'FastAPI', 'Django', 'Flask', 'Spring Boot', 'Laravel',
-      'Tailwind CSS', 'Bootstrap', 'Material-UI', 'Styled Components',
-      
-      // Backend & Databases
-      'Node.js', 'Deno', 'Bun', 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Elasticsearch',
-      'Firebase', 'Supabase', 'PlanetScale', 'Prisma', 'GraphQL', 'REST API',
-      
-      // Cloud & DevOps
-      'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'Jenkins', 'GitHub Actions',
-      'GitLab CI', 'CircleCI', 'Heroku', 'Netlify', 'Vercel', 'DigitalOcean',
-      
-      // Mobile & Cross-Platform
-      'React Native', 'Flutter', 'Xamarin', 'Ionic', 'Expo', 'Android', 'iOS', 'PWA',
-      
-      // Testing & Quality
-      'Jest', 'Cypress', 'Playwright', 'Selenium', 'JUnit', 'PyTest', 'ESLint', 'Prettier',
-      
-      // Data Science & AI
-      'TensorFlow', 'PyTorch', 'Pandas', 'NumPy', 'Jupyter', 'Machine Learning', 'AI',
-      'OpenAI', 'GPT', 'ChatGPT', 'LLM', 'Deep Learning', 'Computer Vision', 'NLP',
-      
-      // Game Development
-      'Unity', 'Unreal Engine', 'Godot', 'Three.js', 'WebGL', 'Phaser',
-      
-      // Blockchain & Web3
-      'Ethereum', 'Bitcoin', 'Solidity', 'Web3.js', 'Smart Contract', 'DeFi', 'NFT',
-      
-      // Design & Tools
-      'Figma', 'Sketch', 'Adobe XD', 'VS Code', 'Visual Studio', 'IntelliJ', 'Xcode',
-      'Webpack', 'Vite', 'Rollup', 'npm', 'Yarn', 'Git', 'GitHub', 'GitLab',
-      
-      // Architecture & Patterns
-      'Microservices', 'Serverless', 'API', 'SDK', 'Framework', 'Library', 'MVC', 'Redux',
-      'Clean Architecture', 'Design Patterns', 'SOLID Principles',
-      
-      // Security & Performance
-      'Cybersecurity', 'OAuth', 'JWT', 'Encryption', 'Performance', 'Optimization', 'SEO',
-      'Accessibility', 'Responsive Design', 'Progressive Enhancement'
-    ];
-    
-    const technicalEntities = allTechEntities.filter(entity => 
-      content.toLowerCase().includes(entity.toLowerCase())
-    );
+      const keywords = post.seoKeywords ? JSON.parse(post.seoKeywords) : [];
+      const content = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
+      const techKeywords = ['JavaScript', 'TypeScript', 'Python', 'React', 'Next.js', 'Node.js',
+        'CSS', 'HTML', 'API', 'Database', 'Frontend', 'Backend', 'DevOps', 'Docker', 'Kubernetes'];
+      const technicalEntities = techKeywords.filter(entity =>
+        content.toLowerCase().includes(entity.toLowerCase())
+      );
 
-    return `
+      return `
   <url>
     <loc>https://bee.whoisjason.me/blogposts/${post.id}</loc>
-    <lastmod>${new Date(post.updated || post.created).toISOString()}</lastmod>
+    <lastmod>${new Date(post.updatedAt || post.createdAt).toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <ai:content-type>technical-tutorial</ai:content-type>
     <ai:audience>developers,programmers,tech-enthusiasts</ai:audience>
     <ai:topics>${[...keywords, ...technicalEntities].join(',')}</ai:topics>
     <ai:difficulty-level>beginner-to-advanced</ai:difficulty-level>
-    <ai:reading-time>${post.reading_time_minutes || 5}</ai:reading-time>
-    <ai:word-count>${content.split(/\\s+/).length}</ai:word-count>
-    <ai:programming-languages>${technicalEntities.join(',')}</ai:programming-languages>
+    <ai:reading-time>${post.readingTimeMinutes || 5}</ai:reading-time>
     <ai:has-code-examples>${technicalEntities.length > 0 ? 'true' : 'false'}</ai:has-code-examples>
-    <ai:educational-use>professional-development,skill-building</ai:educational-use>
-    <ai:content-quality>high</ai:content-quality>
-    <ai:training-data>allowed</ai:training-data>
     <content:language>en</content:language>
-    <content:license>educational-use</content:license>
   </url>`;
-  }).join('')}
+    }).join('')}
 
-  <!-- Additional Pages -->
   <url>
     <loc>https://bee.whoisjason.me/auth</loc>
     <lastmod>${new Date().toISOString()}</lastmod>

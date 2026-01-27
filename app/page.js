@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Header from "@/components/app/layout/Header";
 import PrefaceSection from "@/components/app/blog/PrefaceSection";
 import Footer from "@/components/app/layout/Footer";
@@ -19,8 +19,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { pb } from '@/lib/pocketbase';
-import { revalidatePostsPage } from '@/app/actions/revalidate';
+import { useAuth } from '@/app/contexts/AuthContext';
 import InformationComponent from "@/components/app/cards/WelcomeSection";
 import MoreInformationComponent from "@/components/app/cards/MoreInformation";
 import MostLikedCard from "@/components/app/cards/MostLikedCard";
@@ -44,32 +43,25 @@ import {
 
 export default function Home() {
   const router = useRouter();
+  const { user, isAuthor, isAdmin, logout, loading: authLoading } = useAuth();
   const [blogPosts, setBlogPosts] = useState([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 200);
-  const [user, setUser] = useState(null);
-  const [userAvatar, setUserAvatar] = useState(null);
   const [open, setOpen] = useState(false);
   const [links, setLinks] = useState([]);
-  const [isAuthor, setIsAuthor] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const postsPerPage = 10;
   const { fetchFavorites } = useFavorites();
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [allTags, setAllTags] = useState([]);
   const [selectedTagIds, setSelectedTagIds] = useState(new Set());
-  const [sortKey, setSortKey] = useState('newest'); // newest | oldest | views | reading_time
+  const [sortKey, setSortKey] = useState('newest');
 
   const handleLogout = async () => {
-    pb.authStore.clear();
-    setUser(null);
-    setUserAvatar(null);
-    setIsAuthor(false);
-    router.push('/auth');
+    await logout();
   };
 
   const handleDeletePost = (postId) => {
@@ -84,14 +76,15 @@ export default function Home() {
   const confirmDeletePost = async () => {
     if (postToDelete) {
       try {
-        await pb.collection('posts').delete(postToDelete);
-        console.log(`Post ${postToDelete} deleted`);
-        
-        // Revalidate cache to update the blog posts list
-        await revalidatePostsPage();
-        
-        await fetchFavorites(); // Update favorites after deletion
-        setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
+        const res = await fetch(`/api/posts/${postToDelete}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          console.log(`Post ${postToDelete} deleted`);
+          await fetchFavorites();
+          setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
+        } else {
+          console.error('Error deleting post:', data.error);
+        }
       } catch (error) {
         console.error('Error deleting post:', error);
       }
@@ -100,131 +93,112 @@ export default function Home() {
     setPostToDelete(null);
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    const debounceTimer = setTimeout(() => {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          const totalRecords = await pb.collection('posts').getList(1, 1, {
-            sort: '-created',
-          }, { $autoCancel: false });
-          const totalCount = totalRecords.totalItems;
-          if (isMounted) setTotalPages(Math.ceil(totalCount / postsPerPage));
+  // Fetch posts from API
+  const fetchPosts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Fetch posts from Prisma API
+      const res = await fetch(`/api/posts?page=${currentPage + 1}&limit=${postsPerPage}`);
+      const data = await res.json();
 
-          const records = await pb.collection('posts').getList(currentPage + 1, postsPerPage, {
-            sort: '-created',
-            expand: 'tags'
-          }, { $autoCancel: false });
-          const posts = records.items.map(post => ({
-            title: post.title,
-            description: post.description,
-            id: `blogposts/${post.id}`,
-            icon: <div className="flex items-center gap-1 text-neutral-500">
-                    <IconEye className="h-4 w-4" />
-                    <span className="text-sm">{post.views || 0}</span>
-                  </div>,
-            header: <BeeSwarm />,
-            className: post.isSpanTwo ? 'col-span-2' : '',
-            views: post.views || 0,
-            reading_time_minutes: post.reading_time_minutes || 0,
-            created: post.created,
-            tags: Array.isArray(post?.expand?.tags) ? post.expand.tags.map(t => ({
-              id: t.id,
-              name: t.name,
-              color_bg: t.color_bg,
-              color_text: t.color_text,
-            })) : []
-          }));
-          if (isMounted) setBlogPosts(posts);
+      if (data.success) {
+        const posts = data.posts.map(post => ({
+          title: post.title,
+          description: post.description,
+          id: `blogposts/${post.id}`,
+          icon: <div className="flex items-center gap-1 text-neutral-500">
+            <IconEye className="h-4 w-4" />
+            <span className="text-sm">{post.views || 0}</span>
+          </div>,
+          header: <BeeSwarm />,
+          className: post.isSpanTwo ? 'col-span-2' : '',
+          views: post.views || 0,
+          reading_time_minutes: post.readingTimeMinutes || 0,
+          created: post.createdAt,
+          tags: (post.tags || []).map(t => ({
+            id: t.id,
+            name: t.name,
+            color_bg: t.colorBg,
+            color_text: t.colorText,
+          }))
+        }));
+        setBlogPosts(posts);
+        setTotalPages(data.pagination?.pages || 0);
+      }
 
-          const userData = pb.authStore.model;
-          if (isMounted) setUser(userData);
-
-          if (userData) {
-            const avatarUrl = pb.getFileUrl(userData, userData.avatar);
-            if (isMounted) setUserAvatar(avatarUrl);
-            const authorStatus = userData.role === "admin" || userData.role === "author";
-            if (isMounted) setIsAuthor(authorStatus);
-            console.log("User role:", userData.role);
-            console.log("Is author:", authorStatus);
-          }
-
-          // Update links based on user authentication status
-          const baseLinks = [
-            ...(pb.authStore.isValid ? [{
-              label: "Favorites",
-              href: "/favorites",
-              icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            }] : []),
-            {
-              label: "RSS Feed",
-              href: "https://bee.whoisjason.me/feed.xml",
-              icon: <IconRss className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            },
-            {
-              label: "Profile",
-              href: "/user-profile",
-              icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            },
-            {
-              label: "Settings",
-              href: "#",
-              icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-            },
-          ];
-
-          const authLink = userData
-            ? {
-                label: "Logout",
-                href: "#",
-                icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-                onClick: (e) => {
-                  e.preventDefault();
-                  handleLogout();
-                },
-              }
-            : {
-                label: "Sign Up",
-                href: "/auth",
-                icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-              };
-
-          if (isMounted) setLinks([...baseLinks, authLink]);
-
-          // Fetch all tags for filter chips
-          try {
-            const tags = await pb.collection('tags').getFullList({ $autoCancel: false, sort: 'name' });
-            if (isMounted) setAllTags(tags.map(t => ({ id: t.id, name: t.name, color_bg: t.color_bg, color_text: t.color_text })));
-          } catch (e) {
-            console.warn('Unable to load tags (ensure schema exists):', e?.message || e);
-          }
-        } catch (error) {
-          if (error.message.includes('autocancelled')) {
-            console.warn('Fetch request was canceled:', error);
-          } else {
-            console.error('Error fetching data:', error);
-          }
-        } finally {
-          if (isMounted) setIsLoading(false);
+      // Fetch tags
+      try {
+        const tagsRes = await fetch('/api/tags');
+        const tagsData = await tagsRes.json();
+        if (tagsData.success) {
+          setAllTags(tagsData.tags.map(t => ({
+            id: t.id,
+            name: t.name,
+            color_bg: t.colorBg,
+            color_text: t.colorText
+          })));
         }
+      } catch (e) {
+        console.warn('Unable to load tags:', e?.message || e);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, postsPerPage]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  // Update links when user changes
+  useEffect(() => {
+    const baseLinks = [
+      ...(user ? [{
+        label: "Favorites",
+        href: "/favorites",
+        icon: <IconHeart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+      }] : []),
+      {
+        label: "RSS Feed",
+        href: "https://bee.whoisjason.me/feed.xml",
+        icon: <IconRss className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+      },
+      {
+        label: "Profile",
+        href: "/user-profile",
+        icon: <IconUserBolt className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+      },
+      {
+        label: "Settings",
+        href: "#",
+        icon: <IconSettings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+      },
+    ];
+
+    const authLink = user
+      ? {
+        label: "Logout",
+        href: "#",
+        icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+        onClick: (e) => {
+          e.preventDefault();
+          handleLogout();
+        },
+      }
+      : {
+        label: "Sign Up",
+        href: "/auth",
+        icon: <IconArrowLeft className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
       };
 
-      fetchData();
-    }, 300); // 300ms debounce
-
-    return () => {
-      clearTimeout(debounceTimer); // Clear the timer on cleanup
-      isMounted = false; // Prevent state updates on unmounted component
-    };
-  }, [currentPage, fetchFavorites]);
+    setLinks([...baseLinks, authLink]);
+  }, [user]);
 
   const handlePageChange = (selectedItem) => {
     setCurrentPage(selectedItem.selected);
   };
-
-  // Add this console log
-  console.log("Current isAuthor state:", isAuthor);
 
   const visiblePosts = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -234,7 +208,6 @@ export default function Home() {
     if (selectedTagIds.size > 0) {
       filtered = filtered.filter(p => {
         const ids = new Set((p.tags || []).map(t => t.id));
-        // require that every selected tag is in post
         for (const id of selectedTagIds) {
           if (!ids.has(id)) return false;
         }
@@ -264,10 +237,6 @@ export default function Home() {
       <SidebarProvider>
         <div className="flex flex-col min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-base">
           <Header />
-          {/* Add this line to display the author status */}
-          <div className="text-center py-2 bg-yellow-200">
-            Author Status: {isAuthor ? "Author" : "Not Author"}
-          </div>
           <div className="flex flex-1 relative">
             <Sidebar>
               <SidebarBody>
@@ -279,11 +248,11 @@ export default function Home() {
                 <div className="mt-auto pt-4">
                   <SidebarLink
                     link={{
-                      label: user ? user.username : "Guest",
+                      label: user ? user.username || user.name : "Guest",
                       href: user ? "/user-profile" : "/auth",
                       icon: (
                         <Image
-                          src={userAvatar || "/bee-icon.ico"}
+                          src="/bee-icon.ico"
                           className="rounded-full"
                           width={28}
                           height={28}
@@ -391,7 +360,7 @@ export default function Home() {
                                     <div className="flex justify-between items-center">
                                       <span>{post.title}</span>
                                       <div>
-                                        {isAuthor && (
+                                        {(isAuthor || isAdmin) && (
                                           <>
                                             <button
                                               onClick={(e) => {
@@ -403,16 +372,18 @@ export default function Home() {
                                             >
                                               <IconEdit size={20} />
                                             </button>
-                                            <button
-                                              onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleDeletePost(post.id.split('/')[1]);
-                                              }}
-                                              className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
-                                            >
-                                              <IconTrash size={20} />
-                                            </button>
+                                            {isAdmin && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  handleDeletePost(post.id.split('/')[1]);
+                                                }}
+                                                className="text-red-500 hover:text-red-600 transition-colors z-20 mr-2"
+                                              >
+                                                <IconTrash size={20} />
+                                              </button>
+                                            )}
                                           </>
                                         )}
                                         <FavoriteButton postId={post.id.split('/')[1]} />

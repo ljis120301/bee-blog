@@ -1,6 +1,11 @@
 "use client";
+
+/**
+ * Favorites Page - Prisma Version
+ * ================================
+ */
 import React, { useState, useEffect } from 'react';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/app/layout/Header';
 import Footer from '@/components/app/layout/Footer';
@@ -9,11 +14,12 @@ import { IconSignature } from "@tabler/icons-react";
 import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 import FavoriteButton from '@/components/app/shared/FavoriteButton';
-import { BackgroundBeamsWithCollision } from "@/components/ui/background-beams-with-collision"; // Ensure correct import
-import BackgroundBeamsWithCollisionDemo from '@/components/example/BackgroundBeamsWithCollisionDemo'; // Ensure correct import
+import { BackgroundBeamsWithCollision } from "@/components/ui/background-beams-with-collision";
+import BackgroundBeamsWithCollisionDemo from '@/components/example/BackgroundBeamsWithCollisionDemo';
 
 export default function Favorites() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { favorites, loading, fetchFavorites, removeFavorite } = useFavorites();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,10 +28,12 @@ export default function Favorites() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!pb.authStore.isValid) {
+      if (!authLoading && !isAuthenticated) {
         router.push('/auth');
         return;
       }
+
+      if (!isAuthenticated) return;
 
       setIsLoading(true);
       setError(null);
@@ -41,7 +49,7 @@ export default function Favorites() {
     };
 
     fetchData();
-  }, [fetchFavorites, router]);
+  }, [fetchFavorites, router, isAuthenticated, authLoading]);
 
   const handleDeletePost = (postId) => {
     setPostToDelete(postId);
@@ -67,7 +75,7 @@ export default function Favorites() {
       <main className="flex-1 container mx-auto px-4 py-8 mt-16">
         <BackgroundBeamsWithCollisionDemo />
         <div className="mt-8">
-          {isLoading ? (
+          {isLoading || authLoading ? (
             <div className="text-center mt-8">Loading favorites...</div>
           ) : error ? (
             <div className="text-center mt-8 text-red-500">Error: {error}</div>
@@ -76,22 +84,23 @@ export default function Favorites() {
           ) : (
             <BentoGrid className="max-w-4xl mx-auto mt-8">
               {favorites.map((fav, i) => {
-                const postId = fav.posts.id || fav.posts; // Adjust based on your data structure
+                const postId = fav.postId;
+                const post = fav.post;
                 return (
                   <BentoGridItem
                     key={i}
                     title={
                       <div className="flex justify-between items-center">
-                        <span>{fav.expand?.posts?.title || 'Unknown Title'}</span>
+                        <span>{post?.title || 'Unknown Title'}</span>
                         <div>
-                          <FavoriteButton 
-                            postId={postId} 
-                            onRemove={() => handleDeletePost(postId)} // Call handleDeletePost on heart click
+                          <FavoriteButton
+                            postId={postId}
+                            onRemove={() => handleDeletePost(postId)}
                           />
                         </div>
                       </div>
                     }
-                    description={fav.expand?.posts?.description || 'No description available'}
+                    description={post?.description || 'No description available'}
                     header={<BeeSwarm />}
                     icon={<IconSignature className="h-4 w-4 text-neutral-500" />}
                     href={`blogposts/${postId}`}
@@ -103,7 +112,7 @@ export default function Favorites() {
         </div>
       </main>
       <Footer />
-      
+
       {/* Confirmation Dialog for Deletion */}
       {isDeleteDialogOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

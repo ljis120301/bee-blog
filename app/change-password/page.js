@@ -1,7 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
-import { pb } from '@/lib/pocketbase';
+/**
+ * Change Password Page - Prisma Version
+ * ======================================
+ */
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/app/layout/Header';
 import Footer from '@/components/app/layout/Footer';
@@ -15,12 +19,19 @@ import { Sidebar, SidebarBody, SidebarLink, SidebarProvider } from "@/components
 import Image from 'next/image';
 
 const ChangePasswordPage = () => {
+  const { user, isAuthenticated, loading } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/auth');
+    }
+  }, [loading, isAuthenticated, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,20 +44,38 @@ const ChangePasswordPage = () => {
     }
 
     try {
-      await pb.collection('users').update(pb.authStore.model.id, {
-        oldPassword: oldPassword,
-        password: newPassword,
-        passwordConfirm: confirmPassword
+      const res = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword, newPassword, confirmPassword }),
       });
-      setSuccess('Password changed successfully');
-      // Clear the form
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      const data = await res.json();
+
+      if (data.success) {
+        setSuccess('Password changed successfully');
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setError(data.error || 'Failed to change password');
+      }
     } catch (err) {
-      setError(err.message);
+      setError('Failed to change password');
     }
   };
+
+  if (loading || !isAuthenticated) {
+    return (
+      <>
+        <ScrollProgressBar />
+        <Header />
+        <main className="pt-[calc(64px+8px)] text-lg container mx-auto px-2 sm:px-4 md:px-6 max-w-[1400px] min-h-screen flex items-center justify-center">
+          <div className="text-cat-frappe-subtext0">Loading...</div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -63,11 +92,11 @@ const ChangePasswordPage = () => {
                 <div className="mt-auto pt-4">
                   <SidebarLink
                     link={{
-                      label: pb.authStore.model ? pb.authStore.model.username : "Guest",
+                      label: user?.username || "User",
                       href: "/user-profile",
                       icon: (
                         <Image
-                          src={pb.authStore.model?.avatar || "/bee-icon.ico"}
+                          src="/bee-icon.ico"
                           className="rounded-full"
                           width={28}
                           height={28}
@@ -88,13 +117,14 @@ const ChangePasswordPage = () => {
                   <div className="lg:col-span-2">
                     <div className="relative p-[4px] rounded-lg bg-gradient-to-r from-cat-frappe-peach to-cat-frappe-yellow">
                       <div className="rounded-lg p-4 lg:p-6 bg-[#ccd0da] dark:bg-cat-frappe-base shadow-lg">
+                        <h1 className="text-2xl font-bold text-cat-frappe-base dark:text-cat-frappe-yellow mb-6">Change Password</h1>
                         {error && <p className="text-red-500 mt-4">{error}</p>}
                         {success && <p className="text-green-500 mt-4">{success}</p>}
                         <form onSubmit={handleSubmit} className="mt-8">
                           <LabelInputContainer className="mb-4">
                             <Label htmlFor="oldPassword">Current Password</Label>
-                            <Input 
-                              id="oldPassword" 
+                            <Input
+                              id="oldPassword"
                               type="password"
                               value={oldPassword}
                               onChange={(e) => setOldPassword(e.target.value)}
@@ -103,8 +133,8 @@ const ChangePasswordPage = () => {
                           </LabelInputContainer>
                           <LabelInputContainer className="mb-4">
                             <Label htmlFor="newPassword">New Password</Label>
-                            <Input 
-                              id="newPassword" 
+                            <Input
+                              id="newPassword"
                               type="password"
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
@@ -113,8 +143,8 @@ const ChangePasswordPage = () => {
                           </LabelInputContainer>
                           <LabelInputContainer className="mb-6">
                             <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                            <Input 
-                              id="confirmPassword" 
+                            <Input
+                              id="confirmPassword"
                               type="password"
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}

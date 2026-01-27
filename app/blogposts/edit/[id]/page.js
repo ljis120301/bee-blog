@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { pb } from '@/lib/pocketbase';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from "@/components/app/layout/Header";
 import Footer from "@/components/app/layout/Footer";
@@ -96,75 +96,79 @@ export default function EditPost() {
     { name: 'Overlay', bg: '#e6e9ef', text: '#303446' },
   ];
 
+  const { user: authUser, isAdmin: isAdminRole, isAuthor: isAuthorRole, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const checkAuthorStatus = async () => {
-      if (pb.authStore.isValid) {
-        const user = pb.authStore.model;
-        if (user.role === "admin" || user.role === "author") {
-          setIsAuthor(true);
-          // Fetch the existing post data only after markdown parser is ready
-          if (mdParser) {
-            await fetchPostData();
-          }
-        } else {
-          router.push('/auth');
+    if (!authLoading) {
+      if (isAdminRole || isAuthorRole) {
+        setIsAuthor(true);
+        // Fetch the existing post data only after markdown parser is ready
+        if (mdParser) {
+          fetchPostData();
         }
       } else {
         router.push('/auth');
       }
-    };
-    checkAuthorStatus();
-  }, [router, params.id, mdParser]); // Added mdParser dependency
+    }
+  }, [router, params.id, mdParser, authLoading, isAdminRole, isAuthorRole]);
 
   // Convert markdown to HTML using the same logic as individual blog post display
   const convertContentForEditor = (content) => {
     if (!content || !mdParser) return content;
-    
+
     // Same detection logic as app/blogposts/[id]/page.js
     const looksLikeHtml = typeof content === 'string' && /<\w+[^>]*>/.test(content);
     const htmlContent = looksLikeHtml && !content.trim().startsWith('#')
       ? content
       : mdParser.render(content);
-    
-    console.log('Content conversion:', { 
-      original: content.substring(0, 100) + '...', 
+
+    console.log('Content conversion:', {
+      original: content.substring(0, 100) + '...',
       isHtml: looksLikeHtml,
       startsWithHash: content.trim().startsWith('#'),
-      converted: htmlContent.substring(0, 100) + '...' 
+      converted: htmlContent.substring(0, 100) + '...'
     });
-    
+
     return htmlContent;
   };
 
   const fetchPostData = async () => {
     try {
       setIsLoading(true);
-      const record = await pb.collection('posts').getOne(params.id, { expand: 'tags' });
+      const res = await fetch(`/api/posts/${params.id}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        router.push('/');
+        return;
+      }
+
+      const record = data.post;
       setPostData(record);
-      
+
       // Convert markdown content to HTML if needed (using same logic as blog post display)
       const convertedContent = convertContentForEditor(record.content || '');
-      
+
       // Populate form fields with existing data
       setTitle(record.title || '');
       setContent(convertedContent);
       setDescription(record.description || '');
       setDek(record.dek || '');
       setSlug(record.slug || '');
-      setHeroImageUrl(record.hero_image_url || '');
-      setSeoTitle(record.seo_title || '');
-      setSeoDescription(record.seo_description || '');
-      setSeoKeywords(Array.isArray(record.seo_keywords) ? record.seo_keywords.join(', ') : '');
+      setHeroImageUrl(record.heroImageUrl || '');
+      setSeoTitle(record.seoTitle || '');
+      setSeoDescription(record.seoDescription || '');
+      setSeoKeywords(Array.isArray(record.seoKeywords) ? record.seoKeywords.join(', ') : '');
       setIsSpanTwo(record.isSpanTwo || false);
       setUploadedImages(record.media || record.images || []);
       // selected tags from record
-      const tagIds = Array.isArray(record.tags) ? record.tags : [];
+      const tagIds = Array.isArray(record.tags) ? record.tags.map(t => t.id) : [];
       setSelectedTagIds(new Set(tagIds));
-      
+
       console.log('Original content:', record.content);
       console.log('Converted content for editor:', convertedContent);
       console.log('Content length:', convertedContent?.length);
-      
+
     } catch (error) {
       console.error('Error fetching post:', error);
       router.push('/'); // Redirect if post not found or unauthorized
@@ -181,11 +185,11 @@ export default function EditPost() {
         typographer: true,
         breaks: true,
       })
-      .use(sub)
-      .use(sup)
-      .use(ins)
-      .use(mark)
-      .use(taskLists);
+        .use(sub)
+        .use(sup)
+        .use(ins)
+        .use(mark)
+        .use(taskLists);
 
       mdInstance.enable('heading');
       setMdParser(mdInstance);
@@ -194,15 +198,16 @@ export default function EditPost() {
     initializeMdParser();
   }, []);
 
-  // Load all tags for selection
+  // Load all tags for selection via API
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const tags = await pb.collection('tags').getFullList({ sort: 'name' });
-        if (mounted) setAvailableTags(tags);
+        const res = await fetch('/api/tags');
+        const data = await res.json();
+        if (data.success && mounted) setAvailableTags(data.tags);
       } catch (e) {
-        console.warn('Tags not available (ensure schema exists):', e?.message || e);
+        console.warn('Tags not available:', e?.message || e);
       }
     })();
     return () => { mounted = false; };
@@ -241,7 +246,7 @@ export default function EditPost() {
       }]);
       return;
     }
-    
+
     // Check if tag already exists
     const existing = availableTags.find(t => t.name.toLowerCase() === name);
     if (existing) {
@@ -254,17 +259,30 @@ export default function EditPost() {
       setNewTagName('');
       return;
     }
-    
+
     try {
-      const created = await pb.collection('tags').create({ name, color_bg: newTagBg, color_text: newTagFg });
-      setAvailableTags(prev => [...prev, created]);
-      addTagToPost(created.id);
-      setNewTagName('');
-      setNotifications(prev => [...prev, {
-        id: Date.now(),
-        message: `Created and added "${name}" tag`,
-        type: 'success'
-      }]);
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, colorBg: newTagBg, colorText: newTagFg }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAvailableTags(prev => [...prev, data.tag]);
+        addTagToPost(data.tag.id);
+        setNewTagName('');
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: `Created and added "${name}" tag`,
+          type: 'success'
+        }]);
+      } else {
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: data.error || 'Failed to create tag',
+          type: 'error'
+        }]);
+      }
     } catch (e) {
       console.error('Tag create failed:', e);
       setNotifications(prev => [...prev, {
@@ -276,55 +294,45 @@ export default function EditPost() {
   };
 
   const requestDeleteTag = async (tag) => {
-    try {
-      // Fetch count of posts using this tag
-      const count = await pb.collection('posts').getList(1, 1, {
-        filter: `tags ~ "${tag.id}"`,
-      });
-      
-      setTagToDelete({ ...tag, postCount: count.totalItems });
-      setIsDeleteTagDialogOpen(true);
-    } catch (e) {
-      console.error('Failed to fetch tag usage count:', e);
-      setTagToDelete({ ...tag, postCount: 0 });
-      setIsDeleteTagDialogOpen(true);
-    }
+    // Simplified - just show the dialog
+    setTagToDelete({ ...tag, postCount: 0 });
+    setIsDeleteTagDialogOpen(true);
   };
 
   const confirmDeleteTag = async () => {
     if (!tagToDelete) return;
     try {
-      // Step 1: Find all posts with this tag
-      const postsWithTag = await pb.collection('posts').getFullList({
-        filter: `tags ~ "${tagToDelete.id}"`,
-        fields: 'id,tags'
+      const res = await fetch('/api/tags', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagId: tagToDelete.id }),
       });
-      
-      // Step 2: Remove tag from each post
-      for (const post of postsWithTag) {
-        const updatedTags = (post.tags || []).filter(tid => tid !== tagToDelete.id);
-        await pb.collection('posts').update(post.id, { tags: updatedTags });
+      const data = await res.json();
+
+      if (data.success) {
+        // Update UI
+        setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
+        setSelectedTagIds(prev => {
+          const next = new Set(prev);
+          next.delete(tagToDelete.id);
+          return next;
+        });
+
+        // Revalidate cache since tag affects multiple posts
+        await revalidatePostsPage();
+
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: 'Tag deleted successfully',
+          type: 'success'
+        }]);
+      } else {
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: data.error || 'Failed to delete tag',
+          type: 'error'
+        }]);
       }
-      
-      // Step 3: Delete the tag itself
-      await pb.collection('tags').delete(tagToDelete.id);
-      
-      // Step 4: Update UI
-      setAvailableTags(prev => prev.filter(t => t.id !== tagToDelete.id));
-      setSelectedTagIds(prev => {
-        const next = new Set(prev);
-        next.delete(tagToDelete.id);
-        return next;
-      });
-      
-      // Step 5: Revalidate cache since tag affects multiple posts
-      await revalidatePostsPage();
-      
-      setNotifications(prev => [...prev, {
-        id: Date.now(),
-        message: `Tag deleted and removed from ${postsWithTag.length} post(s)`,
-        type: 'success'
-      }]);
     } catch (e) {
       console.error('Delete tag failed:', e);
       setNotifications(prev => [...prev, {
@@ -347,7 +355,7 @@ export default function EditPost() {
     if (e && e.preventDefault) e.preventDefault();
     try {
       // Remove any duplicate media items
-      const uniqueMedia = Array.from(new Map(uploadedImages.map(item => 
+      const uniqueMedia = Array.from(new Map(uploadedImages.map(item =>
         [item.url, item]
       )).values());
 
@@ -356,7 +364,7 @@ export default function EditPost() {
         (titleText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3).slice(0, 8).forEach(w => base.add(w));
         (descriptionText || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4).slice(0, 6).forEach(w => base.add(w));
         ['beeblog', 'blog', 'article'].forEach(w => base.add(w));
-        const user = (userKeywords ? userKeywords.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : []);
+        const user = (userKeywords ? userKeywords.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
         user.forEach(k => base.add(k));
         return Array.from(base).slice(0, 15);
       };
@@ -369,61 +377,71 @@ export default function EditPost() {
         media: uniqueMedia,
         images: uniqueMedia.filter(item => item.type === 'image'),
         dek,
-        slug: (slug || title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')),
-        hero_image_url: heroImageUrl || null,
-        seo_title: seoTitle || title,
-        seo_description: seoDescription || description,
-        seo_keywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
-        toc_enabled: false,
-        reading_time_minutes: estimateReadingTime(content),
+        slug: (slug || title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')),
+        heroImageUrl: heroImageUrl || null,
+        seoTitle: seoTitle || title,
+        seoDescription: seoDescription || description,
+        seoKeywords: defaultSeoKeywords(seoTitle || title, seoDescription || description, seoAutoKeywords ? '' : seoKeywords),
+        tocEnabled: false,
+        readingTimeMinutes: estimateReadingTime(content),
         tags: Array.from(selectedTagIds)
       };
 
       console.log('Updating post with data:', data);
-      const record = await pb.collection('posts').update(params.id, data);
-      
-      // Revalidate the cache to show updated tags immediately
-      await revalidatePostsPage();
-      
-      router.push(`/blogposts/${record.id}`);
+      const res = await fetch(`/api/posts/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        // Revalidate the cache to show updated tags immediately
+        await revalidatePostsPage();
+        router.push(`/blogposts/${result.post.id}`);
+      } else {
+        console.error('Error updating post:', result.error);
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: result.error || 'Failed to update post',
+          type: 'error'
+        }]);
+      }
     } catch (error) {
       console.error('Error updating post:', error);
-      if (error.data) {
-        console.error('Validation errors:', error.data);
-      }
     }
   };
 
   const handleFileUploads = async (files) => {
     const uploads = Array.from(files).map(async (file) => {
       const fileId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+
       setLoadingFiles(prev => new Set([...prev, fileId]));
       setActiveUploads(prev => new Set([...prev, fileId]));
-      
+
       try {
         console.log('Starting upload for file:', file.name);
         const url = await uploadInChunks(file, (progress) => {
           setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
         });
-        
+
         console.log('Upload completed, URL:', url);
-        
+
         const newItem = {
           url: url,
           filename: file.name,
           type: file.type.startsWith('image/') ? 'image' : 'video',
           size: file.size
         };
-        
+
         setUploadedImages(prev => [...prev, newItem]);
-        
+
         setNotifications(prev => [...prev, {
           id: Date.now(),
           message: `${file.name} uploaded successfully!`,
           type: 'success'
         }]);
-        
+
       } catch (error) {
         console.error('Upload failed:', error);
         setNotifications(prev => [...prev, {
@@ -455,7 +473,7 @@ export default function EditPost() {
 
   const renderPreview = () => {
     if (!mdParser || !content) return <div className="text-cat-frappe-subtext0">No content to preview</div>;
-    
+
     const deviceClasses = {
       desktop: 'max-w-full',
       tablet: 'max-w-2xl mx-auto',
@@ -474,7 +492,7 @@ export default function EditPost() {
               </div>
             )}
           </header>
-          <div 
+          <div
             className="prose prose-lg max-w-none dark:prose-invert text-cat-frappe-base dark:text-cat-frappe-text"
             dangerouslySetInnerHTML={{ __html: content }}
           />
@@ -599,25 +617,25 @@ export default function EditPost() {
                                   try {
                                     const fileId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                                     setLoadingFiles(prev => new Set([...prev, fileId]));
-                                    
+
                                     const url = await uploadInChunks(file, (progress) => {
                                       setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
                                     });
-                                    
+
                                     const newItem = {
                                       url: url,
                                       filename: file.name,
                                       type: file.type.startsWith('image/') ? 'image' : 'video',
                                       size: file.size
                                     };
-                                    
+
                                     setUploadedImages(prev => [...prev, newItem]);
                                     setLoadingFiles(prev => {
                                       const newSet = new Set(prev);
                                       newSet.delete(fileId);
                                       return newSet;
                                     });
-                                    
+
                                     return { url: url, type: file.type };
                                   } catch (error) {
                                     console.error('Upload failed:', error);
@@ -645,7 +663,7 @@ export default function EditPost() {
                         <div className="p-6 space-y-6">
                           <div>
                             <h3 className="text-lg font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">Settings</h3>
-                            
+
                             <div className="space-y-4">
                               <div>
                                 <label className="block text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Hero Image URL</label>
@@ -733,7 +751,7 @@ export default function EditPost() {
                                 {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
                               </button>
                             </div>
-                            
+
                             {/* Selected tags for this post */}
                             <div className="mb-3">
                               <div className="text-xs text-cat-frappe-subtext0 mb-1">Currently tagged:</div>
@@ -762,7 +780,7 @@ export default function EditPost() {
                                 )}
                               </div>
                             </div>
-                            
+
                             {/* Available tags to add */}
                             <div className="mb-3">
                               <div className="text-xs text-cat-frappe-subtext0 mb-1">Add more tags:</div>
@@ -799,7 +817,7 @@ export default function EditPost() {
                             <div className="mt-3 grid grid-cols-1 gap-2">
                               <div>
                                 <label className="block text-xs mb-1 text-cat-frappe-base dark:text-cat-frappe-text">New tag name</label>
-                                <input value={newTagName} onChange={(e)=>setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text" />
+                                <input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text" />
                               </div>
                               <div>
                                 <label className="block text-xs mb-1 text-cat-frappe-base dark:text-cat-frappe-text">Color preset</label>
@@ -832,11 +850,11 @@ export default function EditPost() {
                                         <div className="space-y-2">
                                           <div>
                                             <label className="block text-xs mb-1">Background</label>
-                                            <input type="text" value={newTagBg} onChange={(e)=>setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                            <input type="text" value={newTagBg} onChange={(e) => setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                           </div>
                                           <div>
                                             <label className="block text-xs mb-1">Text</label>
-                                            <input type="text" value={newTagFg} onChange={(e)=>setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
+                                            <input type="text" value={newTagFg} onChange={(e) => setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
                                           </div>
                                         </div>
                                       </DropdownMenuSubContent>
@@ -855,7 +873,7 @@ export default function EditPost() {
                           <div>
                             <h3 className="text-lg font-semibold mb-4 text-cat-frappe-base dark:text-cat-frappe-yellow">File Upload</h3>
                             <FileUpload onChange={handleFileUploads} />
-                            
+
                             {uploadedImages.length > 0 && (
                               <div className="mt-4">
                                 <h4 className="text-sm font-medium mb-2 text-cat-frappe-base dark:text-cat-frappe-text">Uploaded Files</h4>
@@ -916,15 +934,14 @@ export default function EditPost() {
             {notifications.slice(-3).map((notification) => (
               <div
                 key={notification.id}
-                className={`px-4 py-2 rounded-lg shadow-lg border ${
-                  notification.type === 'error'
-                    ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red'
-                    : notification.type === 'success'
+                className={`px-4 py-2 rounded-lg shadow-lg border ${notification.type === 'error'
+                  ? 'bg-cat-frappe-red/90 dark:bg-cat-frappe-red text-white border-cat-frappe-red'
+                  : notification.type === 'success'
                     ? 'bg-[#a6d189]/90 dark:bg-[#a6d189] text-cat-frappe-base dark:text-[#303446] border-[#a6d189]' // Catppuccin Frappé Green
                     : notification.type === 'info'
-                    ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
-                    : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
-                }`}
+                      ? 'bg-cat-frappe-blue/90 dark:bg-cat-frappe-blue text-white border-cat-frappe-blue'
+                      : 'bg-cat-frappe-yellow/90 dark:bg-cat-frappe-yellow text-cat-frappe-base dark:text-[#303446] border-cat-frappe-yellow'
+                  }`}
               >
                 {notification.message}
               </div>

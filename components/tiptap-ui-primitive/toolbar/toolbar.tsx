@@ -18,7 +18,7 @@ const mergeRefs = <T,>(
       if (typeof ref === "function") {
         ref(value)
       } else if (ref != null) {
-        ;(ref as React.MutableRefObject<T | null>).current = value
+        ; (ref as React.MutableRefObject<T | null>).current = value
       }
     })
   }
@@ -64,12 +64,12 @@ const useToolbarKeyboardNav = (
     const toolbar = toolbarRef.current
     if (!toolbar) return
 
-    const getFocusableElements = () =>
+    const getFocusableElements = (): HTMLElement[] =>
       Array.from(
         toolbar.querySelectorAll<HTMLElement>(
           'button:not([disabled]), [role="button"]:not([disabled]), [tabindex="0"]:not([disabled])'
         )
-      )
+      ) as HTMLElement[]
 
     const navigateToIndex = (
       e: KeyboardEvent,
