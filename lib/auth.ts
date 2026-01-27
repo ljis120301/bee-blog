@@ -50,6 +50,8 @@ export const auth = betterAuth({
     appName: 'BeeBlog',
 
     baseURL: process.env.BETTER_AUTH_URL,
+    trustedOrigins: ['https://bee.whoisjason.me'],
+    secret: process.env.BETTER_AUTH_SECRET,
 
     database: prismaAdapter(db, {
         provider: 'sqlite',
@@ -191,13 +193,13 @@ export async function createSession(userId: string, ipAddress: string, userAgent
     // unless we also manually set the cookie header, which is complex in App Router API routes.
     // Ideally, we should refactor the calling code to use auth.api.signInEmailPassword.
     // However, for immediate build fix, mapping to Better Auth's createSession is best if possible.
-    
+
     // Fallback: Direct DB insert (Legacy behavior). 
     // The client wont have the cookie unless we return it or set it.
     // LEGACY COMPATIBILITY: The calling code expects to handle the response or 
     // expects the session to just exist in DB. 
     // We'll proceed with creating it in DB to satisfy the "createSession" symbol.
-    
+
     // Generate a token (legacy style used crypto, better-auth might use different)
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
@@ -239,7 +241,7 @@ export async function destroySession() {
         });
         cookieStore.delete('session_token');
     }
-    
+
     // Also try Better Auth logout
     // await auth.api.signOut({ headers: await headers() });
 }
@@ -293,12 +295,12 @@ export async function setupAdmin(setupKey: string, email: string, username: stri
             name: username,
         },
     });
-    
+
     // Also create a "better-auth" account entry so they can login via standard/better-auth flow?
     // If our better-auth config uses 'emailAndPassword', it looks for...
     // With Prisma adapter, Better Auth expects specific tables. 
     // We should probably use auth.api.signUpEmail if possible, but that requires request context.
-    
+
     return user;
 }
 
