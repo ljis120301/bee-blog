@@ -2,13 +2,17 @@
  * Ensure Admin Script
  * ====================
  * This script runs during container startup to guarantee the ADMIN_EMAIL
- * user exists with ADMIN role, verified email, and a password.
+ * user exists with ADMIN role, verified email, and a working password.
+ * 
+ * Better Auth stores email/password credentials in the Account table,
+ * so we must create both a User and an Account entry.
  * 
  * Run with: node scripts/ensure-admin.js
  */
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 const prisma = new PrismaClient();
 
@@ -23,53 +27,79 @@ async function ensureAdmin() {
 
     if (!adminPassword) {
         console.log('[ENSURE-ADMIN] No ADMIN_PASSWORD configured. Admin user will not have a password.');
+        return;
     }
 
     console.log(`[ENSURE-ADMIN] Checking for admin user: ${adminEmail}`);
 
     try {
-        // Hash the password if provided
-        const passwordHash = adminPassword ? await bcrypt.hash(adminPassword, 10) : null;
+        // Hash the password for Better Auth (uses bcrypt)
+        const passwordHash = await bcrypt.hash(adminPassword, 10);
 
-        // Find existing user with this email
-        const existingUser = await prisma.user.findUnique({
+        // Find or create the user
+        let user = await prisma.user.findUnique({
             where: { email: adminEmail },
         });
 
-        if (existingUser) {
-            // User exists - check if they need updating
-            const needsUpdate = existingUser.role !== 'ADMIN' ||
-                !existingUser.emailVerified ||
-                (passwordHash && !existingUser.passwordHash);
-
-            if (needsUpdate) {
+        if (user) {
+            // Update user to ensure ADMIN role and verified email
+            if (user.role !== 'ADMIN' || !user.emailVerified) {
                 await prisma.user.update({
-                    where: { id: existingUser.id },
+                    where: { id: user.id },
                     data: {
                         role: 'ADMIN',
                         emailVerified: true,
-                        ...(passwordHash && { passwordHash }),
                     },
                 });
-                console.log(`[ENSURE-ADMIN] Updated ${adminEmail} to ADMIN with verified email and password.`);
-            } else {
-                console.log(`[ENSURE-ADMIN] ${adminEmail} is already fully configured as ADMIN.`);
+                console.log(`[ENSURE-ADMIN] Updated ${adminEmail} to ADMIN with verified email.`);
             }
         } else {
-            // User doesn't exist - create them with password
-            await prisma.user.create({
+            // Create the user
+            user = await prisma.user.create({
                 data: {
                     email: adminEmail,
                     role: 'ADMIN',
                     emailVerified: true,
                     name: 'Admin',
-                    passwordHash,
                 },
             });
-            console.log(`[ENSURE-ADMIN] Created new ADMIN user: ${adminEmail} with password.`);
+            console.log(`[ENSURE-ADMIN] Created new ADMIN user: ${adminEmail}`);
         }
+
+        // Now handle the Account entry for password login
+        // Better Auth uses providerId: 'credential' for email/password
+        const existingAccount = await prisma.account.findFirst({
+            where: {
+                userId: user.id,
+                providerId: 'credential',
+            },
+        });
+
+        if (existingAccount) {
+            // Update the password
+            await prisma.account.update({
+                where: { id: existingAccount.id },
+                data: { password: passwordHash },
+            });
+            console.log(`[ENSURE-ADMIN] Updated password for ${adminEmail}`);
+        } else {
+            // Create credential account entry
+            await prisma.account.create({
+                data: {
+                    id: crypto.randomUUID(),
+                    userId: user.id,
+                    providerId: 'credential',
+                    accountId: user.id, // Better Auth typically uses the user ID
+                    password: passwordHash,
+                },
+            });
+            console.log(`[ENSURE-ADMIN] Created credential account for ${adminEmail}`);
+        }
+
+        console.log(`[ENSURE-ADMIN] ✅ Admin user fully configured: ${adminEmail}`);
     } catch (error) {
         console.error('[ENSURE-ADMIN] Error:', error.message);
+        console.error('[ENSURE-ADMIN] Stack:', error.stack);
         // Don't throw - allow the app to start even if this fails
     } finally {
         await prisma.$disconnect();
