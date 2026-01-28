@@ -44,8 +44,12 @@ async function createAdminAccount() {
             return;
         }
 
-        // Create admin with user's password
-        const password = 'Ilikepie120301!';
+        // Create admin with password from env
+        const password = process.env.ADMIN_PASSWORD;
+        if (!password) {
+            console.error('  ❌ ADMIN_PASSWORD environment variable not set');
+            return;
+        }
         const passwordHash = await bcrypt.hash(password, 12);
         const id = generateId();
         const now = new Date().toISOString();
@@ -53,11 +57,11 @@ async function createAdminAccount() {
         db.prepare(`
       INSERT INTO User (id, email, username, passwordHash, name, role, emailVerified, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, 'jason@whoisjason.me', 'jason', passwordHash, 'Jason', 'ADMIN', 1, now, now);
+    `).run(id, process.env.ADMIN_EMAIL, 'admin', passwordHash, 'Admin', 'ADMIN', 1, now, now);
 
         console.log('  ✅ Admin account created!');
-        console.log('     Email: jason@whoisjason.me');
-        console.log('     Password: Ilikepie120301!');
+        console.log(`     Email: ${process.env.ADMIN_EMAIL}`);
+        console.log('     Password: (from ADMIN_PASSWORD env var)');
     } catch (err) {
         console.error('  ❌ Error creating admin:', err.message);
     }
@@ -192,7 +196,7 @@ async function main() {
         console.log('\nYou can now:');
         console.log('  1. Restart the server: pnpm dev');
         console.log('  2. Visit: http://localhost:3000');
-        console.log('  3. Login: jason@whoisjason.me / Ilikepie120301!');
+        console.log(`  3. Login with ADMIN_EMAIL / ADMIN_PASSWORD from .env`);
 
     } catch (err) {
         console.error('\n❌ Migration failed:', err);
