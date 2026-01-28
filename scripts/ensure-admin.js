@@ -4,7 +4,9 @@
  * This script runs during container startup to guarantee the ADMIN_EMAIL
  * user exists with ADMIN role, verified email, and a working password.
  * 
- * Better Auth uses scrypt with format: s0:<salt>:<hash>
+ * Better Auth password hash format: s:<salt_base64>:<hash_base64>
+ * - Uses scrypt with 64-byte key length
+ * - Password is normalized with NFKC
  * 
  * Run with: node scripts/ensure-admin.js
  */
@@ -19,13 +21,15 @@ const scryptAsync = promisify(scrypt);
 const prisma = new PrismaClient();
 
 /**
- * Hash password using Better Auth's expected format
- * Format: s0:<salt_hex>:<hash_hex>
+ * Hash password using Better Auth's EXACT format
+ * From: https://github.com/better-auth/better-auth/blob/main/packages/better-auth/src/crypto/password.ts
+ * Format: s:<salt_base64>:<hash_base64>
  */
 async function hashPasswordBetterAuth(password) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const derivedKey = await scryptAsync(password, salt, 64);
-    return `s0:${salt}:${derivedKey.toString('hex')}`;
+    const salt = crypto.randomBytes(16);
+    const normalizedPassword = password.normalize('NFKC');
+    const derivedKey = await scryptAsync(normalizedPassword, salt, 64);
+    return `s:${salt.toString('base64')}:${derivedKey.toString('base64')}`;
 }
 
 async function ensureAdmin() {
@@ -45,8 +49,9 @@ async function ensureAdmin() {
     console.log(`[ENSURE-ADMIN] Checking for admin user: ${adminEmail}`);
 
     try {
-        // Hash the password using Better Auth's scrypt format
+        // Hash the password using Better Auth's exact format
         const passwordHash = await hashPasswordBetterAuth(adminPassword);
+        console.log(`[ENSURE-ADMIN] Generated hash prefix: ${passwordHash.substring(0, 20)}...`);
 
         // Find or create the user
         let user = await prisma.user.findUnique({
@@ -78,35 +83,28 @@ async function ensureAdmin() {
             console.log(`[ENSURE-ADMIN] Created new ADMIN user: ${adminEmail}`);
         }
 
-        // Now handle the Account entry for password login
-        // Better Auth uses providerId: 'credential' for email/password
-        const existingAccount = await prisma.account.findFirst({
+        // Delete any existing credential accounts to ensure fresh password
+        const deletedAccounts = await prisma.account.deleteMany({
             where: {
                 userId: user.id,
                 providerId: 'credential',
             },
         });
-
-        if (existingAccount) {
-            // Update the password with correct scrypt format
-            await prisma.account.update({
-                where: { id: existingAccount.id },
-                data: { password: passwordHash },
-            });
-            console.log(`[ENSURE-ADMIN] Updated password for ${adminEmail} (scrypt format)`);
-        } else {
-            // Create credential account entry
-            await prisma.account.create({
-                data: {
-                    id: crypto.randomUUID(),
-                    userId: user.id,
-                    providerId: 'credential',
-                    accountId: user.id,
-                    password: passwordHash,
-                },
-            });
-            console.log(`[ENSURE-ADMIN] Created credential account for ${adminEmail} (scrypt format)`);
+        if (deletedAccounts.count > 0) {
+            console.log(`[ENSURE-ADMIN] Deleted ${deletedAccounts.count} old credential account(s)`);
         }
+
+        // Create fresh credential account entry
+        await prisma.account.create({
+            data: {
+                id: crypto.randomUUID(),
+                userId: user.id,
+                providerId: 'credential',
+                accountId: user.id,
+                password: passwordHash,
+            },
+        });
+        console.log(`[ENSURE-ADMIN] Created fresh credential account for ${adminEmail}`);
 
         console.log(`[ENSURE-ADMIN] ✅ Admin user fully configured: ${adminEmail}`);
     } catch (error) {
