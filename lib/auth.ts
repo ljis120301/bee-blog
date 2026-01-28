@@ -121,7 +121,6 @@ export const auth = betterAuth({
     user: {
         fields: {
             email: 'email',
-            username: 'username',
         },
         additionalFields: {
             lastName: {
@@ -176,11 +175,33 @@ export const auth = betterAuth({
                 before: async (user) => {
                     if (user.email === process.env.ADMIN_EMAIL) {
                         return {
-                            ...user,
-                            role: 'ADMIN',
+                            data: {
+                                ...user,
+                                role: 'ADMIN',
+                            },
                         };
                     }
-                    return user;
+                },
+            },
+        },
+        session: {
+            create: {
+                before: async (session) => {
+                    // Self-healing: Ensure admin email always has ADMIN role on login
+                    // We can check the user and update if necessary
+                    try {
+                        const user = await db.user.findUnique({ where: { id: session.userId } });
+                        if (user && user.email === process.env.ADMIN_EMAIL && user.role !== 'ADMIN') {
+                            await db.user.update({
+                                where: { id: user.id },
+                                data: { role: 'ADMIN' },
+                            });
+                            console.log(`[AUTH] Auto-promoted ${user.email} to ADMIN role on login.`);
+                        }
+                    } catch (error) {
+                        console.error('[AUTH] Failed to check/promote admin role on session create:', error);
+                    }
+                    return { data: session };
                 },
             },
         },
