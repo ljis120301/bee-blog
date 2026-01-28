@@ -169,6 +169,23 @@ export const auth = betterAuth({
     ].filter(Boolean),
 
     // Advanced settings for reverse proxy compatibility
+    // Database Hooks
+    databaseHooks: {
+        user: {
+            create: {
+                before: async (user) => {
+                    if (user.email === process.env.ADMIN_EMAIL) {
+                        return {
+                            ...user,
+                            role: 'ADMIN',
+                        };
+                    }
+                    return user;
+                },
+            },
+        },
+    },
+
     advanced: {
         useSecureCookies: process.env.NODE_ENV === 'production',
         crossSubDomainCookies: {
