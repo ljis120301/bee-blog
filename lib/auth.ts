@@ -50,7 +50,6 @@ export const auth = betterAuth({
     appName: 'BeeBlog',
 
     baseURL: process.env.BETTER_AUTH_URL,
-    trustedOrigins: ['https://bee.whoisjason.me'],
     secret: process.env.BETTER_AUTH_SECRET,
 
     database: prismaAdapter(db, {
