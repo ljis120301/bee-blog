@@ -168,9 +168,17 @@ export const auth = betterAuth({
         process.env.BETTER_AUTH_URL || '',
     ].filter(Boolean),
 
-    // Advanced settings
+    // Advanced settings for reverse proxy compatibility
     advanced: {
         useSecureCookies: process.env.NODE_ENV === 'production',
+        crossSubDomainCookies: {
+            enabled: true,
+            domain: '.whoisjason.me', // Allow cookies across subdomains
+        },
+        // Trust the X-Forwarded-For header from reverse proxy
+        ipAddress: {
+            ipAddressHeaders: ['x-forwarded-for', 'x-real-ip'],
+        },
     },
 });
 
