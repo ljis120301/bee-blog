@@ -71,6 +71,7 @@
     "next": "16.0.10",
     "next-themes": "^0.3.0",
     "nodemailer": "^7.0.13",
+    "prisma": "^6.19.2",
     "prismjs": "^1.29.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -87,8 +88,7 @@
     "use-debounce": "^10.0.4",
     "uuid": "^13.0.0",
     "web-vitals": "^5.1.0",
-    "zod": "^4.3.6",
-    "prisma": "^6.19.2"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.7",
@@ -97,6 +97,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "16.0.10",
     "postcss": "^8",
+    "sqlite3": "^5.1.7",
     "tailwindcss": "^3.4.1"
   }
 }
