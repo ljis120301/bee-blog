@@ -97,8 +97,10 @@ export default function Home() {
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch posts from Prisma API
-      const res = await fetch(`/api/posts?page=${currentPage + 1}&limit=${postsPerPage}`);
+      // Fetch posts from Prisma API with cache disabled to ensure fresh data
+      const res = await fetch(`/api/posts?page=${currentPage + 1}&limit=${postsPerPage}`, {
+        cache: 'no-store',
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -219,10 +221,7 @@ export default function Home() {
         return true;
       });
     }
-    // Skip sorting for 'newest' when no client filters - trust server order
-    if (sortKey === 'newest' && !q && selectedTagIds.size === 0) {
-      return filtered;
-    }
+    // Always sort to ensure correct ordering
     const sorted = [...filtered].sort((a, b) => {
       if (sortKey === 'newest') return new Date(b.created) - new Date(a.created);
       if (sortKey === 'oldest') return new Date(a.created) - new Date(b.created);

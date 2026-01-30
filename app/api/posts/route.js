@@ -7,6 +7,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser, requireRole } from '@/lib/auth';
 
+// Force dynamic rendering to ensure fresh data
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         const url = new URL(request.url);
