@@ -78,3 +78,6 @@ cypress/screenshots/
 *.db
 *.db-shm
 *.db-wal
+blog.db
+blog.db-shm
+blog.db-wal
