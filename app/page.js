@@ -152,6 +152,11 @@ export default function Home() {
     fetchPosts();
   }, [fetchPosts]);
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedQuery, selectedTagIds]);
+
   // Update links when user changes
   useEffect(() => {
     const baseLinks = [
@@ -214,6 +219,10 @@ export default function Home() {
         return true;
       });
     }
+    // Skip sorting for 'newest' when no client filters - trust server order
+    if (sortKey === 'newest' && !q && selectedTagIds.size === 0) {
+      return filtered;
+    }
     const sorted = [...filtered].sort((a, b) => {
       if (sortKey === 'newest') return new Date(b.created) - new Date(a.created);
       if (sortKey === 'oldest') return new Date(a.created) - new Date(b.created);
@@ -223,6 +232,15 @@ export default function Home() {
     });
     return sorted;
   }, [blogPosts, debouncedQuery, selectedTagIds, sortKey]);
+
+  // Calculate effective page count - hide pagination when client-side filtering is active
+  const effectivePageCount = useMemo(() => {
+    const hasClientFilter = debouncedQuery.trim() || selectedTagIds.size > 0;
+    if (hasClientFilter) {
+      return 1;
+    }
+    return totalPages;
+  }, [totalPages, debouncedQuery, selectedTagIds]);
 
   const toggleTag = (id) => {
     setSelectedTagIds(prev => {
@@ -400,9 +418,10 @@ export default function Home() {
                               ))}
                             </BentoGrid>
                             <ReactPaginate
+                              forcePage={currentPage}
                               previousLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">← Previous</span>}
                               nextLabel={<span className="transform transition-transform hover:scale-105 hover:-rotate-1 inline-block">Next →</span>}
-                              pageCount={totalPages}
+                              pageCount={effectivePageCount}
                               onPageChange={handlePageChange}
                               containerClassName={"flex justify-center items-center space-x-2 mt-8"}
                               pageLinkClassName={"relative px-4 py-2 text-cat-frappe-base bg-cat-frappe-yellow dark:text-cat-frappe-yellow dark:bg-transparent rounded-full font-bold transition-all duration-300 border-2 border-cat-frappe-yellow hover:bg-cat-frappe-yellow/80 hover:text-cat-frappe-base"}
