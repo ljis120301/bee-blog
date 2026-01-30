@@ -57,7 +57,7 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
     content: value || "",
     editorProps: {
       attributes: {
-        class: `prose dark:prose-invert text-base max-w-none ${minHeightClass} focus:outline-none text-cat-frappe-base dark:text-cat-frappe-text`,
+        class: `prose prose-lg dark:prose-invert max-w-none ${minHeightClass} focus:outline-none text-cat-frappe-base dark:text-cat-frappe-text prose-headings:text-cat-frappe-base dark:prose-headings:text-cat-frappe-yellow prose-p:leading-relaxed prose-p:text-[15px]`,
       },
       handleDOMEvents: {
         // Ensure right-click inside table sets the selection under the cursor
@@ -159,9 +159,9 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
   if (!editor) return null;
 
   return (
-    <div className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-md overflow-hidden bg-[#f8e8e0] dark:bg-cat-frappe-base relative">
+    <div className="border-2 border-cat-frappe-surface1/30 dark:border-cat-frappe-surface0/50 rounded-lg overflow-hidden bg-white dark:bg-cat-frappe-base shadow-sm relative">
       <Toolbar editor={editor} />
-      <div className="p-3 sm:p-4 bg-[#f8e8e0] dark:bg-cat-frappe-base" onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}>
+      <div className="px-4 py-3 bg-white dark:bg-cat-frappe-base" onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}>
         <ContextMenu>
           <ContextMenuTrigger>
             <EditorContent editor={editor}
@@ -235,14 +235,14 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
 
 function Toolbar({ editor }) {
   const btn = (active, extra = "") =>
-    `px-2 py-1 text-sm rounded-md border transition-colors ${
+    `px-3 py-1.5 text-sm font-medium rounded-md border transition-all ${
       active
-        ? "bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow"
-        : "bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0 hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50"
+        ? "bg-cat-frappe-peach text-white border-cat-frappe-peach shadow-sm"
+        : "bg-white dark:bg-cat-frappe-mantle text-cat-frappe-base dark:text-cat-frappe-text border-cat-frappe-surface1/60 dark:border-cat-frappe-surface0/60 hover:bg-cat-frappe-surface1/30 dark:hover:bg-cat-frappe-surface0/50 hover:border-cat-frappe-peach/40 hover:shadow-sm"
     } ${extra}`;
 
   return (
-    <div className="flex flex-wrap gap-2 p-2 border-b border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#eff1f5] dark:bg-cat-frappe-surface0">
+    <div className="flex flex-wrap gap-2 p-3 border-b-2 border-cat-frappe-surface1/30 dark:border-cat-frappe-surface0/50 bg-gradient-to-r from-[#eff1f5] to-[#e6e9ef] dark:from-cat-frappe-mantle dark:to-cat-frappe-crust">
       <button className={btn(editor.isActive("bold"))} onClick={() => editor.chain().focus().toggleBold().run()} type="button">B</button>
       <button className={btn(editor.isActive("italic"))} onClick={() => editor.chain().focus().toggleItalic().run()} type="button"><span className="italic">I</span></button>
       <button className={btn(editor.isActive("strike"))} onClick={() => editor.chain().focus().toggleStrike().run()} type="button"><span className="line-through">S</span></button>

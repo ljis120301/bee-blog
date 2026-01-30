@@ -4,8 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { revalidatePostsPage } from '@/app/actions/revalidate';
 import Header from "@/components/app/layout/Header";
-import Footer from "@/components/app/layout/Footer";
-import ScrollProgressBar from "@/components/app/blog/ScrollProgressBar";
 import dynamic from 'next/dynamic';
 import 'react-markdown-editor-lite/lib/index.css';
 import MarkdownIt from 'markdown-it';
@@ -15,27 +13,12 @@ import ins from 'markdown-it-ins';
 import mark from 'markdown-it-mark';
 import taskLists from 'markdown-it-task-lists';
 import { uploadInChunks } from '@/lib/chunkUpload';
-import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
+import LoadingSpinner from '@/components/app/shared/LoadingSpinner.js';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
-import { IconSettings, IconSend, IconTrash } from "@tabler/icons-react";
-import { FileUpload } from "@/components/ui/file-upload";
+import { IconSend, IconArrowLeft, IconSettings, IconCheck, IconCloudUpload } from "@tabler/icons-react";
 import ConfirmationDialog from "@/components/app/shared/ConfirmationDialog";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu";
+import ArticleSettingsSheet from "@/components/author-portal/ArticleSettingsSheet";
+import Link from 'next/link';
 
 
 const TipTapEditor = dynamic(() => import('@/components/editor/TipTapEditor'), {
@@ -45,6 +28,7 @@ const TipTapEditor = dynamic(() => import('@/components/editor/TipTapEditor'), {
 
 export default function AuthorPortal() {
   const router = useRouter();
+  // Trigger HMR update
   const [isAdmin, setIsAdmin] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -93,6 +77,7 @@ export default function AuthorPortal() {
   const [isDeleteTagDialogOpen, setIsDeleteTagDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState(null);
   const [isEditingTags, setIsEditingTags] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { user: authUser, isAdmin: isAdminRole, isAuthor: isAuthorRole, loading: authLoading } = useAuth();
 
@@ -386,6 +371,16 @@ export default function AuthorPortal() {
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+
+    if (!title.trim()) {
+      showNotification('Post title is required', 'error');
+      return;
+    }
+    if (!content.trim()) {
+      showNotification('Post content is required', 'error');
+      return;
+    }
+
     try {
       // Remove any duplicate media items
       const uniqueMedia = Array.from(new Map(uploadedImages.map(item =>
@@ -435,7 +430,13 @@ export default function AuthorPortal() {
         router.push(`/blogposts/${result.post.id}`);
       } else {
         console.error('Error creating post:', result.error);
-        showNotification(result.error || 'Failed to create post', 'error');
+        if (result.error && result.error.includes('slug already exists')) {
+          showNotification('Slug already exists. Please change the title or edit the slug in Settings.', 'error');
+          // Optionally open settings to let user fix it
+          setSettingsOpen(true);
+        } else {
+          showNotification(result.error || 'Failed to create post', 'error');
+        }
       }
     } catch (error) {
       console.error('Error creating post:', error);
@@ -528,691 +529,8 @@ export default function AuthorPortal() {
   }
 
   return (
-    <>
-      <ScrollProgressBar />
+    <div className="min-h-screen bg-[#E9D4BA] dark:bg-cat-frappe-surface1 flex flex-col font-sans pt-20">
       <Header />
-      <main className="pt-[calc(64px+8px)] text-lg">
-
-        {/* Desktop split view */}
-        <div className="container mx-auto px-2 sm:px-4 md:px-6 max-w-[2000px]">
-          <div className="hidden xl:block mt-6">
-            <ResizablePanelGroup direction="horizontal" className="w-full h-[calc(100vh-140px)]">
-              {/* Editor panel */}
-              <ResizablePanel defaultSize={65} minSize={35}>
-                <div className="h-full rounded-lg bg-[#f8e8e0] dark:bg-cat-frappe-base shadow-lg flex flex-col">
-                  {/* Editor header */}
-                  <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-                    <div className="text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">Editor</div>
-                    <div className="flex items-center gap-3 text-xs text-[#4c4f69] dark:text-cat-frappe-subtext0">
-                      <span>{wordCount(content)} words</span>
-                      <span>{estimateReadingTime(content)} min</span>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <button
-                            type="button"
-                            className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md text-cat-frappe-base dark:text-cat-frappe-text hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50 inline-flex items-center gap-2"
-                          >
-                            <IconSettings size={16} />
-                            Settings
-                          </button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[700px] border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base text-cat-frappe-base dark:text-cat-frappe-text overflow-y-auto max-h-[90vh]">
-                          <DialogHeader>
-                            <DialogTitle>Post Settings</DialogTitle>
-                            <DialogDescription>Configure metadata and presentation for this article. Keywords auto-generate from your title and summary by default.</DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-2 pr-1 pb-4">
-                            <div>
-                              <label className="block text-sm mb-1">Title</label>
-                              <input
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                              />
-                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Main headline for your post. Keep it clear and compelling.</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm mb-1">Summary</label>
-                              <textarea
-                                value={dek || description}
-                                onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
-                                rows={3}
-                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                              />
-                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Appears below the title and in listings/SEO.</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm mb-1">Slug</label>
-                              <input
-                                value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '')}
-                                onChange={() => { }}
-                                disabled
-                                className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
-                              />
-                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Auto-generated from the title. You don’t need to change this.</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm mb-1">Hero Image</label>
-                              <FileUpload onChange={(files) => { const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
-                              {heroImageUrl && (
-                                <div className="mt-2">
-                                  <img src={heroImageUrl} alt="Hero preview" className="h-16 w-28 object-cover rounded" />
-                                </div>
-                              )}
-                              <p className="text-xs mt-1 text-cat-frappe-subtext0">Upload a banner image for the top of the article.</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <div>
-                                <label className="block text-sm mb-1">SEO Title</label>
-                                <input
-                                  value={seoTitle}
-                                  onChange={(e) => setSeoTitle(e.target.value)}
-                                  className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                                />
-                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Appears in search results. Defaults to your Title.</p>
-                              </div>
-                              <div>
-                                <label className="block text-sm mb-1">SEO Description</label>
-                                <input
-                                  value={seoDescription}
-                                  onChange={(e) => setSeoDescription(e.target.value)}
-                                  className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                                />
-                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Short snippet for search engines. Defaults to Description.</p>
-                              </div>
-                              <div className="max-w-full">
-                                <label className="block text-sm mb-1">SEO Keywords</label>
-                                <div className="w-full max-w-full overflow-hidden flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                  <input
-                                    value={seoKeywords}
-                                    onChange={(e) => { setSeoAutoKeywords(false); setSeoKeywords(e.target.value) }}
-                                    placeholder="auto-generated unless overridden"
-                                    className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                                    disabled={seoAutoKeywords}
-                                  />
-                                  <label className="inline-flex items-center gap-1 text-xs shrink-0 px-2 py-1 rounded border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-mantle/60 self-start">
-                                    <input type="checkbox" className="accent-cat-frappe-yellow" checked={seoAutoKeywords} onChange={(e) => setSeoAutoKeywords(e.target.checked)} />
-                                    Auto
-                                  </label>
-                                </div>
-                                <p className="text-xs mt-1 text-cat-frappe-subtext0">Auto mode recommends keywords from your Title/Description. Uncheck to edit manually.</p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <label className="flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isSpanTwo}
-                                  onChange={() => setIsSpanTwo(!isSpanTwo)}
-                                  className="sr-only peer"
-                                />
-                                <div className="relative w-11 h-6 bg-cat-frappe-overlay2/30 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cat-frappe-yellow/30 dark:peer-focus:ring-cat-frappe-yellow/50 rounded-full peer dark:bg-cat-frappe-surface0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cat-frappe-surface1 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-cat-frappe-surface0 peer-checked:bg-cat-frappe-yellow"></div>
-                                <span className="ml-3 text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">Span Two Columns (home grid feature)</span>
-                              </label>
-                              <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
-                            </div>
-                            {/* Tags selection */}
-                            <div className="mt-2">
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block text-sm font-semibold">Tags</label>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingTags(v => !v)}
-                                  className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
-                                >
-                                  {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
-                                </button>
-                              </div>
-
-                              {/* Selected tags for this post */}
-                              <div className="mb-3">
-                                <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
-                                <div className="flex flex-wrap gap-2 min-h-[32px] p-2 rounded-md border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/40 dark:bg-cat-frappe-mantle/40">
-                                  {selectedTagIds.size === 0 ? (
-                                    <span className="text-xs text-cat-frappe-subtext0 italic">No tags selected</span>
-                                  ) : (
-                                    Array.from(selectedTagIds).map(id => {
-                                      const tag = availableTags.find(t => t.id === id);
-                                      if (!tag) return null;
-                                      return (
-                                        <div key={id} className="relative inline-flex items-center">
-                                          <button
-                                            type="button"
-                                            onClick={() => removeTagFromPost(id)}
-                                            className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border hover:opacity-80 transition-opacity"
-                                            style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
-                                            title={`Remove #${tag.name} from this post`}
-                                          >
-                                            #{tag.name}
-                                            <span className="ml-1 text-[10px]">✕</span>
-                                          </button>
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Available tags to add */}
-                              <div className="mb-3">
-                                <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
-                                <div className="flex flex-wrap gap-2">
-                                  {availableTags.filter(t => !selectedTagIds.has(t.id)).map(t => (
-                                    <div key={t.id} className="relative inline-flex items-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => addTagToPost(t.id)}
-                                        className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-surface0/60 hover:bg-white dark:hover:bg-cat-frappe-surface0 transition-colors"
-                                        style={{ color: t.color_text || '#303446' }}
-                                        title={`Add #${t.name} to this post`}
-                                      >
-                                        #{t.name}
-                                        <span className="text-[10px]">+</span>
-                                      </button>
-                                      {isEditingTags && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
-                                          className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
-                                          title="Delete tag globally"
-                                        >
-                                          <IconTrash size={14} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                  {availableTags.filter(t => !selectedTagIds.has(t.id)).length === 0 && (
-                                    <span className="text-xs text-cat-frappe-subtext0 italic">All tags selected</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="mt-3 grid grid-cols-1 gap-2">
-                                <div>
-                                  <label className="block text-xs mb-1">New tag name</label>
-                                  <input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs mb-1">Color preset</label>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button
-                                        type="button"
-                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-[#F6EEE5] dark:bg-cat-frappe-base text-sm"
-                                      >
-                                        <span className="inline-block w-4 h-4 rounded-full border" style={{ backgroundColor: newTagBg, borderColor: `${newTagFg}22` }} />
-                                        {TAG_COLOR_PRESETS[selectedPreset]?.name || 'Choose color'}
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-56">
-                                      <DropdownMenuLabel>Theme presets</DropdownMenuLabel>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuGroup>
-                                        {TAG_COLOR_PRESETS.map((p, idx) => (
-                                          <DropdownMenuItem
-                                            key={p.name}
-                                            onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}
-                                          >
-                                            <span className="inline-block w-4 h-4 rounded-full border mr-2" style={{ backgroundColor: p.bg, borderColor: `${p.text}22` }} />
-                                            <span className="flex-1">{p.name}</span>
-                                            <span className="text-[10px] opacity-60">{p.bg}</span>
-                                          </DropdownMenuItem>
-                                        ))}
-                                      </DropdownMenuGroup>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>Custom</DropdownMenuSubTrigger>
-                                        <DropdownMenuSubContent className="w-64 p-2">
-                                          <div className="space-y-2">
-                                            <div>
-                                              <label className="block text-xs mb-1">Background</label>
-                                              <input type="text" value={newTagBg} onChange={(e) => setNewTagBg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
-                                            </div>
-                                            <div>
-                                              <label className="block text-xs mb-1">Text</label>
-                                              <input type="text" value={newTagFg} onChange={(e) => setNewTagFg(e.target.value)} className="w-full px-2 py-1 border rounded text-xs bg-white/80 dark:bg-cat-frappe-base" placeholder="#hex" />
-                                            </div>
-                                          </div>
-                                        </DropdownMenuSubContent>
-                                      </DropdownMenuSub>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                                <div className="sm:col-span-4">
-                                  <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-white/60 dark:bg-cat-frappe-surface0 text-sm">
-                                    Create tag
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <button type="button" className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md">Close</button>
-                            </DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                  <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
-                  <ScrollArea className="h-full px-4 sm:px-6 py-4">
-                    {/* Title & Description moved into Settings dialog */}
-                    {/* Editor */}
-                    <div className="mb-6">
-                      <label htmlFor="content" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                      <TipTapEditor
-                        value={content}
-                        minHeightClass="min-h-[55vh]"
-                        onChange={handleEditorChange}
-                        onRequestUpload={async (file) => {
-                          const result = await uploadInChunks(file, (progress) => {
-                            setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
-                          });
-                          if (result?.success) {
-                            const entry = { name: file.name, url: result.url, type: file.type, id: result.id, token: result.token };
-                            setUploadedImages(prev => [...prev, entry]);
-                            return entry;
-                          }
-                          throw new Error('Upload failed');
-                        }}
-                      />
-                    </div>
-                    {/* Settings moved to Settings dialog */}
-                    {uploadedImages.length > 0 && (
-                      <div className="mb-6">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-cat-frappe-base dark:text-cat-frappe-yellow">Uploaded Files</h3>
-                          <button
-                            type="button"
-                            onClick={() => setUploadedImages([])}
-                            className="text-sm text-cat-frappe-red hover:text-cat-frappe-peach transition-colors"
-                          >
-                            Clear All
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {uploadedImages.map((file, index) => (
-                            <div key={index} className="relative group">
-                              <div className="aspect-[16/14] w-full rounded-lg overflow-hidden bg-[#eff1f5] dark:bg-cat-frappe-surface0">
-                                {loadingFiles.has(file.name) ? (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <span className="animate-pulse">Loading...</span>
-                                  </div>
-                                ) : file.type.startsWith('video/') ? (
-                                  <video
-                                    className="w-full h-full object-cover"
-                                    controls
-                                    preload="metadata"
-                                    playsInline
-                                    src={`/api/files?id=${file.id}`}
-                                  />
-                                ) : (
-                                  <img
-                                    src={file.url}
-                                    alt={file.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                )}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-2 px-[5%]">
-                                    <button
-                                      type="button"
-                                      onClick={() => insertFileIntoContent(file.url, file.type, file.id)}
-                                      className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-yellow text-cat-frappe-base px-1 py-0.5 rounded text-xs font-medium hover:bg-cat-frappe-peach transition-colors"
-                                    >
-                                      Insert
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
-                                      className="w-[80%] max-w-[100px] min-w-[60px] bg-cat-frappe-red text-white px-1 py-0.5 rounded text-xs font-medium hover:bg-red-600 transition-colors"
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* Document settings moved into Settings dialog */}
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle className="bg-cat-frappe-surface1" />
-
-              {/* Preview panel */}
-              <ResizablePanel defaultSize={35} minSize={30}>
-                <div className="h-full rounded-lg bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg flex flex-col">
-                  <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-                    <div className="text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-yellow">Preview</div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDevice('desktop')}
-                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'desktop' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
-                      >Desktop</button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDevice('tablet')}
-                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'tablet' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
-                      >Tablet</button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewDevice('mobile')}
-                        className={`px-2 py-1 rounded-md text-xs font-medium border ${previewDevice === 'mobile' ? 'bg-cat-frappe-yellow text-cat-frappe-base border-cat-frappe-yellow' : 'bg-transparent text-cat-frappe-base dark:text-cat-frappe-subtext0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0'}`}
-                      >Mobile</button>
-                    </div>
-                  </div>
-                  <Separator className="bg-cat-frappe-surface1 dark:bg-cat-frappe-surface0" />
-                  <ScrollArea className="h-full px-4 sm:px-6 py-6">
-                    <div className="mx-auto">
-                      <div className={`${previewDevice === 'desktop' ? 'w-[1200px]' : previewDevice === 'tablet' ? 'w-[768px]' : 'w-[390px]'} mx-auto border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 rounded-xl bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-md overflow-hidden`}>
-                        {heroImageUrl && (
-                          <div className="w-full">
-                            <div className="relative w-full h-[28vh] sm:h-[36vh] lg:h-[44vh] overflow-hidden">
-                              <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
-                            </div>
-                          </div>
-                        )}
-                        <div className="px-4 sm:px-6 py-6">
-                          <header className="mb-4">
-                            <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight">{title || 'Preview Title'}</h1>
-                            {dek && (
-                              <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{dek}</p>
-                            )}
-                            <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
-                              <span>{new Date().toLocaleDateString()}</span>
-                              {content ? <span>• {estimateReadingTime(content)} min read</span> : null}
-                            </div>
-                          </header>
-                          <section className="mt-6">
-                            <div className="prose dark:prose-invert text-base max-w-none">
-                              {renderPreview()}
-                            </div>
-                          </section>
-                        </div>
-                      </div>
-                    </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </div>
-
-          {/* Mobile/Tablet: Tabs view */}
-          <div className="xl:hidden mt-6">
-            <div className="rounded-lg p-4 lg:p-6 bg-[#f8e8e0] dark:bg-cat-frappe-base shadow-lg">
-              {/* Mobile/Tablet visible Settings button */}
-              <div className="flex justify-end mb-3">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md text-cat-frappe-base dark:text-cat-frappe-text hover:bg-cat-frappe-surface1/40 dark:hover:bg-cat-frappe-surface0/50"
-                    >
-                      Settings
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[700px] border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base text-cat-frappe-base dark:text-cat-frappe-text overflow-y-auto max-h-[90vh]">
-                    <DialogHeader>
-                      <DialogTitle>Post Settings</DialogTitle>
-                      <DialogDescription>Configure metadata and presentation for this article.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-2 pr-1 pb-4">
-                      <div>
-                        <label className="block text-sm mb-1">Title</label>
-                        <input
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Summary</label>
-                        <textarea
-                          value={dek || description}
-                          onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
-                          rows={3}
-                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Slug</label>
-                        <input
-                          value={slug || (title ? title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '')}
-                          onChange={() => { }}
-                          disabled
-                          className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-cat-frappe-surface1/50 dark:bg-cat-frappe-surface0/50 text-cat-frappe-base dark:text-cat-frappe-text"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Hero Image</label>
-                        <FileUpload onChange={(files) => { const file = files?.[0]; if (file) handleHeroImageFile(file); }} />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-sm mb-1">SEO Title</label>
-                          <input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
-                        </div>
-                        <div>
-                          <label className="block text-sm mb-1">SEO Description</label>
-                          <input value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className="w-full px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
-                        </div>
-                        <div className="max-w-full">
-                          <label className="block text-sm mb-1">SEO Keywords</label>
-                          <input
-                            value={seoKeywords}
-                            onChange={(e) => { setSeoAutoKeywords(false); setSeoKeywords(e.target.value) }}
-                            placeholder="auto-generated unless overridden"
-                            className="flex-1 min-w-0 px-3 py-2 text-base border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0"
-                            disabled={seoAutoKeywords}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="flex items-center cursor-pointer">
-                          <input type="checkbox" checked={isSpanTwo} onChange={() => setIsSpanTwo(!isSpanTwo)} className="sr-only peer" />
-                          <div className="relative w-11 h-6 bg-cat-frappe-overlay2/30 rounded-full peer dark:bg-cat-frappe-surface0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cat-frappe-yellow"></div>
-                          <span className="ml-3 text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text">Span Two Columns</span>
-                        </label>
-                        <div className="text-xs text-cat-frappe-subtext0">Table of contents is disabled globally for posts.</div>
-                      </div>
-                      {/* Tags selection + creation (mobile/tablet) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-sm font-semibold">Tags</label>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingTags(v => !v)}
-                            className="text-xs rounded-full border px-2 py-1 bg-white/60 dark:bg-cat-frappe-surface0 border-cat-frappe-surface1 dark:border-cat-frappe-surface0"
-                          >
-                            {isEditingTags ? '✓ Done editing' : '⚙️ Manage all tags'}
-                          </button>
-                        </div>
-
-                        {/* Selected tags for this post */}
-                        <div className="mb-3">
-                          <div className="text-xs text-cat-frappe-subtext0 mb-1">Selected for this post:</div>
-                          <div className="flex flex-wrap gap-2 min-h-[32px] p-2 rounded-md border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/40 dark:bg-cat-frappe-mantle/40">
-                            {selectedTagIds.size === 0 ? (
-                              <span className="text-xs text-cat-frappe-subtext0 italic">No tags selected</span>
-                            ) : (
-                              Array.from(selectedTagIds).map(id => {
-                                const tag = availableTags.find(t => t.id === id);
-                                if (!tag) return null;
-                                return (
-                                  <div key={id} className="relative inline-flex items-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => removeTagFromPost(id)}
-                                      className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border hover:opacity-80 transition-opacity"
-                                      style={{ backgroundColor: tag.color_bg || '#ef9f76', color: tag.color_text || '#303446', borderColor: `${(tag.color_text || '#303446')}22` }}
-                                      title={`Remove #${tag.name} from this post`}
-                                    >
-                                      #{tag.name}
-                                      <span className="ml-1 text-[10px]">✕</span>
-                                    </button>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Available tags to add */}
-                        <div className="mb-3">
-                          <div className="text-xs text-cat-frappe-subtext0 mb-1">Available tags (click to add):</div>
-                          <div className="flex flex-wrap gap-2">
-                            {availableTags.filter(t => !selectedTagIds.has(t.id)).map(t => (
-                              <div key={t.id} className="relative inline-flex items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => addTagToPost(t.id)}
-                                  className="inline-flex items-center gap-1 h-7 leading-none rounded-full px-3 py-0 text-xs font-semibold border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-white/60 dark:bg-cat-frappe-surface0/60 hover:bg-white dark:hover:bg-cat-frappe-surface0 transition-colors"
-                                  style={{ color: t.color_text || '#303446' }}
-                                  title={`Add #${t.name} to this post`}
-                                >
-                                  #{t.name}
-                                  <span className="text-[10px]">+</span>
-                                </button>
-                                {isEditingTags && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); requestDeleteTag(t); }}
-                                    className="ml-1 inline-flex items-center justify-center h-7 w-7 rounded-full border border-cat-frappe-red bg-cat-frappe-red text-white hover:opacity-90"
-                                    title="Delete tag globally"
-                                  >
-                                    <IconTrash size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {availableTags.filter(t => !selectedTagIds.has(t.id)).length === 0 && (
-                              <span className="text-xs text-cat-frappe-subtext0 italic">All tags selected</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-1 gap-2">
-                          <div>
-                            <label className="block text-xs mb-1">New tag name</label>
-                            <input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="w-full px-3 py-2 text-sm border border-cat-frappe-surface1 rounded-md bg-[#eff1f5] dark:bg-cat-frappe-surface0" />
-                          </div>
-                          <div>
-                            <label className="block text-xs mb-1">Color preset</label>
-                            <div className="flex flex-wrap gap-2">
-                              {TAG_COLOR_PRESETS.map((p, idx) => (
-                                <button
-                                  key={p.name}
-                                  type="button"
-                                  onClick={() => { setSelectedPreset(idx); setNewTagBg(p.bg); setNewTagFg(p.text); }}
-                                  className={`h-8 px-3 rounded-full border text-xs font-semibold ${selectedPreset === idx ? 'ring-2 ring-cat-frappe-yellow' : ''}`}
-                                  style={{ backgroundColor: p.bg, color: p.text, borderColor: `${p.text}22` }}
-                                  title={p.name}
-                                >
-                                  {p.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <button type="button" onClick={handleCreateTag} className="mt-1 px-3 py-1.5 rounded-md border border-cat-frappe-surface1 bg-white/60 dark:bg-cat-frappe-surface0 text-sm">
-                              Create tag
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <button type="button" className="border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 px-3 py-1.5 rounded-md">Close</button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <Tabs defaultValue="edit" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="edit">Editor</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
-                </TabsList>
-                <TabsContent value="edit">
-                  {/* Reuse the editor stack for mobile; Summary merged */}
-                  <div className="mb-4">
-                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Summary</label>
-                    <textarea
-                      value={dek || description}
-                      onChange={(e) => { setDek(e.target.value); setDescription(e.target.value); }}
-                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cat-frappe-peach focus:border-transparent bg-[#F6EEE5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                      rows="3"
-                      required
-                    ></textarea>
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Hero Image URL</label>
-                    <input
-                      value={heroImageUrl}
-                      onChange={(e) => setHeroImageUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-4 py-3 text-base border border-cat-frappe-surface1 rounded-md shadow-sm focus:outline-none bg-[#eff1f5] dark:bg-cat-frappe-surface0 text-cat-frappe-base dark:text-cat-frappe-text"
-                    />
-                  </div>
-                  <div className="mb-6">
-                    <label htmlFor="content-m" className="block text-cat-frappe-base dark:text-cat-frappe-yellow mb-2">Content</label>
-                    <TipTapEditor
-                      value={content}
-                      onChange={handleEditorChange}
-                      onRequestUpload={async (file) => {
-                        const result = await uploadInChunks(file, (progress) => {
-                          setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
-                        });
-                        if (result?.success) {
-                          const entry = { name: file.name, url: result.url, type: file.type, id: result.id, token: result.token };
-                          setUploadedImages(prev => [...prev, entry]);
-                          return entry;
-                        }
-                        throw new Error('Upload failed');
-                      }}
-                    />
-                  </div>
-                  {/* Document settings moved into Settings dialog */}
-                </TabsContent>
-                <TabsContent value="preview">
-                  <div className="rounded-lg overflow-hidden bg-[#F6EEE5] dark:bg-cat-frappe-base shadow-lg">
-                    {heroImageUrl && (
-                      <div className="w-full">
-                        <div className="relative w-full h-[28vh] sm:h-[36vh] lg:h-[44vh] overflow-hidden">
-                          <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
-                        </div>
-                      </div>
-                    )}
-                    <div className="px-4 sm:px-6 py-6">
-                      <header className="mb-4">
-                        <h1 className="text-3xl md:text-5xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow tracking-tight">{title || 'Preview Title'}</h1>
-                        {dek && (
-                          <p className="text-lg md:text-xl mt-3 text-[#4c4f69] dark:text-cat-frappe-subtext0">{dek}</p>
-                        )}
-                        <div className="mt-4 text-sm text-[#4c4f69] dark:text-cat-frappe-subtext0 flex flex-wrap gap-3">
-                          <span>{new Date().toLocaleDateString()}</span>
-                          {content ? <span>• {estimateReadingTime(content)} min read</span> : null}
-                        </div>
-                      </header>
-                      <section className="mt-6">
-                        <div className="prose dark:prose-invert text-base max-w-3xl lg:max-w-4xl mx-auto">
-                          {renderPreview()}
-                        </div>
-                      </section>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </div>
-      </main>
       <Notifications />
       <UploadProgress />
       <ConfirmationDialog
@@ -1221,17 +539,178 @@ export default function AuthorPortal() {
         onConfirm={confirmDeleteTag}
         message={`Delete tag "${tagToDelete?.name ?? ''}"? This will remove it from ${tagToDelete?.postCount ?? 0} post(s) and cannot be undone.`}
       />
-      {/* Floating Publish FAB */}
-      <button
-        type="button"
-        onClick={handleSubmit}
-        className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 shadow-xl bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust hover:shadow-2xl transition-all"
-        aria-label="Publish"
-      >
-        <IconSend size={18} />
-        Publish
-      </button>
-      <Footer />
-    </>
+
+      {/* Content Container - fills remaining space below Header */}
+      <div className="flex-1 flex flex-col relative">
+        {/* Title Bar with Settings and Publish - ALWAYS VISIBLE ON TOP */}
+        <div className="w-full bg-white dark:bg-cat-frappe-base border-b-2 border-cat-frappe-surface1/30 dark:border-cat-frappe-surface0/30 z-50 relative shadow-sm">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 gap-3 sm:gap-4 bg-white dark:bg-cat-frappe-base">
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <Link
+                href="/blogposts"
+                className="p-2 rounded-lg hover:bg-cat-frappe-surface1/20 dark:hover:bg-cat-frappe-surface0/20 text-cat-frappe-subtext0 hover:text-cat-frappe-text transition-colors shrink-0"
+                title="Back to Posts"
+              >
+                <IconArrowLeft size={20} />
+              </Link>
+              <div className="flex flex-col flex-1 min-w-0 max-w-2xl gap-1">
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Untitled Post"
+                  className="text-base sm:text-lg md:text-xl font-bold bg-transparent border-none p-0 focus:ring-0 focus:outline-none placeholder:text-cat-frappe-overlay0 text-cat-frappe-base dark:text-cat-frappe-text w-full"
+                />
+                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-cat-frappe-subtext0">
+                  <span className="truncate max-w-[150px] sm:max-w-[200px]">{slug || 'slug-will-appear-here'}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className={`flex items-center gap-1 ${isUploading ? 'text-cat-frappe-peach' : ''}`}>
+                    {isUploading ? <IconCloudUpload size={12} className="animate-pulse" /> : <IconCheck size={12} />}
+                    <span className="hidden sm:inline">{isUploading ? 'Saving...' : 'Changes Saved'}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg border border-cat-frappe-surface1/40 dark:border-cat-frappe-surface0/40 hover:bg-white/50 dark:hover:bg-cat-frappe-surface0/50 text-sm font-medium text-cat-frappe-base dark:text-cat-frappe-text transition-colors"
+              >
+                <IconSettings size={18} />
+                <span>Settings</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="sm:hidden p-2 rounded-lg hover:bg-cat-frappe-surface1/20 text-cat-frappe-base dark:text-cat-frappe-text"
+                title="Settings"
+              >
+                <IconSettings size={20} />
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gradient-to-br from-cat-frappe-peach to-cat-frappe-yellow text-cat-frappe-base dark:text-cat-frappe-crust font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+              >
+                <IconSend size={18} />
+                <span className="hidden sm:inline">Publish</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Editor/Preview Tabs Section */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Tabs defaultValue="edit" className="flex-1 flex flex-col overflow-hidden h-full">
+            {/* Tab Buttons */}
+            <div className="px-4 sm:px-6 py-2 border-b border-cat-frappe-surface1/20 dark:border-cat-frappe-surface0/20 bg-white dark:bg-cat-frappe-base shrink-0 flex justify-center">
+              <TabsList className="inline-flex h-9 items-center justify-center rounded-lg p-1 bg-cat-frappe-surface1/20 dark:bg-cat-frappe-surface0/30">
+                <TabsTrigger
+                  value="edit"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white dark:data-[state=active]:bg-cat-frappe-base data-[state=active]:text-cat-frappe-base dark:data-[state=active]:text-cat-frappe-text data-[state=active]:shadow-sm text-cat-frappe-subtext0 dark:text-cat-frappe-overlay1"
+                >
+                  Editor
+                </TabsTrigger>
+                <TabsTrigger
+                  value="preview"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white dark:data-[state=active]:bg-cat-frappe-base data-[state=active]:text-cat-frappe-base dark:data-[state=active]:text-cat-frappe-text data-[state=active]:shadow-sm text-cat-frappe-subtext0 dark:text-cat-frappe-overlay1"
+                >
+                  Preview
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Tab Content - scrollable area */}
+            <TabsContent value="edit" className="flex-1 overflow-y-auto mt-0 bg-[#f8e8e0]/40 dark:bg-cat-frappe-crust/60 p-4 sm:p-6">
+              <div className="max-w-5xl mx-auto h-full">
+                <TipTapEditor
+                  value={content}
+                  onChange={handleEditorChange}
+                  minHeightClass="min-h-[calc(100vh-280px)]"
+                  onRequestUpload={async (file) => {
+                    const result = await uploadInChunks(file, (progress) => {
+                      setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(progress) }));
+                    });
+                    if (result?.success) {
+                      const entry = { name: file.name, url: result.url, type: file.type, id: result.id, token: result.token };
+                      setUploadedImages(prev => [...prev, entry]);
+                      insertFileIntoContent(result.url, file.type, result.id);
+                      return entry;
+                    }
+                    throw new Error('Upload failed');
+                  }}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="preview" className="flex-1 overflow-y-auto mt-0 bg-[#f0f2f5] dark:bg-cat-frappe-crust p-4 sm:p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white dark:bg-cat-frappe-base rounded-xl shadow-md border border-cat-frappe-surface1/20 p-6 sm:p-8">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-cat-frappe-subtext0 mb-6 pb-2 border-b border-cat-frappe-surface1/30">Live Preview</h2>
+                  {heroImageUrl && (
+                    <div className="relative w-full h-48 sm:h-64 mb-6 rounded-lg overflow-hidden group">
+                      <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                    </div>
+                  )}
+                  <header className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-cat-frappe-base dark:text-cat-frappe-yellow mb-3 leading-tight">{title || 'Untitled Post'}</h1>
+                    {dek && <p className="text-base sm:text-lg text-cat-frappe-subtext0 leading-relaxed italic">{dek}</p>}
+                  </header>
+                  <div className="prose dark:prose-invert max-w-none">
+                    {renderPreview()}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Slide-out Settings Sheet */}
+      <ArticleSettingsSheet
+        isOpen={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        // Article info
+        title={title}
+        dek={dek}
+        setDek={setDek}
+        description={description}
+        setDescription={setDescription}
+        slug={slug}
+        heroImageUrl={heroImageUrl}
+        onHeroImageUpload={handleHeroImageFile}
+        // SEO
+        seoTitle={seoTitle}
+        setSeoTitle={setSeoTitle}
+        seoDescription={seoDescription}
+        setSeoDescription={setSeoDescription}
+        seoKeywords={seoKeywords}
+        setSeoKeywords={setSeoKeywords}
+        seoAutoKeywords={seoAutoKeywords}
+        setSeoAutoKeywords={setSeoAutoKeywords}
+        // Display
+        isSpanTwo={isSpanTwo}
+        setIsSpanTwo={setIsSpanTwo}
+        // Tags
+        availableTags={availableTags}
+        selectedTagIds={selectedTagIds}
+        addTagToPost={addTagToPost}
+        removeTagFromPost={removeTagFromPost}
+        isEditingTags={isEditingTags}
+        setIsEditingTags={setIsEditingTags}
+        requestDeleteTag={requestDeleteTag}
+        newTagName={newTagName}
+        setNewTagName={setNewTagName}
+        newTagBg={newTagBg}
+        setNewTagBg={setNewTagBg}
+        newTagFg={newTagFg}
+        setNewTagFg={setNewTagFg}
+        selectedPreset={selectedPreset}
+        setSelectedPreset={setSelectedPreset}
+        handleCreateTag={handleCreateTag}
+      />
+    </div>
   );
 }
