@@ -53,7 +53,7 @@ export default function Home() {
   const [postToDelete, setPostToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const postsPerPage = 10;
+  const slotsPerPage = 9; // 3 columns × 3 rows = 9 grid slots
   const { fetchFavorites } = useFavorites();
   const [isLoading, setIsLoading] = useState(true);
   const [allTags, setAllTags] = useState([]);
@@ -98,7 +98,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       // Fetch posts from Prisma API with cache disabled to ensure fresh data
-      const res = await fetch(`/api/posts?page=${currentPage + 1}&limit=${postsPerPage}`, {
+      const res = await fetch(`/api/posts?page=${currentPage + 1}&slots=${slotsPerPage}`, {
         cache: 'no-store',
       });
       const data = await res.json();
@@ -148,7 +148,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, postsPerPage]);
+  }, [currentPage, slotsPerPage]);
 
   useEffect(() => {
     fetchPosts();
@@ -409,7 +409,7 @@ export default function Home() {
                                   }
                                   description={post.description}
                                   header={post.header}
-                                  className={`${post.className} ${i === 0 ? 'md:col-span-2' : ''}`}
+                                  className={post.className}
                                   icon={post.icon}
                                   tags={post.tags}
                                   href={post.id}
