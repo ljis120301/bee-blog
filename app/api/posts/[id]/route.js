@@ -167,9 +167,9 @@ export async function DELETE(request, { params }) {
             message: 'Post deleted',
         });
     } catch (error) {
-        console.error('Delete post error:', error);
+        console.error('Delete post error:', error.message, error.stack);
         return NextResponse.json(
-            { success: false, error: 'Failed to delete post' },
+            { success: false, error: error.message || 'Failed to delete post' },
             { status: 500 }
         );
     }
