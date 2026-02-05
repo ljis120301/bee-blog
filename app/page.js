@@ -27,6 +27,7 @@ import { BeeSwarm } from "@/components/ui/bee-skeleton";
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from '@/components/app/shared/ConfirmationDialog';
 import ReactPaginate from "react-paginate";
+import { useToast } from '@/components/ui/bee-toast';
 import FavoriteButton from '@/components/app/shared/FavoriteButton';
 import { useFavorites } from '@/app/contexts/FavoritesContext';
 import LoadingSpinner from '@/components/app/shared/LoadingSpinner';
@@ -44,6 +45,7 @@ import {
 export default function Home() {
   const router = useRouter();
   const { user, isAuthor, isAdmin, logout, loading: authLoading } = useAuth();
+  const toast = useToast();
   const [blogPosts, setBlogPosts] = useState([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 200);
@@ -79,14 +81,16 @@ export default function Home() {
         const res = await fetch(`/api/posts/${postToDelete}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
-          console.log(`Post ${postToDelete} deleted`);
           await fetchFavorites();
           setBlogPosts(blogPosts.filter(post => post.id !== `blogposts/${postToDelete}`));
+          toast.success('Post deleted successfully');
         } else {
           console.error('Error deleting post:', data.error);
+          toast.error('Failed to delete post');
         }
       } catch (error) {
         console.error('Error deleting post:', error);
+        toast.error('An error occurred while deleting the post');
       }
     }
     setIsDeleteDialogOpen(false);

@@ -7,6 +7,7 @@ import Script from 'next/script';
 import StructuredData from '@/components/app/seo/StructuredData';
 import TechPersonalitiesSchema from '@/components/app/seo/TechPersonalitiesSchema';
 import ConnectionLogger from '@/components/app/shared/ConnectionLogger';
+import { ToastProvider } from '@/components/ui/bee-toast';
 
 export const metadata = {
   metadataBase: new URL('https://bee.whoisjason.me'),
@@ -640,10 +641,12 @@ export default function RootLayout({ children }) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <FavoritesProvider>
-              <Suspense fallback={null}>
-                <ConnectionLogger />
-              </Suspense>
-              {children}
+              <ToastProvider>
+                <Suspense fallback={null}>
+                  <ConnectionLogger />
+                </Suspense>
+                {children}
+              </ToastProvider>
             </FavoritesProvider>
           </AuthProvider>
         </ThemeProvider>

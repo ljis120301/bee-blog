@@ -31,9 +31,8 @@ export async function GET(request) {
         };
 
         // Fetch all posts to calculate slot-based pagination
-        const allPosts = await db.post.findMany({
+        const rawPosts = await db.post.findMany({
             where,
-            orderBy: { createdAt: 'desc' },
             include: {
                 tags: {
                     include: { tag: true },
@@ -41,9 +40,17 @@ export async function GET(request) {
             },
         });
 
+        // Sort by createdAt descending in JavaScript
+        // This handles mixed date formats (ISO strings vs Unix timestamps) from Prisma 5+ SQLite changes
+        const allPosts = rawPosts.sort((a, b) => {
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime(); // descending (newest first)
+        });
+
         // Calculate page boundaries based on slots
         // Each post with isSpanTwo takes 2 slots, otherwise 1 slot
-        let currentPage = 1;
+        let currentPageNum = 1;
         let currentSlots = 0;
         const pageStartIndices = [0]; // Index where each page starts
 
@@ -53,7 +60,7 @@ export async function GET(request) {
             // Check if adding this post would exceed the slot limit
             if (currentSlots + slots > slotsPerPage && currentSlots > 0) {
                 // Start a new page
-                currentPage++;
+                currentPageNum++;
                 pageStartIndices.push(i);
                 currentSlots = slots;
             } else {
@@ -61,7 +68,7 @@ export async function GET(request) {
             }
         }
 
-        const totalPages = currentPage;
+        const totalPages = currentPageNum;
 
         // Get posts for the requested page
         const startIndex = pageStartIndices[page - 1] ?? 0;
