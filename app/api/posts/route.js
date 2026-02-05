@@ -14,9 +14,8 @@ export async function GET(request) {
     try {
         const url = new URL(request.url);
         const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '20');
         const tag = url.searchParams.get('tag');
-        const skip = (page - 1) * limit;
+        const slotsPerPage = parseInt(url.searchParams.get('slots') || '9'); // 3 cols × 3 rows = 9 slots
 
         const where = {
             published: true,
@@ -31,32 +30,55 @@ export async function GET(request) {
             }),
         };
 
-        const [posts, total] = await Promise.all([
-            db.post.findMany({
-                where,
-                orderBy: { createdAt: 'desc' },
-                skip,
-                take: limit,
-                include: {
-                    tags: {
-                        include: { tag: true },
-                    },
+        // Fetch all posts to calculate slot-based pagination
+        const allPosts = await db.post.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            include: {
+                tags: {
+                    include: { tag: true },
                 },
-            }),
-            db.post.count({ where }),
-        ]);
+            },
+        });
+
+        // Calculate page boundaries based on slots
+        // Each post with isSpanTwo takes 2 slots, otherwise 1 slot
+        let currentPage = 1;
+        let currentSlots = 0;
+        const pageStartIndices = [0]; // Index where each page starts
+
+        for (let i = 0; i < allPosts.length; i++) {
+            const slots = allPosts[i].isSpanTwo ? 2 : 1;
+
+            // Check if adding this post would exceed the slot limit
+            if (currentSlots + slots > slotsPerPage && currentSlots > 0) {
+                // Start a new page
+                currentPage++;
+                pageStartIndices.push(i);
+                currentSlots = slots;
+            } else {
+                currentSlots += slots;
+            }
+        }
+
+        const totalPages = currentPage;
+
+        // Get posts for the requested page
+        const startIndex = pageStartIndices[page - 1] ?? 0;
+        const endIndex = pageStartIndices[page] ?? allPosts.length;
+        const pagePosts = allPosts.slice(startIndex, endIndex);
 
         return NextResponse.json({
             success: true,
-            posts: posts.map(post => ({
+            posts: pagePosts.map(post => ({
                 ...post,
                 tags: post.tags.map(pt => pt.tag),
             })),
             pagination: {
                 page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit),
+                slotsPerPage,
+                total: allPosts.length,
+                pages: totalPages,
             },
         });
     } catch (error) {
