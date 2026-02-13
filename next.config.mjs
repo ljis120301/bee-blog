@@ -71,6 +71,20 @@ const nextConfig = {
     ];
   },
 
+  // Proxy Rybbit analytics through own domain to avoid cross-site cookie issues
+  async rewrites() {
+    return [
+      {
+        source: '/rb/script.js',
+        destination: 'https://tracking.whoisjason.me/api/script.js',
+      },
+      {
+        source: '/rb/track',
+        destination: 'https://tracking.whoisjason.me/api/track',
+      },
+    ];
+  },
+
   // Opt into Turbopack explicitly; remove webpack overrides to match Next 16 defaults
   turbopack: {},
 };
