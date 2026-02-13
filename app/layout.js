@@ -623,7 +623,7 @@ export default function RootLayout({ children }) {
         {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
           <script
             defer
-            src="https://tracking.whoisjason.me/api/script.js"
+            src="/rb/script.js"
             data-site-id="ffc635a8aed3"
           ></script>
         )}
