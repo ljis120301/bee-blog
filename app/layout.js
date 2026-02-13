@@ -646,11 +646,11 @@ export default function RootLayout({ children }) {
         </ThemeProvider>
         {/* Rybbit Analytics */}
         {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
-          <Script
+          <script
+            defer
             src="https://tracking.whoisjason.me/api/script.js"
             data-site-id="ffc635a8aed3"
-            strategy="afterInteractive"
-          />
+          ></script>
         )}
       </body>
     </html>
