@@ -6,6 +6,7 @@ import { AuthProvider } from '@/app/contexts/AuthContext';
 import StructuredData from '@/components/app/seo/StructuredData';
 import TechPersonalitiesSchema from '@/components/app/seo/TechPersonalitiesSchema';
 import ConnectionLogger from '@/components/app/shared/ConnectionLogger';
+import RybbitAnalytics from '@/components/app/shared/RybbitAnalytics';
 import { ToastProvider } from '@/components/ui/bee-toast';
 
 export const metadata = {
@@ -619,14 +620,7 @@ export default function RootLayout({ children }) {
           ></script>
         )}
 
-        {/* Rybbit Analytics */}
-        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
-          <script
-            defer
-            src="/rb/script.js"
-            data-site-id="ffc635a8aed3"
-          ></script>
-        )}
+
 
         {/* Optimized Google Fonts loading with display=swap for better performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -658,6 +652,10 @@ export default function RootLayout({ children }) {
             </FavoritesProvider>
           </AuthProvider>
         </ThemeProvider>
+        {/* Rybbit Analytics - client component with explicit route-change tracking for mobile */}
+        <Suspense fallback={null}>
+          <RybbitAnalytics />
+        </Suspense>
       </body>
     </html>
   );
