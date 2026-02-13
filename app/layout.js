@@ -2,7 +2,6 @@ import { ThemeProvider } from 'next-themes';
 import { Suspense } from 'react';
 import './styles/globals.css';
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext';
-import Script from 'next/script';
 import StructuredData from '@/components/app/seo/StructuredData';
 import TechPersonalitiesSchema from '@/components/app/seo/TechPersonalitiesSchema';
 import ConnectionLogger from '@/components/app/shared/ConnectionLogger';
@@ -617,6 +616,23 @@ export default function RootLayout({ children }) {
             data-cf-beacon='{"token": "779487f040cb4ca0900acc34e9e9d687"}'
           ></script>
         )}
+
+        {/* Rybbit Analytics - dynamically injected to prevent data-* attribute stripping */}
+        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  var el = document.createElement("script");
+                  el.src = "https://tracking.whoisjason.me/api/script.js";
+                  el.defer = true;
+                  el.setAttribute("data-site-id", "ffc635a8aed3");
+                  document.head.appendChild(el);
+                })();
+              `,
+            }}
+          />
+        )}
         
         {/* Optimized Google Fonts loading with display=swap for better performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -644,14 +660,6 @@ export default function RootLayout({ children }) {
             {children}
           </FavoritesProvider>
         </ThemeProvider>
-        {/* Rybbit Analytics */}
-        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
-          <script
-            defer
-            src="https://tracking.whoisjason.me/api/script.js"
-            data-site-id="ffc635a8aed3"
-          ></script>
-        )}
       </body>
     </html>
   );
