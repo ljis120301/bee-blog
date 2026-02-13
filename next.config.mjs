@@ -71,41 +71,6 @@ const nextConfig = {
     ];
   },
 
-  // Proxy Rybbit analytics through own domain to bypass ad blockers.
-  // The script derives its API base from its own src attribute:
-  //   src="/rb/script.js" → analyticsHost = "/rb"
-  // It then hits: /rb/track, /rb/site/tracking-config/{id}, /rb/identify,
-  // /rb/session-replay/record/{id}, /rb/replay.js
-  // All must be proxied to tracking.whoisjason.me/api/*
-  async rewrites() {
-    return [
-      {
-        source: '/rb/script.js',
-        destination: 'https://tracking.whoisjason.me/api/script.js',
-      },
-      {
-        source: '/rb/track',
-        destination: 'https://tracking.whoisjason.me/api/track',
-      },
-      {
-        source: '/rb/site/:path*',
-        destination: 'https://tracking.whoisjason.me/api/site/:path*',
-      },
-      {
-        source: '/rb/identify',
-        destination: 'https://tracking.whoisjason.me/api/identify',
-      },
-      {
-        source: '/rb/session-replay/:path*',
-        destination: 'https://tracking.whoisjason.me/api/session-replay/:path*',
-      },
-      {
-        source: '/rb/replay.js',
-        destination: 'https://tracking.whoisjason.me/api/replay.js',
-      },
-    ];
-  },
-
   // Opt into Turbopack explicitly; remove webpack overrides to match Next 16 defaults
   turbopack: {},
 };
