@@ -3,7 +3,6 @@ import { Suspense } from 'react';
 import './styles/globals.css';
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext';
 import { AuthProvider } from '@/app/contexts/AuthContext';
-import Script from 'next/script';
 import StructuredData from '@/components/app/seo/StructuredData';
 import TechPersonalitiesSchema from '@/components/app/seo/TechPersonalitiesSchema';
 import ConnectionLogger from '@/components/app/shared/ConnectionLogger';
@@ -620,6 +619,15 @@ export default function RootLayout({ children }) {
           ></script>
         )}
 
+        {/* Rybbit Analytics */}
+        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
+          <script
+            defer
+            src="https://tracking.whoisjason.me/api/script.js"
+            data-site-id="ffc635a8aed3"
+          ></script>
+        )}
+
         {/* Optimized Google Fonts loading with display=swap for better performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -650,14 +658,6 @@ export default function RootLayout({ children }) {
             </FavoritesProvider>
           </AuthProvider>
         </ThemeProvider>
-        {/* Rybbit Analytics */}
-        {(process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true') && (
-          <script
-            defer
-            src="https://tracking.whoisjason.me/api/script.js"
-            data-site-id="ffc635a8aed3"
-          ></script>
-        )}
       </body>
     </html>
   );
