@@ -50,7 +50,7 @@ export default function RybbitAnalytics() {
 
     return (
         <Script
-            src="/rb/script.js"
+            src="https://tracking.whoisjason.me/api/script.js"
             data-site-id="ffc635a8aed3"
             strategy="afterInteractive"
         />
