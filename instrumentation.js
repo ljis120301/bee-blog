@@ -15,6 +15,10 @@ export async function register() {
     }
 }
 
+function randomId() {
+    return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+}
+
 async function ensureAdmin() {
     const adminEmail = process.env.ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD;
@@ -63,10 +67,9 @@ async function ensureAdmin() {
                 });
                 console.log('[ENSURE-ADMIN] ✅ Password reset on existing credential account');
             } else {
-                const crypto = await import('crypto');
                 await db.account.create({
                     data: {
-                        id: crypto.randomBytes(16).toString('hex'),
+                        id: randomId(),
                         accountId: existingUser.id,
                         providerId: 'credential',
                         userId: existingUser.id,
@@ -77,8 +80,7 @@ async function ensureAdmin() {
             }
         } else {
             // Create user + credential account from scratch
-            const crypto = await import('crypto');
-            const userId = crypto.randomBytes(16).toString('hex');
+            const userId = randomId();
 
             await db.user.create({
                 data: {
@@ -92,7 +94,7 @@ async function ensureAdmin() {
 
             await db.account.create({
                 data: {
-                    id: crypto.randomBytes(16).toString('hex'),
+                    id: randomId(),
                     accountId: userId,
                     providerId: 'credential',
                     userId: userId,
