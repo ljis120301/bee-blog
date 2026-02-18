@@ -1,7 +1,11 @@
 /**
- * DEPRECATED: This file has been replaced by ensure-admin.mjs
- * The .mjs version uses Better Auth's own hashPassword for correct password hashing.
- * See: scripts/ensure-admin.mjs
+ * CommonJS wrapper for ensure-admin.mjs
+ * =======================================
+ * Delegates to the ESM version which uses Better Auth's hashPassword.
+ * This wrapper exists so any caller of ensure-admin.js still works.
  */
-console.log('[ENSURE-ADMIN] ⚠️  This script is deprecated. Use ensure-admin.mjs instead.');
-process.exit(1);
+const { execSync } = require('child_process');
+const path = require('path');
+
+const scriptPath = path.join(__dirname, 'ensure-admin.mjs');
+execSync(`node ${scriptPath}`, { stdio: 'inherit' });
