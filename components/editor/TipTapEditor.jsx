@@ -29,6 +29,7 @@ import "@/components/tiptap-node/table-node/table-node.scss";
 export default function TipTapEditor({ value, onChange, onEditorReady, placeholder = "Write your post...", onRequestUpload, minHeightClass = "min-h-[300px]" }) {
   const lastHtmlRef = useRef(value || "");
   const isApplyingExternalRef = useRef(false);
+  const editorWrapperRef = useRef(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -58,6 +59,7 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
     editorProps: {
       attributes: {
         class: `prose prose-lg dark:prose-invert max-w-none ${minHeightClass} focus:outline-none text-cat-frappe-base dark:text-cat-frappe-text prose-headings:text-cat-frappe-base dark:prose-headings:text-cat-frappe-yellow prose-p:leading-relaxed prose-p:text-[15px]`,
+        spellcheck: "true",
       },
       handleDOMEvents: {
         // Ensure right-click inside table sets the selection under the cursor
@@ -156,6 +158,21 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
     }
   }, [value, editor]);
 
+  // Allow native right-click context menu (with OS spellcheck) when not in a table.
+  // Radix ContextMenu intercepts all right-clicks; this stops propagation before
+  // it reaches the Radix trigger so the browser's native menu appears instead.
+  useEffect(() => {
+    const el = editorWrapperRef.current;
+    if (!el || !editor) return;
+    const handler = (e) => {
+      if (!editor.isActive('table')) {
+        e.stopPropagation();
+      }
+    };
+    el.addEventListener('contextmenu', handler);
+    return () => el.removeEventListener('contextmenu', handler);
+  }, [editor]);
+
   if (!editor) return null;
 
   return (
@@ -164,6 +181,7 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
       <div className="px-4 py-3 bg-white dark:bg-cat-frappe-base" onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}>
         <ContextMenu>
           <ContextMenuTrigger>
+            <div ref={editorWrapperRef}>
             <EditorContent editor={editor}
           onPaste={async (e) => {
             if (!onRequestUpload) return;
@@ -199,6 +217,7 @@ export default function TipTapEditor({ value, onChange, onEditorReady, placehold
               }
             } catch {}
             }} />
+            </div>
           </ContextMenuTrigger>
           {editor?.isActive('table') && (
             <ContextMenuContent className="w-64 border border-cat-frappe-surface1 dark:border-cat-frappe-surface0 bg-[#F6EEE5] dark:bg-cat-frappe-base text-cat-frappe-base dark:text-cat-frappe-text shadow-lg">
